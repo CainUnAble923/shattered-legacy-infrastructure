@@ -1,0 +1,17 @@
+--- a/Projects/UOContent/Gumps/Go/GoLocations.cs
++++ b/Projects/UOContent/Gumps/Go/GoLocations.cs
+@@ -54,6 +54,14 @@
+ 
+         var path = Path.Combine($"Data/Locations/{fileName}.json");
+ 
++        // Shattered Legacy (cc-P679, SoS swap S4): a facet on the Siege of Sosaria land reads the author's go-menu
++        // (Data/ShatteredLegacy/Locations/<facet>.json: trammel and felucca) in place of pinned's.
++        var shardPath = Path.Combine($"Data/ShatteredLegacy/Locations/{fileName}.json");
++        if (File.Exists(shardPath))
++        {
++            path = shardPath;
++        }
++
+         try
+         {
+             var root = JsonConfig.Deserialize<GoCategory>(path);

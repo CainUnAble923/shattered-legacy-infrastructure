@@ -1,0 +1,974 @@
+{
+  "name": "Trammel",
+  "categories": [
+    {
+      "name": "Areas of Interest",
+      "categories": [
+        {
+          "name": "Britain Forest - North",
+          "locations": [
+            {"name": "Britain Graveyard", "location": [1385, 1497, 10]},
+            {"name": "Castle Dunbain", "location": [1333, 1377, 0]},
+            {"name": "Fort Stormhammer", "location": [1490, 1323, 2]},
+            {"name": "North", "location": [1885, 1225, 22]},
+            {"name": "South", "location": [1660, 1497, 17]}
+          ]
+        },
+        {
+          "name": "Britain Forest - South",
+          "locations": [
+            {"name": "Brit Forest Guard Barracks", "location": [1670, 2476, 10]},
+            {"name": "Brit Forest Guardpost", "location": [1426, 2104, 6]},
+            {"name": "Camp Ironfang", "location": [1699, 2363, 5]},
+            {"name": "Dhampire Ruins", "location": [1469, 2515, 14]},
+            {"name": "East", "location": [1783, 2410, 6]},
+            {"name": "Fort Silverblood", "location": [1561, 2652, -5]},
+            {"name": "Ivanguard Manor", "location": [1773, 2683, 0]},
+            {"name": "North", "location": [1370, 1753, 3]},
+            {"name": "Shrine of Spirituality", "location": [1602, 2490, 5]},
+            {"name": "South", "location": [1769, 2838, 4]}
+          ]
+        },
+        {
+          "name": "Bucs Jungle",
+          "locations": [
+            {"name": "North", "location": [2746, 2298, 0]}
+          ]
+        },
+        {
+          "name": "Compassion Desert",
+          "locations": [
+            {"name": "Pyramid", "location": [2104, 611, 0]},
+            {"name": "Shrine of Compassion", "location": [1857, 871, 0]},
+            {"name": "West", "location": [1866, 750, 0]}
+          ]
+        },
+        {
+          "name": "Covetous Forest",
+          "locations": [
+            {"name": "Cove Graveyard", "location": [2442, 1099, 8]},
+            {"name": "Harpy Campgrounds", "location": [2193, 893, -2]},
+            {"name": "Tigerclaw Fortress", "location": [2595, 1085, 8]},
+            {"name": "Vesper Graveyard", "location": [2771, 866, 0]}
+          ]
+        },
+        {
+          "name": "Darkfathom Hollow",
+          "locations": [
+            {"name": "Ankh", "location": [4262, 2930, 0]}
+          ]
+        },
+        {
+          "name": "Dragonstorm Island",
+          "locations": [
+            {"name": "Moongate", "location": [3186, 3884, 17]}
+          ]
+        },
+        {
+          "name": "Dunbarrow Fissure",
+          "locations": [
+            {"name": "Craters", "location": [4536, 2812, -6]}
+          ]
+        },
+        {
+          "name": "Echoback Estuary",
+          "locations": [
+            {"name": "Campsite", "location": [4454, 2586, 5]}
+          ]
+        },
+        {
+          "name": "Glimmerwood",
+          "locations": [
+            {"name": "East", "location": [2834, 3488, 6]},
+            {"name": "West", "location": [2123, 3330, 0]}
+          ]
+        },
+        {
+          "name": "Isle of the Avatar",
+          "locations": [
+            {"name": "South", "location": [4764, 3819, 9]}
+          ]
+        },
+        {
+          "name": "Khalahandra Keep",
+          "locations": [
+            {"name": "Entrance", "location": [2505, 1707, 50]}
+          ]
+        },
+        {
+          "name": "Nujelm Desert",
+          "locations": [
+            {"name": "South", "location": [3813, 1277, -10]}
+          ]
+        },
+        {
+          "name": "Skypoint Islands",
+          "locations": [
+            {"name": "Ship", "location": [4357, 2349, 20]}
+          ]
+        },
+        {
+          "name": "Swamp of Desolation",
+          "locations": [
+            {"name": "Cave", "location": [1826, 1029, -3]}
+          ]
+        },
+        {
+          "name": "Trinsic Jungle",
+          "locations": [
+            {"name": "Camp Bloodwater Basin", "location": [1802, 3379, 0]},
+            {"name": "Chapel of Saint Lucia", "location": [1714, 3173, 11]},
+            {"name": "East", "location": [2103, 3119, 3]},
+            {"name": "North", "location": [1769, 2858, 0]}
+          ]
+        },
+        {
+          "name": "Vesper Forest",
+          "locations": [
+            {"name": "Shrine of Sacrifice", "location": [3355, 299, 9]},
+            {"name": "South", "location": [2907, 609, 0]}
+          ]
+        },
+        {
+          "name": "Yew Forest",
+          "locations": [
+            {"name": "Cherrygrove Bliss", "location": [1328, 544, 28]},
+            {"name": "East", "location": [1221, 936, 0]},
+            {"name": "Fort Viridian", "location": [1015, 1003, 0]},
+            {"name": "Fort Whitestone", "location": [890, 1055, 32]},
+            {"name": "Mistveil Ruins", "location": [1177, 792, 0]},
+            {"name": "Shrine of Justice", "location": [1301, 640, 16]},
+            {"name": "South", "location": [687, 1383, 8]},
+            {"name": "Yew Forest Guardpost", "location": [1047, 1080, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dungeons",
+      "categories": [
+        {
+          "name": "Agurast Ascension",
+          "locations": [
+            {"name": "Entrance", "location": [1560, 2624, 1]},
+            {"name": "Level 1", "location": [6971, 1234, -28]},
+            {"name": "Level 2", "location": [7090, 1017, -28]},
+            {"name": "Level 3", "location": [7029, 923, -28]}
+          ]
+        },
+        {
+          "name": "Amul Seketsi Royal Tomb",
+          "locations": [
+            {"name": "Entrance", "location": [4197, 1445, 0]},
+            {"name": "Level 1", "location": [7044, 2622, 1]},
+            {"name": "Level 2", "location": [6931, 2664, 1]},
+            {"name": "Level 3", "location": [6871, 2720, 0]}
+          ]
+        },
+        {
+          "name": "Azurite Caverns",
+          "locations": [
+            {"name": "Entrance", "location": [4282, 562, 2]},
+            {"name": "Level 1", "location": [6807, 2933, 20]},
+            {"name": "Level 2", "location": [7058, 2807, -25]}
+          ]
+        },
+        {
+          "name": "Bharlim Passage",
+          "locations": [
+            {"name": "Entrance", "location": [4795, 1774, 0]},
+            {"name": "Main Passageway", "location": [6707, 3733, 48]},
+            {"name": "Level 1", "location": [6692, 3624, 31]}
+          ]
+        },
+        {
+          "name": "Black Widow Pit",
+          "locations": [
+            {"name": "Entrance", "location": [2126, 3439, 10]},
+            {"name": "Level 1", "location": [6713, 2932, -4]},
+            {"name": "Level 2", "location": [6902, 3612, 25]}
+          ]
+        },
+        {
+          "name": "Bleak Wind Tunnels",
+          "locations": [
+            {"name": "Entrance", "location": [474, 3300, 1]},
+            {"name": "Level 1", "location": [6254, 2704, -84]}
+          ]
+        },
+        {
+          "name": "Blighted Grove",
+          "locations": [
+            {"name": "Entrance", "location": [586, 1643, -5]}
+          ]
+        },
+        {
+          "name": "Boulder Tunnel",
+          "locations": [
+            {"name": "Level 1", "location": [6564, 3730, -29]}
+          ]
+        },
+        {
+          "name": "Covetous",
+          "locations": [
+            {"name": "Entrance", "location": [2499, 919, 0]},
+            {"name": "Level 1", "location": [5456, 1863, 0]},
+            {"name": "Level 2", "location": [5614, 1997, 0]},
+            {"name": "Level 3", "location": [5579, 1924, 0]},
+            {"name": "Lake Cave", "location": [5467, 1805, 7]},
+            {"name": "Torture Chambers", "location": [5552, 1807, 0]}
+          ]
+        },
+        {
+          "name": "Deceit",
+          "locations": [
+            {"name": "Entrance", "location": [4111, 432, 5]},
+            {"name": "Level 1", "location": [5188, 638, 0]},
+            {"name": "Level 2", "location": [5305, 533, 2]},
+            {"name": "Level 3", "location": [5137, 650, 5]},
+            {"name": "Level 4", "location": [5306, 652, 2]}
+          ]
+        },
+        {
+          "name": "Despise",
+          "locations": [
+            {"name": "Entrance", "location": [1298, 1080, 0]},
+            {"name": "Entryway", "location": [5587, 631, 30]},
+            {"name": "Level 1", "location": [5501, 570, 59]},
+            {"name": "Level 2", "location": [5519, 673, 20]},
+            {"name": "Level 3", "location": [5407, 859, 45]}
+          ]
+        },
+        {
+          "name": "Destard",
+          "locations": [
+            {"name": "Entrance", "location": [1176, 2637, 0]},
+            {"name": "Level 1", "location": [5243, 1006, 0]},
+            {"name": "Level 2", "location": [5143, 801, 4]},
+            {"name": "Level 3", "location": [5137, 986, 5]}
+          ]
+        },
+        {
+          "name": "Dragons Den",
+          "locations": [
+            {"name": "Entrance", "location": [3194, 3818, -19]},
+            {"name": "Level 1", "location": [6615, 2609, 26]},
+            {"name": "Level 2", "location": [6576, 1683, 27]}
+          ]
+        },
+        {
+          "name": "Everstar Estuary",
+          "locations": [
+            {"name": "Entrance", "location": [1149, 2242, 15]},
+            {"name": "Main Hall", "location": [6366, 3730, -16]},
+            {"name": "Level 1", "location": [6505, 3471, -1]}
+          ]
+        },
+        {
+          "name": "Fire",
+          "locations": [
+            {"name": "Entrance", "location": [5760, 2908, 15]},
+            {"name": "Brit Entrance", "location": [2923, 3407, 8]},
+            {"name": "Level 1", "location": [5790, 1416, 40]},
+            {"name": "Level 2", "location": [5702, 1316, 1]}
+          ]
+        },
+        {
+          "name": "Fortress Calcifina",
+          "locations": [
+            {"name": "Entrance", "location": [3051, 156, 2]},
+            {"name": "Level 1", "location": [6384, 1780, -28]}
+          ]
+        },
+        {
+          "name": "Fungully Grotto",
+          "locations": [
+            {"name": "Entrance", "location": [1714, 1066, 5]},
+            {"name": "Level 1", "location": [6755, 2819, 0]}
+          ]
+        },
+        {
+          "name": "Ghuul Sanctuary",
+          "locations": [
+            {"name": "Entrance", "location": [1350, 1500, 20]},
+            {"name": "Level 1", "location": [6287, 3701, 0]}
+          ]
+        },
+        {
+          "name": "Guardian's Power Plant",
+          "locations": [
+            {"name": "Level 1", "location": [6700, 1767, -28]}
+          ]
+        },
+        {
+          "name": "Hammerhill Sewers",
+          "locations": [
+            {"name": "Entrance", "location": [1553, 1017, -10]},
+            {"name": "Level 1", "location": [6394, 2771, 20]}
+          ]
+        },
+        {
+          "name": "Haven Catacombs",
+          "locations": [
+            {"name": "Entrance", "location": [3578, 2589, 0]},
+            {"name": "Level 1", "location": [6917, 1564, -1]}
+          ]
+        },
+        {
+          "name": "Hythloth",
+          "locations": [
+            {"name": "Entrance", "location": [4721, 3822, 0]},
+            {"name": "Level 1", "location": [5905, 20, 46]},
+            {"name": "Level 2", "location": [5976, 169, 0]},
+            {"name": "Level 3", "location": [6083, 145, -20]},
+            {"name": "Level 4", "location": [6059, 89, 24]}
+          ]
+        },
+        {
+          "name": "Ice",
+          "locations": [
+            {"name": "Entrance", "location": [5210, 2322, 30]},
+            {"name": "Brit Entrance", "location": [1999, 81, 4]},
+            {"name": "Level 1", "location": [5875, 150, 15]},
+            {"name": "Ratman Room", "location": [5834, 327, 18]},
+            {"name": "Ice Demon Lair", "location": [5700, 305, 0]}
+          ]
+        },
+        {
+          "name": "Iguana Cove",
+          "locations": [
+            {"name": "Entrance", "location": [947, 1537, 60]},
+            {"name": "Level 1", "location": [7050, 2580, -20]},
+            {"name": "Level 2", "location": [6895, 2463, 50]}
+          ]
+        },
+        {
+          "name": "Kal Berbessia",
+          "locations": [
+            {"name": "Level 1", "location": [6486, 3523, -27]}
+          ]
+        },
+        {
+          "name": "Mongbat Hideout",
+          "locations": [
+            {"name": "Entrance", "location": [1769, 1148, 0]},
+            {"name": "Level 1", "location": [6250, 2346, -37]},
+            {"name": "Level 2", "location": [6429, 2366, 73]},
+            {"name": "Level 3", "location": [7083, 3119, 96]}
+          ]
+        },
+        {
+          "name": "Murkmere Dwelling",
+          "locations": [
+            {"name": "Entrance", "location": [4913, 1810, 2]},
+            {"name": "Main Passageway", "location": [6469, 3293, 7]},
+            {"name": "Level 1", "location": [6298, 3341, 9]}
+          ]
+        },
+        {
+          "name": "Nimaku Lava Basin",
+          "locations": [
+            {"name": "Entrance", "location": [1408, 3476, 5]},
+            {"name": "Level 1", "location": [6654, 2983, 0]}
+          ]
+        },
+        {
+          "name": "Oboru Burial Ground",
+          "locations": [
+            {"name": "Entrance", "location": [1810, 1056, 0]},
+            {"name": "Level 1", "location": [6347, 3384, 0]}
+          ]
+        },
+        {
+          "name": "Orc Cave",
+          "locations": [
+            {"name": "Entrance", "location": [1019, 1431, 0]},
+            {"name": "Level 1", "location": [5137, 2014, 0]},
+            {"name": "Level 2", "location": [5332, 1376, 0]},
+            {"name": "Level 3", "location": [5272, 2036, 0]}
+          ]
+        },
+        {
+          "name": "Painted Caves",
+          "locations": [
+            {"name": "Entrance", "location": [1716, 2993, 0]}
+          ]
+        },
+        {
+          "name": "Palace of Paroxysmus",
+          "locations": [
+            {"name": "Entrance", "location": [5576, 3018, 25]}
+          ]
+        },
+        {
+          "name": "Passage of Lost Souls",
+          "locations": [
+            {"name": "Entrance", "location": [4589, 3288, 0]},
+            {"name": "Level 1", "location": [6195, 1695, -28]},
+            {"name": "Level 2", "location": [6202, 2116, -9]}
+          ]
+        },
+        {
+          "name": "Prism of Light",
+          "locations": [
+            {"name": "Entrance", "location": [3784, 1097, 14]}
+          ]
+        },
+        {
+          "name": "Sanctuary",
+          "locations": [
+            {"name": "Entrance", "location": [764, 1646, 0]}
+          ]
+        },
+        {
+          "name": "Seaspray Solitude",
+          "locations": [
+            {"name": "Entrance", "location": [3782, 1476, 21]},
+            {"name": "Level 1", "location": [6910, 3076, 10]},
+            {"name": "Level 2", "location": [7014, 3067, 0]}
+          ]
+        },
+        {
+          "name": "Sentinels Military Base",
+          "locations": [
+            {"name": "Entrance", "location": [1482, 1296, 2]},
+            {"name": "Level 1", "location": [6520, 3004, 20]}
+          ]
+        },
+        {
+          "name": "Shame",
+          "locations": [
+            {"name": "Entrance", "location": [514, 1561, 0]},
+            {"name": "Level 1", "location": [5395, 126, 0]},
+            {"name": "Level 2", "location": [5515, 11, 5]},
+            {"name": "Level 3", "location": [5514, 148, 25]},
+            {"name": "Level 4", "location": [5875, 20, -5]}
+          ]
+        },
+        {
+          "name": "Skulker's Den",
+          "locations": [
+            {"name": "Entrance", "location": [3154, 48, 4]},
+            {"name": "Level 1", "location": [6839, 851, 23]}
+          ]
+        },
+        {
+          "name": "Solen Hives",
+          "categories": [
+            {
+              "name": "Area A",
+              "locations": [
+                {"name": "Entrance", "location": [729, 1451, 0]},
+                {"name": "Level 1", "location": [5658, 1795, 3]},
+                {"name": "Level 2", "location": [5726, 1891, 1]}
+              ]
+            },
+            {
+              "name": "Area B",
+              "locations": [
+                {"name": "Entrance", "location": [2607, 763, 0]},
+                {"name": "Level 1", "location": [5921, 1797, 1]},
+                {"name": "Level 2", "location": [5875, 1866, 2]}
+              ]
+            },
+            {
+              "name": "Area C",
+              "locations": [
+                {"name": "Entrance", "location": [1689, 2789, 0]},
+                {"name": "Level 1", "location": [5659, 2022, 0]},
+                {"name": "Level 2", "location": [5708, 1955, 0]}
+              ]
+            },
+            {
+              "name": "Area D",
+              "locations": [
+                {"name": "Entrance", "location": [1723, 814, 0]},
+                {"name": "Level 1", "location": [5916, 2019, 3]},
+                {"name": "Level 2", "location": [5813, 2012, -1]}
+              ]
+            },
+            {
+              "name": "Area E",
+              "locations": [
+                {"name": "Entrance", "location": [5732, 1858, 0]}
+              ]
+            }
+          ],
+          "locations": [
+            {"name": "Central Area", "location": [5774, 1896, 20]}
+          ]
+        },
+        {
+          "name": "Stone Burrow Mines",
+          "locations": [
+            {"name": "Entrance", "location": [1908, 1766, 15]},
+            {"name": "Level 1", "location": [6395, 3056, 20]}
+          ]
+        },
+        {
+          "name": "Swampwater Solitude",
+          "locations": [
+            {"name": "Entrance", "location": [1617, 1191, 0]},
+            {"name": "Level 1", "location": [6937, 3637, -46]}
+          ]
+        },
+        {
+          "name": "Terathan Keep",
+          "locations": [
+            {"name": "Entrance", "location": [5451, 3143, -60]},
+            {"name": "Level 1", "location": [5342, 1601, 0]},
+            {"name": "Champion Room", "location": [5205, 1585, 0]},
+            {"name": "Starroom", "location": [5139, 1767, 0]}
+          ]
+        },
+        {
+          "name": "Whispering Hollow",
+          "locations": [
+            {"name": "Entrance", "location": [1915, 1332, -55]},
+            {"name": "Level 1", "location": [6999, 804, -2]}
+          ]
+        },
+        {
+          "name": "Wrong",
+          "locations": [
+            {"name": "Entrance", "location": [2043, 238, 10]},
+            {"name": "Level 1", "location": [5825, 630, 0]},
+            {"name": "Level 2", "location": [5690, 569, 25]},
+            {"name": "Level 3", "location": [5703, 639, 0]}
+          ]
+        },
+        {
+          "name": "Wylarn Caverns",
+          "locations": [
+            {"name": "Entrance", "location": [2639, 50, 38]},
+            {"name": "Level 1", "location": [6671, 746, 9]}
+          ]
+        },
+        {
+          "name": "Miscellaneous",
+          "locations": [
+            {"name": "Hyloth Fire Pit", "location": [4596, 3630, 30]},
+            {"name": "Yew-Britain Brigand Camp", "location": [885, 1682, 0]},
+            {"name": "Yew Fort of the Damned", "location": [972, 768, 0]}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Internal",
+      "categories": [
+        {
+          "name": "Jail Cells",
+          "locations": [
+            {"name": "Cell 1", "location": [5276, 1164, 0]},
+            {"name": "Cell 2", "location": [5286, 1164, 0]},
+            {"name": "Cell 3", "location": [5296, 1164, 0]},
+            {"name": "Cell 4", "location": [5306, 1164, 0]},
+            {"name": "Cell 5", "location": [5276, 1174, 0]},
+            {"name": "Cell 6", "location": [5286, 1174, 0]},
+            {"name": "Cell 7", "location": [5286, 1174, 0]},
+            {"name": "Cell 8", "location": [5306, 1174, 0]},
+            {"name": "Cell 9", "location": [5283, 1184, 0]},
+            {"name": "Cell 10", "location": [5304, 1184, 0]}
+          ]
+        }
+      ],
+      "locations": [
+        {"name": "Green Acres", "location": [5445, 1153, 0]}
+      ]
+    },
+    {
+      "name": "Shrines",
+      "locations": [
+        {"name": "Chaos", "location": [1456, 854, 0]},
+        {"name": "Compassion", "location": [1856, 872, -1]},
+        {"name": "Honesty", "location": [4217, 564, 36]},
+        {"name": "Honor", "location": [1730, 3528, 3]},
+        {"name": "Humility", "location": [4276, 3699, 0]},
+        {"name": "Justice", "location": [1301, 639, 16]},
+        {"name": "Sacrifice", "location": [3355, 299, 9]},
+        {"name": "Spirituality", "location": [1589, 2485, 5]},
+        {"name": "Valor", "location": [2496, 3932, 0]}
+      ]
+    },
+    {
+      "name": "Towns",
+      "categories": [
+        {
+          "name": "Britain",
+          "locations": [
+            {"name": "Artists' Guild", "location": [1445, 1671, 10]},
+            {"name": "Blackthorn Castle", "location": [1533, 1415, 56]},
+            {"name": "Blackthorn Entrance", "location": [1523, 1456, 15]},
+            {"name": "Britain Public Library", "location": [1421, 1597, 27]},
+            {"name": "Britannia Animal Care", "location": [1506, 1577, 20]},
+            {"name": "British Castle", "location": [1323, 1624, 55]},
+            {"name": "British Entrance", "location": [1401, 1625, 28]},
+            {"name": "Britain's Premier Provisioners", "location": [1475, 1676, 0]},
+            {"name": "Cemetery", "location": [1384, 1497, 10]},
+            {"name": "Center", "location": [1475, 1645, 20]},
+            {"name": "Counselor's Guild", "location": [1504, 1529, 40]},
+            {"name": "Ethereal Goods", "location": [1509, 1658, 20]},
+            {"name": "Farmlands", "location": [1228, 1705, 0]},
+            {"name": "Good Eats", "location": [1461, 1611, 20]},
+            {"name": "Healer of Britain", "location": [1481, 1611, 20]},
+            {"name": "Heavy Metal Armorer", "location": [1448, 1655, 10]},
+            {"name": "LB Conservatory of Music", "location": [1455, 1561, 30]},
+            {"name": "Merchants' Guild", "location": [1475, 1601, 20]},
+            {"name": "Park", "location": [1614, 1641, 35]},
+            {"name": "Premier Gems", "location": [1459, 1681, 0]},
+            {"name": "Quality Fletching", "location": [1474, 1585, 20]},
+            {"name": "Stables", "location": [1388, 1665, 30]},
+            {"name": "Strength and Steel", "location": [1489, 1589, 20]},
+            {"name": "Suburbs", "location": [1662, 1572, 5]},
+            {"name": "Sweet Dreams", "location": [1495, 1628, 10]},
+            {"name": "The Best Hides of Britain", "location": [1441, 1612, 20]},
+            {"name": "The Blue Boar", "location": [1503, 1687, 20]},
+            {"name": "The Bucking Horse Stables", "location": [1516, 1553, 25]},
+            {"name": "The Cat's Lair", "location": [1433, 1731, 20]},
+            {"name": "The Cleaver", "location": [1452, 1729, 3]},
+            {"name": "The First Bank of Britain", "location": [1438, 1695, 0]},
+            {"name": "The First Library of Britain", "location": [1494, 1725, 0]},
+            {"name": "The Hammer and Anvil", "location": [1429, 1547, 30]},
+            {"name": "The King's Men Theater", "location": [1456, 1601, 20]},
+            {"name": "The Lord's Clothiers", "location": [1471, 1697, 0]},
+            {"name": "The Miners' Guild", "location": [1427, 1585, 30]},
+            {"name": "The North Side Inn", "location": [1475, 1521, 20]},
+            {"name": "The Oaken Oar", "location": [1426, 1748, 12]},
+            {"name": "The Saw Horse", "location": [1435, 1601, 20]},
+            {"name": "The Sorcerer's Delight", "location": [1491, 1573, 30]},
+            {"name": "The Tinkers' Guild", "location": [1433, 1658, 10]}
+          ]
+        },
+        {
+          "name": "Buccaneers Den",
+          "locations": [
+            {"name": "Bank", "location": [2731, 2193, 0]},
+            {"name": "Buccaneer's Bathhouse", "location": [2667, 2084, 5]},
+            {"name": "Buccaneer's Den Leatherworks", "location": [2713, 2179, 0]},
+            {"name": "Cutlass Smithing", "location": [2635, 2089, 0]},
+            {"name": "Docks", "location": [2736, 2166, 0]},
+            {"name": "Healer of Buccaneer's Den", "location": [2707, 2153, 0]},
+            {"name": "Pirate's Den", "location": [2665, 2193, 3]},
+            {"name": "Pirate's Provisioner", "location": [2745, 2250, 0]},
+            {"name": "The Peg Leg Inn", "location": [2715, 2105, 0]},
+            {"name": "The Pirate's Plunder", "location": [2689, 2235, 2]},
+            {"name": "Tunnels", "location": [2667, 2069, -20]},
+            {"name": "Violente Woodworks", "location": [2633, 2101, 10]}
+          ]
+        },
+        {
+          "name": "Cove",
+          "locations": [
+            {"name": "Bank of Cove", "location": [2233, 1198, 0]},
+            {"name": "Cemetery", "location": [2443, 1123, 5]},
+            {"name": "Gates", "location": [2285, 1209, 0]},
+            {"name": "Guard Post", "location": [2218, 1116, 19]},
+            {"name": "Orc Fort", "location": [2171, 1332, 0]}
+          ]
+        },
+        {
+          "name": "Delucia",
+          "locations": [
+            {"name": "Center", "location": [5228, 3978, 37]},
+            {"name": "Healer", "location": [5198, 3995, 37]},
+            {"name": "Hut o' Magics", "location": [5291, 3985, 37]},
+            {"name": "Orc Fort", "location": [5210, 3636, 3]},
+            {"name": "Stables", "location": [5305, 3999, 36]},
+            {"name": "Tailor", "location": [5233, 4029, 37]},
+            {"name": "The Barely Inn", "location": [5206, 4060, 37]},
+            {"name": "The Supply Depot", "location": [5217, 4020, 37]},
+            {"name": "Watch Tower", "location": [5276, 3945, 37]},
+            {"name": "Ye Olde Eleventh Bank", "location": [5273, 3990, 39]},
+            {"name": "Zoot's Hammer", "location": [5229, 4009, 37]},
+            {"name": "Moongate", "location": [5353, 4010, 15]}
+          ]
+        },
+        {
+          "name": "Hammerhill",
+          "locations": [
+            {"name": "Bank", "location": [1530, 994, 5]},
+            {"name": "Moongate", "location": [1541, 1081, -11]}
+          ]
+        },
+        {
+          "name": "Haven",
+          "locations": [
+            {"name": "Anchors Aweigh", "location": [3635, 2641, 0]},
+            {"name": "A Stitch In Time", "location": [3672, 2602, 0]},
+            {"name": "Docks", "location": [3650, 2653, 0]},
+            {"name": "Farmlands", "location": [3722, 2647, 20]},
+            {"name": "Hammer And Steel Smithy", "location": [3647, 2617, 0]},
+            {"name": "North", "location": [3650, 2516, 0]},
+            {"name": "The Albatross", "location": [3667, 2657, 0]},
+            {"name": "The Bountiful Harvest", "location": [3668, 2625, 0]},
+            {"name": "The Second Bank of Haven", "location": [3628, 2608, 0]},
+            {"name": "Uzeraan Mansion", "location": [3614, 2588, 0]}
+          ]
+        },
+        {
+          "name": "Jhelom",
+          "locations": [
+            {"name": "Cemetery", "location": [1296, 3719, 0]},
+            {"name": "East Docks", "location": [1492, 3696, -3]},
+            {"name": "Fighting Pit", "location": [1398, 3742, -21]},
+            {"name": "Jhelom Bank and Jeweler", "location": [1324, 3777, 0]},
+            {"name": "Main Island", "location": [1414, 3816, 0]},
+            {"name": "Medium Island", "location": [1124, 3623, 5]},
+            {"name": "Small Island", "location": [1466, 4015, 5]}
+          ]
+        },
+        {
+          "name": "Kameron Kove",
+          "locations": [
+            {"name": "Bank", "location": [1297, 2470, 0]},
+            {"name": "Moongate", "location": [1353, 2451, 12]}
+          ]
+        },
+        {
+          "name": "Magincia",
+          "locations": [
+            {"name": "Bank of New Magincia", "location": [3730, 2161, 20]},
+            {"name": "Docks", "location": [3675, 2259, 20]},
+            {"name": "Park", "location": [3719, 2063, 25]},
+            {"name": "Parliament", "location": [3792, 2248, 20]}
+          ]
+        },
+        {
+          "name": "Minoc",
+          "locations": [
+            {"name": "Bank of Minoc", "location": [2504, 562, 0]},
+            {"name": "Bridge", "location": [2539, 501, 30]},
+            {"name": "Gypsy Camp", "location": [2540, 651, 0]},
+            {"name": "Mining Camp", "location": [2583, 528, 15]},
+            {"name": "North", "location": [2475, 417, 15]},
+            {"name": "South", "location": [2526, 583, 0]}
+          ]
+        },
+        {
+          "name": "Moonglow",
+          "locations": [
+            {"name": "Cemetery", "location": [4546, 1338, 8]},
+            {"name": "Center", "location": [4442, 1122, 5]},
+            {"name": "Docks", "location": [4406, 1045, -2]},
+            {"name": "First Bank of Moonglow", "location": [4470, 1177, 8]},
+            {"name": "Telescope", "location": [4707, 1124, 0]},
+            {"name": "Zoo", "location": [4549, 1378, 8]}
+          ]
+        },
+        {
+          "name": "Nujel'm",
+          "locations": [
+            {"name": "Bank of Nujelm", "location": [3770, 1315, 0]},
+            {"name": "Cemetery", "location": [3536, 1156, 20]},
+            {"name": "Chess Board", "location": [3728, 1360, 5]},
+            {"name": "Docks", "location": [3803, 1279, 5]},
+            {"name": "East", "location": [3755, 1227, 0]},
+            {"name": "North", "location": [3668, 1116, 0]},
+            {"name": "Palace", "location": [3698, 1279, 20]},
+            {"name": "West", "location": [3572, 1211, 0]}
+          ]
+        },
+        {
+          "name": "Papua",
+          "locations": [
+            {"name": "Center", "location": [5730, 3208, -4]},
+            {"name": "Docks", "location": [5825, 3256, 2]},
+            {"name": "Nature's Best Baked Goods", "location": [5745, 3210, -1]},
+            {"name": "Strange Rocks", "location": [5672, 3147, 12]},
+            {"name": "Pier 39", "location": [5805, 3282, -3]},
+            {"name": "Southside Stables", "location": [5680, 3285, -5]},
+            {"name": "The Carpentry House", "location": [5705, 3211, -1]},
+            {"name": "The Healing Hand", "location": [5741, 3218, -2]},
+            {"name": "The Just Inn", "location": [5769, 3176, 0]},
+            {"name": "The Reagent Shoppe", "location": [5721, 3205, -4]},
+            {"name": "The Revenge Shoppe", "location": [5802, 3288, -1]},
+            {"name": "The Southside Butchery", "location": [5697, 3293, -1]},
+            {"name": "Tricks of the Trade", "location": [5730, 3205, -7]},
+            {"name": "Ye Olde Loan and Savings", "location": [5676, 3140, 12]}
+          ]
+        },
+        {
+          "name": "Serpents Hold",
+          "locations": [
+            {"name": "Bank", "location": [2892, 3475, 15]},
+            {"name": "North", "location": [3023, 3417, 15]},
+            {"name": "South", "location": [2906, 3505, 10]},
+            {"name": "Guard Post", "location": [3011, 3526, 15]}
+          ]
+        },
+        {
+          "name": "Skara Brae",
+          "locations": [
+            {"name": "Bank of Skara Brae", "location": [597, 2153, 0]},
+            {"name": "East", "location": [811, 2243, 0]},
+            {"name": "East Docks", "location": [716, 2233, -3]},
+            {"name": "North", "location": [746, 2165, 0]},
+            {"name": "South", "location": [899, 2381, 0]},
+            {"name": "West", "location": [601, 2171, 0]},
+            {"name": "West Docks", "location": [639, 2236, -3]},
+            {"name": "Moongate", "location": [889, 2189, 2]}
+          ]
+        },
+        {
+          "name": "Trinsic",
+          "locations": [
+            {"name": "Bank of Britannia: Trinisic Branch", "location": [1821, 2822, 0]},
+            {"name": "Center", "location": [1927, 2779, 0]},
+            {"name": "East Docks", "location": [2071, 2855, -3]},
+            {"name": "Island Park", "location": [2108, 2793, 2]},
+            {"name": "North", "location": [1894, 2666, 0]},
+            {"name": "South", "location": [1891, 2850, 20]},
+            {"name": "South Gate", "location": [2000, 2930, 0]},
+            {"name": "West Gate", "location": [1832, 2779, 0]}
+          ]
+        },
+        {
+          "name": "Valunstead",
+          "locations": [
+            {"name": "Bank", "location": [484, 434, 15]},
+            {"name": "Moongate", "location": [655, 397, 41]}
+          ]
+        },
+        {
+          "name": "Vesper",
+          "categories": [
+            {
+              "name": "Outer Perimeters",
+              "locations": [
+                {"name": "Cemetery", "location": [2786, 867, 0]},
+                {"name": "The Adventurers Supplies", "location": [2979, 642, 0]},
+                {"name": "The Spinning Wheel", "location": [2971, 626, 0]}
+              ]
+            },
+            {
+              "name": "Island A",
+              "locations": [
+                {"name": "North", "location": [2907, 603, 0]},
+                {"name": "The Bubbling Brew", "location": [2883, 659, 0]},
+                {"name": "The Colored Canvas", "location": [2907, 722, 0]},
+                {"name": "The Magical Light", "location": [2915, 681, 0]},
+                {"name": "The Mint of Vesper", "location": [2897, 676, 0]},
+                {"name": "The Musician's Hall", "location": [2905, 739, 0]},
+                {"name": "The Ore of Vesper", "location": [2865, 735, 0]},
+                {"name": "The Shimmering Jewel", "location": [2889, 723, 0]}
+              ]
+            },
+            {
+              "name": "Island B",
+              "locations": [
+                {"name": "The Busy Bees", "location": [2955, 714, 0]}
+              ]
+            },
+            {
+              "name": "Island C",
+              "locations": [
+                {"name": "Moongate", "location": [2940, 751, 6]}
+              ]
+            },
+            {
+              "name": "Island D",
+              "locations": [
+                {"name": "The Ranger's Tool", "location": [2862, 803, 0]},
+                {"name": "Warrior's Companion", "location": [2842, 803, 0]}
+              ]
+            },
+            {
+              "name": "Island E",
+              "locations": [
+                {"name": "The Gadget's Corner", "location": [2905, 796, 0]},
+                {"name": "The Hammer And Nail", "location": [2915, 810, 0]}
+              ]
+            },
+            {
+              "name": "Island F",
+              "locations": [
+                {"name": "Farmer's Market", "location": [3022, 770, 0]},
+                {"name": "Fisherman's Wharf", "location": [3025, 779, 0]},
+                {"name": "The Butcher's Knife", "location": [3001, 779, 0]},
+                {"name": "The Twisted Oven", "location": [2999, 769, 0]}
+              ]
+            },
+            {
+              "name": "Island G",
+              "locations": [
+                {"name": "Counselor's Guild", "location": [2849, 931, 0]},
+                {"name": "The Adventurer's Friend", "location": [2842, 876, 0]},
+                {"name": "The Champions Of Light", "location": [2857, 907, 0]},
+                {"name": "The Ironworks", "location": [2859, 857, 0]},
+                {"name": "The Spinning Wheel", "location": [2842, 876, 0]}
+              ]
+            },
+            {
+              "name": "Island H",
+              "locations": [
+                {"name": "Healer Of Vesper", "location": [2929, 854, 0]}
+              ]
+            },
+            {
+              "name": "Island I",
+              "locations": [
+                {"name": "Docks", "location": [3013, 828, -3]},
+                {"name": "The Fishermen's Guild", "location": [2977, 819, 0]},
+                {"name": "The Magician's Friend", "location": [3001, 835, 0]},
+                {"name": "The Majestic Boat", "location": [2995, 825, 0]}
+              ]
+            },
+            {
+              "name": "Island J",
+              "locations": [
+                {"name": "The Marsh Hall", "location": [2917, 907, 0]}
+              ]
+            },
+            {
+              "name": "Island K",
+              "locations": [
+                {"name": "Vesper Youth Hostel", "location": [2977, 879, 0]}
+              ]
+            },
+            {
+              "name": "Island L",
+              "locations": [
+                {"name": "Vesper Customs", "location": [2953, 931, 0]}
+              ]
+            },
+            {
+              "name": "Island M",
+              "locations": [
+                {"name": "Tanner's Shop", "location": [2864, 991, 0]}
+              ]
+            },
+            {
+              "name": "Island N",
+              "locations": [
+                {"name": "Abandoned Shop", "location": [2921, 965, 0]}
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Wind",
+          "locations": [
+            {"name": "Caves", "location": [5166, 244, 15]},
+            {"name": "East", "location": [5336, 88, 15]},
+            {"name": "Entrance", "location": [1362, 896, 0]},
+            {"name": "Park", "location": [5211, 22, 15]},
+            {"name": "South", "location": [5223, 189, 5]},
+            {"name": "West", "location": [5180, 90, 25]}
+          ]
+        },
+        {
+          "name": "Yew",
+          "locations": [
+            {"name": "Cemetery", "location": [724, 1138, 0]},
+            {"name": "Center", "location": [535, 992, 0]},
+            {"name": "Courts and Prisons", "location": [354, 836, 20]},
+            {"name": "Empath Abbey", "location": [635, 860, 0]},
+            {"name": "Hidden Cave", "location": [313, 787, -24]},
+            {"name": "Orc Fort", "location": [633, 1499, 6]}
+          ]
+        }
+      ]
+    }
+  ]
+}
