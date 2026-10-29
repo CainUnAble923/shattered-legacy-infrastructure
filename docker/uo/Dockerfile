@@ -72,6 +72,9 @@ COPY server/data/teleporters-sos.json /build/modernuo/Distribution/Data/Shattere
 # Data/Locations/trammel.xml, converted by shard-migration notes/cc-P679-tools/golocations.py), read by
 # GoLocations-sos-go-menu.patch in place of pinned's Data/Locations/trammel.json and felucca.json.
 COPY server/data/Locations/ /build/modernuo/Distribution/Data/ShatteredLegacy/Locations/
+# cc-P680 (SoS swap S5): the Trammel and Felucca decoration on the SoS land, read by Decorate-sos-decoration.patch in
+# place of pinned's Data/Decoration/{Britannia,Trammel,Felucca} (made by shard-migration notes/cc-P680-tools/deco.py).
+COPY server/data/Decoration/ /build/modernuo/Distribution/Data/ShatteredLegacy/Decoration/
 
 # Copy patch files and apply them
 COPY server/patches/ /patches/

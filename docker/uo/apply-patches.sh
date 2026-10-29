@@ -895,6 +895,12 @@ apply_patch "$PATCHES/RegionJsonSerializer-shard-maps.patch"
 apply_patch "$PATCHES/PublicMoongate-sos-gates.patch"
 apply_patch "$PATCHES/GenTeleporter-sos-teleporters.patch"
 apply_patch "$PATCHES/GoLocations-sos-go-menu.patch"
+# cc-P680 (SoS swap S5): pinned's Trammel and Felucca decoration on the Siege of Sosaria land. [Decorate reads every cfg
+# of a folder; our decided copies of Britannia, Trammel and Felucca (unchanged entries kept, entries whose building
+# survived kept at its new height, the rest dropped, each with its reason in shard-migration
+# notes/cc-P680-tools/out-decisions.csv) live in Data/ShatteredLegacy/Decoration and are read in place of pinned's.
+# Argued in shard-migration notes/cc-P680-sos-s5-decoration.md; pinned by SosDecorationVerification.
+apply_patch "$PATCHES/Decorate-sos-decoration.patch"
 
 # cc-P262 (ours): accessory slots (extra rings, bracelets, toe rings). AosAttributes.GetValue adds the active jewellery in
 # the wearer's accessory container, which customizations ClusterFAccessories decides (resists need no patch: the
