@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.28.11
+
+### Fixed
+- Test shard: waking on the Wakening Isle's beach, your first step or turn now gets you up in the game client; before, it did nothing and you lay there for a minute.
+- Test shard: while you lie on the beach you are drawn lying on the sand, in the dark, and the light comes up as you stand; before, you showed standing in daylight.
+
 ## 2026.10.28.9
 
 ### Added

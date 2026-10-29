@@ -210,16 +210,19 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         using var p = new Player();
         TutorialTestStart.Begin(p.Pm);
         Assert.True(TutorialWake.IsLying(p.Pm));
-        Assert.True(p.Pm.Frozen);
+        Assert.False(p.Pm.Frozen); // cc-P732: not frozen, so the real client sends the move that gets them up
         Assert.True(TutorialWake.LightOf(p.Pm) > 10); // dark
+        Assert.Equal(1, TutorialWake.PosesSent(p.Pm)); // cc-P732: the lying pose
 
         TutorialWake.Advance(p.Pm, TutorialWake.HintSeconds);
         Assert.True(TutorialWake.IsLying(p.Pm));
-        Assert.True(TutorialWake.LightOf(p.Pm) < 10); // the light has come up
+        Assert.True(TutorialWake.LightOf(p.Pm) > 10); // cc-P732: still dark while they lie
+        Assert.Equal(2, TutorialWake.PosesSent(p.Pm)); // and the pose again a second in
         Assert.Equal("Move to get up.", TutorialWake.MoveHintLine);
         TutorialWake.Advance(p.Pm, 30);
         Assert.True(TutorialWake.IsLying(p.Pm)); // still down, half a minute on
-        Assert.True(p.Pm.Frozen);
+        Assert.False(p.Pm.Frozen);
+        Assert.Equal(3, TutorialWake.PosesSent(p.Pm)); // every HoldEverySeconds
 
         // The first move request (PlayerMobile.Move) gets them up and is spent on it.
         var at = p.Pm.Location;
@@ -227,7 +230,9 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         Assert.Equal(at, p.Pm.Location);
         Assert.False(TutorialWake.IsLying(p.Pm));
         Assert.False(p.Pm.Frozen);
-        Assert.Null(TutorialWake.LightOf(p.Pm));
+        Assert.Equal(TutorialWake.DawnLight[0], TutorialWake.LightOf(p.Pm)); // cc-P732: the dawn after standing
+        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialWake.DawnLight.Length + 1));
+        Assert.Null(TutorialWake.LightOf(p.Pm)); // then the isle's own light
         Assert.False(TutorialWake.OnMoveRequest(p.Pm)); // the next one is an ordinary move
 
         // The safety: up after a minute anyway.
@@ -246,6 +251,36 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         EventSink.InvokeDisconnected(r.Pm);
         Assert.False(TutorialWake.IsLying(r.Pm));
         Assert.False(r.Pm.Frozen);
+    }
+
+    // cc-P732 (P731 in TazUO): nothing freezes the trainee, so the real client sends their first step or turn; a turn
+    // alone gets them up and is refused (they stay on their tile, facing as they were). The lying pose is the death
+    // animation backward from the ground at the longest delay (TazUO holds frames 4 and 3, both lying), sent again every
+    // HoldEverySeconds, and the dark lasts until they stand. Notes: shard-migration notes/cc-P732-isle-wake-pose.md.
+    [Fact]
+    public void ATurnGetsThemUpAndThePoseAndTheDarkHoldUntilThen()
+    {
+        Assert.Equal(5, TutorialWake.HoldFrames);       // TazUO draws frame 5 first: on the ground, no standing frame
+        Assert.Equal(255, TutorialWake.HoldDelay);      // 80 ms x 256 = 20.5 s a frame
+        Assert.True(TutorialWake.HoldEverySeconds * 1000 < 80 * (TutorialWake.HoldDelay + 1) * 2); // again before frame 2
+
+        using var p = new Player();
+        TutorialTestStart.Begin(p.Pm);
+        Assert.True(TutorialWake.IsLying(p.Pm));
+        Assert.False(p.Pm.Frozen);
+        TutorialWake.Advance(p.Pm, TutorialWake.SafetySeconds - 1);
+        Assert.True(TutorialWake.IsLying(p.Pm));
+        Assert.True(TutorialWake.LightOf(p.Pm) >= TutorialWake.DarkLight);
+        Assert.Equal(1 + (TutorialWake.SafetySeconds - 1 + TutorialWake.HoldEverySeconds - 1) / TutorialWake.HoldEverySeconds, TutorialWake.PosesSent(p.Pm));
+
+        var at = p.Pm.Location;
+        var facing = p.Pm.Direction & Direction.Mask;
+        var turn = (Direction)(((int)facing + 2) & 7);
+        Assert.False(p.Pm.Move(turn));
+        Assert.False(TutorialWake.IsLying(p.Pm));
+        Assert.Equal(at, p.Pm.Location);
+        Assert.Equal(facing, p.Pm.Direction & Direction.Mask);
+        Assert.Equal(-1, TutorialWake.PosesSent(p.Pm));
     }
 
     // ---------------------------------------------------------------- 3
