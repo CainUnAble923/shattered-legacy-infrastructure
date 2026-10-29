@@ -885,6 +885,16 @@ apply_patch "$PATCHES/GuardedRegion-witness-observe.patch"
 # repo, would hide upstream's region changes. Argued in shard-migration notes/cc-P676-sos-trammel-regions.md;
 # pinned by SosTrammelRegionsVerification.
 apply_patch "$PATCHES/RegionJsonSerializer-shard-maps.patch"
+# cc-P679 (SoS swap S4): the moongates, the stock teleporters and the staff go-menu on the Siege of Sosaria land.
+# PMList's Trammel and Felucca gates keep their x, y on the author's stone circles at the circle's floor, and New
+# Haven's is HavenSpots.PublicMoongate (the list is a static field, so a data file cannot move one gate). [TelGen reads
+# Data/ShatteredLegacy/teleporters-sos.json in place of pinned's Trammel and Felucca entries (SosTeleporters), and the
+# [go menu reads Data/ShatteredLegacy/Locations/<facet>.json, the author's 410 spots, in place of pinned's trammel and
+# felucca files; copies of pinned's whole files would hide upstream's changes to the other facets. Argued in
+# shard-migration notes/cc-P679-sos-s4-gates-and-teleporters.md; pinned by SosGatesVerification.
+apply_patch "$PATCHES/PublicMoongate-sos-gates.patch"
+apply_patch "$PATCHES/GenTeleporter-sos-teleporters.patch"
+apply_patch "$PATCHES/GoLocations-sos-go-menu.patch"
 
 # cc-P262 (ours): accessory slots (extra rings, bracelets, toe rings). AosAttributes.GetValue adds the active jewellery in
 # the wearer's accessory container, which customizations ClusterFAccessories decides (resists need no patch: the

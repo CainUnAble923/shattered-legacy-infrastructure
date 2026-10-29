@@ -1,0 +1,52 @@
+--- a/Projects/UOContent/Items/Misc/PublicMoongate.cs
++++ b/Projects/UOContent/Items/Misc/PublicMoongate.cs
+@@ -176,22 +176,25 @@
+ 
+ public class PMList
+ {
++    // Shattered Legacy (cc-P679, SoS swap S4): the gates on the Siege of Sosaria land. Each of the author's stone
++    // circles is centred on the stock tile at a new height, so a gate keeps its x, y and takes the circle's floor.
++    // New Haven's gate is in the author's Haven (cc-P678, HavenSpots). Notes: shard-migration notes/cc-P679-*.md.
+     public static readonly PMList Trammel =
+         new(
+             1012000,
+             1012012,
+             Map.Trammel,
+             [
+-                new PMEntry(new Point3D(4467, 1283, 5), 1012003),   // Moonglow
+-                new PMEntry(new Point3D(1336, 1997, 5), 1012004),   // Britain
++                new PMEntry(new Point3D(4467, 1283, 23), 1012003),  // Moonglow
++                new PMEntry(new Point3D(1336, 1997, 15), 1012004),  // Britain
+                 new PMEntry(new Point3D(1499, 3771, 5), 1012005),   // Jhelom
+-                new PMEntry(new Point3D(771, 752, 5), 1012006),     // Yew
+-                new PMEntry(new Point3D(2701, 692, 5), 1012007),    // Minoc
+-                new PMEntry(new Point3D(1828, 2948, -20), 1012008), // Trinsic
++                new PMEntry(new Point3D(771, 752, 15), 1012006),    // Yew
++                new PMEntry(new Point3D(2701, 692, 20), 1012007),   // Minoc
++                new PMEntry(new Point3D(1828, 2948, -16), 1012008), // Trinsic
+                 new PMEntry(new Point3D(643, 2067, 5), 1012009),    // Skara Brae
+                 /* Dynamic Z for Magincia to support both old and new maps. */
+                 new PMEntry(new Point3D(3563, 2139, Map.Trammel.GetAverageZ(3563, 2139)), 1012010), // (New) Magincia
+-                new PMEntry(new Point3D(3450, 2677, 25), 1078098)                                   // New Haven
++                new PMEntry(Server.Tutorial.HavenSpots.PublicMoongate, 1078098)                      // New Haven
+             ]
+         );
+ 
+@@ -201,12 +204,12 @@
+             1012013,
+             Map.Felucca,
+             [
+-                new PMEntry(new Point3D(4467, 1283, 5), 1012003),   // Moonglow
+-                new PMEntry(new Point3D(1336, 1997, 5), 1012004),   // Britain
++                new PMEntry(new Point3D(4467, 1283, 23), 1012003),  // Moonglow
++                new PMEntry(new Point3D(1336, 1997, 15), 1012004),  // Britain
+                 new PMEntry(new Point3D(1499, 3771, 5), 1012005),   // Jhelom
+-                new PMEntry(new Point3D(771, 752, 5), 1012006),     // Yew
+-                new PMEntry(new Point3D(2701, 692, 5), 1012007),    // Minoc
+-                new PMEntry(new Point3D(1828, 2948, -20), 1012008), // Trinsic
++                new PMEntry(new Point3D(771, 752, 15), 1012006),    // Yew
++                new PMEntry(new Point3D(2701, 692, 20), 1012007),   // Minoc
++                new PMEntry(new Point3D(1828, 2948, -16), 1012008), // Trinsic
+                 new PMEntry(new Point3D(643, 2067, 5), 1012009),    // Skara Brae
+                 /* Dynamic Z for Magincia to support both old and new maps. */
+                 new PMEntry(new Point3D(3563, 2139, Map.Felucca.GetAverageZ(3563, 2139)), 1012010), // (New) Magincia

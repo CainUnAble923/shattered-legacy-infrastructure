@@ -65,6 +65,13 @@ COPY server/data/townsfolk-talk.json /build/modernuo/Distribution/Data/Shattered
 # cc-P676 (SoS swap S3): Trammel's regions on the SoS land, read by RegionJsonSerializer-shard-maps.patch in place of
 # pinned's Trammel regions (made by shard-migration notes/cc-P676-tools/gen_regions.py).
 COPY server/data/regions-trammel.json /build/modernuo/Distribution/Data/ShatteredLegacy/regions-trammel.json
+# cc-P679 (SoS swap S4): the Trammel and Felucca teleporters on the SoS land, read by GenTeleporter-sos-teleporters.patch
+# (SosTeleporters) in place of pinned's (made by shard-migration notes/cc-P679-tools/tele_fix.py).
+COPY server/data/teleporters-sos.json /build/modernuo/Distribution/Data/ShatteredLegacy/teleporters-sos.json
+# cc-P679 (SoS swap S4): the staff go-menu for Trammel and Felucca, the author's (Zigholtul's Siege of Sosaria
+# Data/Locations/trammel.xml, converted by shard-migration notes/cc-P679-tools/golocations.py), read by
+# GoLocations-sos-go-menu.patch in place of pinned's Data/Locations/trammel.json and felucca.json.
+COPY server/data/Locations/ /build/modernuo/Distribution/Data/ShatteredLegacy/Locations/
 
 # Copy patch files and apply them
 COPY server/patches/ /patches/

@@ -1,0 +1,12 @@
+--- "a/Projects/UOContent/Commands/Object Creation/GenTeleporter.cs"
++++ "b/Projects/UOContent/Commands/Object Creation/GenTeleporter.cs"
+@@ -101,7 +101,8 @@
+         {
+             try
+             {
+-                JsonConfig.Deserialize<List<TeleporterDefinition>>(TeleporterJsonDataPath).ForEach(processor);
++                // Shattered Legacy (cc-P679, SoS swap S4): our Trammel and Felucca entries in place of pinned's (SosTeleporters).
++                SosTeleporters.Apply(JsonConfig.Deserialize<List<TeleporterDefinition>>(TeleporterJsonDataPath)).ForEach(processor);
+             }
+             catch (Exception ex)
+             {

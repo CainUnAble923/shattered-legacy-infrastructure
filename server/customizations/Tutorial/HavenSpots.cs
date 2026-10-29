@@ -57,8 +57,8 @@ public static class HavenSpots
     public static readonly Point3D VetSpot = new(3712, 2580, 20);
 
     /// <summary>
-    /// New Haven's public moongate: the open field east of the square. S4 (P673) puts PMList's New Haven gate here; the
-    /// travel tour points at it. (Was pinned PublicMoongate.cs:194's 3450,2677,25, sea on SoS.)
+    /// New Haven's public moongate: the open field east of the square. PMList's New Haven gate is read from here (S4,
+    /// cc-P679: server/patches/PublicMoongate-sos-gates.patch); the travel tour points at it. (Was pinned PublicMoongate.cs:194's 3450,2677,25, sea on SoS.)
     /// </summary>
     public static readonly Point3D PublicMoongate = new(3696, 2570, 14);
 
