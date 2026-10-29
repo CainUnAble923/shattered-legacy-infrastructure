@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.28.8
+
+### Changed
+- A new character's first login no longer opens the game client's own "Version History" window on top of the world. You can still open it any time by typing -version.
+
 ## 2026.10.28.7
 
 ### Changed
