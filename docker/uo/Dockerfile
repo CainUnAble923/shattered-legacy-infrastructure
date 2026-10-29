@@ -65,6 +65,9 @@ COPY server/data/townsfolk-talk.json /build/modernuo/Distribution/Data/Shattered
 # cc-P676 (SoS swap S3): Trammel's regions on the SoS land, read by RegionJsonSerializer-shard-maps.patch in place of
 # pinned's Trammel regions (made by shard-migration notes/cc-P676-tools/gen_regions.py).
 COPY server/data/regions-trammel.json /build/modernuo/Distribution/Data/ShatteredLegacy/regions-trammel.json
+# cc-P686 (SoS swap S13): Felucca's regions on the same SoS land, in place of pinned's Felucca regions (the same
+# patch; made by shard-migration notes/cc-P686-tools/gen_felucca.py).
+COPY server/data/regions-felucca.json /build/modernuo/Distribution/Data/ShatteredLegacy/regions-felucca.json
 # cc-P679 (SoS swap S4): the Trammel and Felucca teleporters on the SoS land, read by GenTeleporter-sos-teleporters.patch
 # (SosTeleporters) in place of pinned's (made by shard-migration notes/cc-P679-tools/tele_fix.py).
 COPY server/data/teleporters-sos.json /build/modernuo/Distribution/Data/ShatteredLegacy/teleporters-sos.json
