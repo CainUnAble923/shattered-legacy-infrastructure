@@ -68,8 +68,11 @@ public static class TutorialStations
             ["Alternate Paperdoll", "Durability gump"], null, "the clothes rack"),
         new("core.chat", TutorialWing.Core, "Speak and read your Journal", None, None, None,
             ["Journal and filters", "TTF fonts", "Nameplates"], null, "the signpost at the meadow's edge"),
-        new("core.farm", TutorialWing.Core, "The farm: your pet, pests and bandages", None, None, None,
+        new("core.farm", TutorialWing.Core, "The farm: pests, then your pet", None, None, None,
             ["Pet scaling", "Follow mode"], null, "the farm gate, with Wren the Farmhand"),
+        // cc-P726 item 4: bandaging is its own lesson after the farm, at Pip on his bench in the farmhouse.
+        new("core.healing", TutorialWing.Core, "Healing: bandage Pip", None, None, None,
+            [], null, "the farmhouse, where Pip sits hurt on a bench"),
         new("core.death", TutorialWing.Core, "Death and resurrection", None, None, None,
             ["Info Bar"], null, "the training yard, beside Sera the healer"),
         new("core.banking", TutorialWing.Core, "The bank", None, None, None,

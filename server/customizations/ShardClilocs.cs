@@ -81,6 +81,9 @@ public static class ShardClilocs
     /// <summary>cc-P717: "Locked: your account's first character starts on Tutorial Island. New Haven opens once a character finishes or skips the tutorial."</summary>
     public const int NewHavenLockedCity = 1_900_016;
 
+    /// <summary>cc-P726: "Pet Info", an evo pet's context menu entry for its owner (EvoPetInfo).</summary>
+    public const int PetInfo = 1_900_017;
+
     /// <summary>
     /// The deed line for a post-Valorite material, and (cc-P123) for the woods, EA's lines as ServUO's
     /// SmallBODGump.GetMaterialNumberFor gives them (:123-132); 0 (no line, pinned's value) for any other. Pinned's gumps

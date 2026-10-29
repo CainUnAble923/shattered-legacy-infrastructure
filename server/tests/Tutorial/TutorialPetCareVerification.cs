@@ -287,8 +287,7 @@ public class TutorialPetCareVerification
         // Finishing the farm says the pet lesson line.
         var record = ClusterFTutorial.RecordOf(p.Pm)!;
         record.PetClaimed = true;
-        record.StationsDone.Add(TutorialFarm.PestsKey);
-        record.StationsDone.Add(TutorialFarm.HealKey);
+        record.StationsDone.UnionWith([TutorialFarm.PestsKey, TutorialFarm.FollowKey, TutorialFarm.GuardKey]); // cc-P726
         before = Mark(p.Ns);
         Assert.True(TutorialFarm.CheckDone(p.Pm));
         Assert.True(SentText(p.Ns, before, TutorialPetCare.FarmPetLessonLine));

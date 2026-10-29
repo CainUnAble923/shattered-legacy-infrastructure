@@ -17,6 +17,7 @@
     { "number": 1900013, "text": "Clear corpses nearby" },
     { "number": 1900014, "text": "Start with the tutorial (recommended): wake on the Wakening Isle, learn the basics along one road, then take the moongate to New Haven." },
     { "number": 1900015, "text": "Skip the tutorial: start in New Haven." },
-    { "number": 1900016, "text": "Locked: your account's first character starts on Tutorial Island. New Haven opens once a character finishes or skips the tutorial." }
+    { "number": 1900016, "text": "Locked: your account's first character starts on Tutorial Island. New Haven opens once a character finishes or skips the tutorial." },
+    { "number": 1900017, "text": "Pet Info" }
   ]
 }
