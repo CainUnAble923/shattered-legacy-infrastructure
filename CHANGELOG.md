@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.28.10
+
+### Added
+- Test shard: the Wakening Isle is dressed up: a shipwreck on the beach where you wake, a lighthouse on the point by the dock, a stone frame with steps round the moongate at the end of the dock, and a brass fountain on the bank's square. Thanks to Celestial, Milva, Carl Hamilton and Lagatha, whose designs these are.
+
 ## 2026.10.28.9
 
 ### Added

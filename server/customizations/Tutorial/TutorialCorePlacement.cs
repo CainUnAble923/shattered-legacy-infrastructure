@@ -249,7 +249,8 @@ public static class TutorialCorePlacement
         // (impassable), on tiles no NPC, door or prop uses.
         // CanFit reads the server's actual land/statics/items. Never guess a clear tile from an offline picture.
         foreach (var point in markers.Select(s => SignSpot(s.Key)).Concat(mobiles.Select(r => r.Spot))
-                     .Concat(new[] { FirstMark, SecondMark, GateSpot, GhostSpot, Ground(TutorialWorld.Beach) })
+                     // cc-P724: the gate's tile only while the gate is missing; once placed, the moongate frame's dais stands there
+                     .Concat(new[] { FirstMark, SecondMark, GhostSpot, Ground(TutorialWorld.Beach) }).Concat(gateMissing ? new[] { GateSpot } : [])
                      .Concat(doors.Where(p => !rehung.Any(d => OldSpot(d!) == p))).Concat(props.Select(p => Ground(p.At)))
                      .Concat(boardMissing ? new[] { Ground(LeagueBoard) } : []))
         {
@@ -263,6 +264,7 @@ public static class TutorialCorePlacement
         }
         var farm = TutorialFarm.Seed(map, dryRun);
         if (farm.Refused) { return farm.Message; }
+        string addons;
         if (!dryRun)
         {
             TutorialCoreTrials.EnsureHooks();
@@ -280,10 +282,12 @@ public static class TutorialCorePlacement
             if (boardMissing) { new TutorialLeagueBoard().MoveToWorld(Ground(LeagueBoard), map); }
             RemoveOldSignpost(map); // cc-P718
             foreach (var (id, at, name) in props) { new Static(id) { Name = name }.MoveToWorld(Ground(at), map); }
+            addons = TutorialIsleAddons.Seed(map, false); // cc-P724: after the gate, which then stands on its frame
         }
+        else { addons = TutorialIsleAddons.Seed(map, true); }
         var tiles = (blueMissing ? 1 : 0) + (goldMissing ? 1 : 0);
         var npcs = mobiles.Count + (rookMissing ? 1 : 0) + (townVetMissing ? 1 : 0);
-        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {npcs} NPCs/echo/vets, {(gateMissing ? 1 : 0)} moongate, {tiles} walking tiles, {doors.Length} doors, {props.Length + (boardMissing ? 1 : 0)} props. {farm.Message}";
+        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {npcs} NPCs/echo/vets, {(gateMissing ? 1 : 0)} moongate, {tiles} walking tiles, {doors.Length} doors, {props.Length + (boardMissing ? 1 : 0)} props. {farm.Message} {addons}";
     }
 
     private static Point3D OldSpot(BaseDoor d) => d.Open ? new Point3D(d.X - d.Offset.X, d.Y - d.Offset.Y, d.Z - d.Offset.Z) : d.Location;
