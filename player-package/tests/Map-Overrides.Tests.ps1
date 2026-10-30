@@ -390,6 +390,48 @@ Fact 'P713_Gate4SwitchedOnWantsTheThreeFilesAndTheCredit' {
     Assert-True ($text2 -notmatch 'README\.txt (does not )?credit') "the credit is there: $text2"
 }
 
+# cc-P689 (SoS swap S16): what players are told about the new land waits for the switch too. The CHANGELOG is the
+# patch notes (login bulletin, wiki), so the go-live release's player lines are held beside switch.txt in
+# go-live-changelog.md, and the wiki's world map page waits in uo:drafts. Off: held, credited, and not yet out. On: the
+# newest CHANGELOG section credits the map to players and the page is in uo:world.
+function Get-NewestPlayerLines([string]$changelog) {
+    $text = [IO.File]::ReadAllText($changelog) -replace '(?s)<!--.*?-->', ''
+    $section = ([regex]::Split($text, '(?m)^## ') | Where-Object { $_ -match '^\d{4}\.\d' } | Select-Object -First 1)
+    $lines = @(); $player = $false
+    foreach ($l in ($section -split "`r?`n")) {
+        if ($l -match '^### (\w+)') { $player = $Matches[1] -in 'Added', 'Changed', 'Fixed'; continue }
+        if ($player -and $l.StartsWith('- ')) { $lines += $l }
+    }
+    return ,$lines
+}
+Fact 'P689_TheSwapDaysCreditWaitsForTheSwitch' {
+    Import-BuildFunction 'Get-SosMapSwitch'
+    $repo     = Split-Path $pkg -Parent
+    $held     = Join-Path $pkg 'vendor\sos-trammel-map\go-live-changelog.md'
+    $log      = Join-Path $repo 'CHANGELOG.md'
+    $draft    = Join-Path $repo 'docker\wiki\content\pages\uo\drafts\world_map.txt'
+    $live     = Join-Path $repo 'docker\wiki\content\pages\uo\world\world_map.txt'
+    Assert-True (Test-Path -LiteralPath $held) 'go-live-changelog.md holds the go-live release''s player lines'
+    $heldText = [IO.File]::ReadAllText($held)
+    $heldLines = @(([regex]::Match($heldText, '(?s)### Changed\r?\n(.*?)\r?\n\r?\n')).Groups[1].Value -split "`r?`n" | Where-Object { $_.StartsWith('- ') })
+    Assert-True ($heldLines.Count -ge 3) "held player lines under ### Changed: $($heldLines.Count)"
+    Assert-True ($heldLines[0] -match 'Siege of Sosaria map by Zigholtul') "the first held line credits the map: $($heldLines[0])"
+    $logText = [IO.File]::ReadAllText($log)
+    if ((Get-SosMapSwitch $switch) -eq 'off') {
+        foreach ($l in $heldLines) {
+            $body = ($l -replace '^- (\[[^\]]*\] )?', '')
+            Assert-True (-not $logText.Contains($body.Substring(0, [Math]::Min(60, $body.Length)))) "switched off, CHANGELOG.md already tells players: $l"
+        }
+        Assert-True (Test-Path -LiteralPath $draft) 'the world map page waits in uo:drafts'
+        Assert-True ([IO.File]::ReadAllText($draft) -match 'Siege of Sosaria Trammel Map 3\.0 by \*\*Zigholtul\*\*') 'the draft page credits the map'
+        Assert-True (-not (Test-Path -LiteralPath $live)) 'switched off, the world map page is not in uo:world yet'
+    } else {
+        $newest = Get-NewestPlayerLines $log
+        Assert-True (@($newest | Where-Object { $_ -match 'Zigholtul' }).Count -ge 1) 'switched on, the newest CHANGELOG section credits Zigholtul to players'
+        Assert-True (Test-Path -LiteralPath $live) 'switched on, the world map page is in uo:world'
+    }
+}
+
 Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 $failed = @($results | Where-Object { -not $_.Passed }).Count
 Write-Host ""

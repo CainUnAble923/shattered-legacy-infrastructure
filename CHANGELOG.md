@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.30
+
+### Staff
+- The Siege of Sosaria swap's credits are written and wait for the go-live release: the player lines for that release's patch notes and the wiki steps are in player-package/vendor/sos-trammel-map/go-live-changelog.md, and the world map page is in the wiki's drafts (uo:drafts:world_map). Players see none of it while switch.txt says off.
+
 ## 2026.10.29
 
 ### Changed

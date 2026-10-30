@@ -10,10 +10,35 @@ What it is
   2026-03-27; "update 2" is the author's last). Downloaded 2026-10-12 by the overseer; the download record is
   D:\UO\third-party\sos-trammel-map\SOURCE.txt and the zip is kept beside it (manifest.csv, kind source).
 
-Terms (read 2026-10-12, servuo.dev page): the author writes "feel free to take advantage to your hearts content.
+Terms (read 2026-10-12, servuo.dev page; re-read 2026-10-30 by cc-P689, unchanged, and the page still calls update
+2 "the final update"): the author writes "feel free to take advantage to your hearts content.
 Even if it means using something like RadCopy to snag a few dungeons here and there." No license file. Credit
 Zigholtul wherever the map is shown: the package README ("What is in here"), this file, the CHANGELOG line on the swap
 day, the in-game patch notes and the shard wiki's world-map page (S16 writes those).
+
+Our changes on top of his map (what ships is his land plus these; his files are never edited in place)
+-------------------------------------------------------------------------------------------------------
+  In the map patch (player-package/vendor/shattered-legacy-map/trammel.mapops, made on a pristine copy of his map;
+  its own SOURCE.txt has the line-by-line history):
+    - the Rootdeep Burrows (x 5136-5247, y 1128-1263) and the Wakening Isle (x 6594-6865, y 3905-4049), both built
+      on black void of his map, nothing of his touched;
+    - cc-P687: OSI's grey boulders (0x1357-0x135C) along the foot of his steep grass and dirt cliffs within 40 tiles of
+      a town, road or moongate (8,389 statics added; none of his removed).
+  On the server, not in the map: New Haven moved into his Haven town (cc-P678), the cellar hatch to Rootdeep in the
+  Second Bank of Haven (cc-P678), the moongates set on his stone circles and the teleporters into his rebuilt stock
+  dungeons (cc-P679), regions and guard zones drawn on his land (cc-P676, cc-P686, from his Regions.xml), his 775
+  decoration lines converted (cc-P683), people and spawns (cc-P681, cc-P682), and five unfinished areas fenced and
+  his 34 own dungeons sealed until each has monsters (cc-P687). His place names are his; the stories are ours.
+
+The go-live release (cc-P689, SoS swap S16): the credit that waits for the switch
+---------------------------------------------------------------------------------
+  Nothing that tells players about the new land ships while switch.txt says off. In the release that turns it on:
+    1. switch.txt to on (the README's app\map\ entry, which already credits Zigholtul, then ships; gate 4 checks it).
+    2. CHANGELOG.md: copy the player lines from go-live-changelog.md (beside this file) into that release's section.
+       The server shows them in the login bulletin and Publish-PatchNotes.ps1 puts them on the wiki's patch notes:
+       that is the in-game credit.
+    3. The wiki: the steps at the end of go-live-changelog.md (the world-map page leaves uo:drafts, and the New Haven
+       and dungeon pages lose the old map's directions).
 
 It uses no custom art: all 8,683 item ids it places have art in the stock 7.0.117.0 art file (cc-P669). It ships only
 the map, its statics and their index; no tiledata, hues or multis.
