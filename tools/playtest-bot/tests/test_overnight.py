@@ -451,5 +451,32 @@ class Scripts(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(old_tr, "A-1-run1.txt")), "a missing root removes nothing")
 
 
+
+class MapOverlay(unittest.TestCase):
+    """cc-P688 (SoS swap S15): the scratch shard stands on the same land as the test shard. The server reads the map from
+    the first data folder that holds it, and the bot's Configuration copy lists sl-map-overlay first; without that mount
+    the scratch shard read EA's Trammel under the SoS code (every nightly from 10-29)."""
+
+    def read(self, name):
+        with open(os.path.join(BOT, name), encoding="utf-8") as f:
+            return f.read()
+
+    def code(self, name):
+        return "\n".join(l.split(" #")[0] for l in self.read(name).splitlines() if not l.strip().startswith("#"))
+
+    def test_the_compose_file_mounts_the_map_overlay_read_only(self):
+        self.assertIn("${CLIENT_DATA_OVERLAY}:/var/lib/uo/client-data/sl-map-overlay:ro", self.code("docker-compose.bot.yml"))
+
+    def test_the_runner_builds_the_overlay_before_the_shard_starts_and_refuses_without_it(self):
+        s = self.code("Run-OvernightPlaytests.ps1")
+        self.assertIn("$env:CLIENT_DATA_OVERLAY", s)
+        build = s.find("Build-MapOverlay.ps1")
+        self.assertGreater(build, 0, "the runner builds the overlay")
+        self.assertLess(build, s.find("compose -f $compose -p $project up -d"), "before the shard starts")
+        self.assertIn("trammel.mapops", s[build - 400:build + 600], "from the code under test's patch")
+        self.assertIn("sl-map-overlay is not first in dataDirectories", s)
+        self.assertIn("Build-MapOverlay.ps1 failed", s)
+
+
 if __name__ == "__main__":
     unittest.main()
