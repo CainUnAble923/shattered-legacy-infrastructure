@@ -1,0 +1,63 @@
+====== The world map: Sosaria ======
+
+**Draft: not live yet.** This is the land Trammel and Felucca change to on the day of the Siege of Sosaria swap. Until that day the shard and the player download still have the old map, so the places and routes below are not there yet. The page moves to the World section, and loses this box, on the swap day.
+
+Shattered Legacy's Trammel and Felucca are built on **Siege of Sosaria Trammel Map 3.0 by Zigholtul** ([[https://www.servuo.dev/archive/siege-of-sosaria-trammel-map.2450/|the author's page]]). The map's place names are his; the stories, people and quests we put there are ours. It comes with the player download: nothing to install.
+
+Old maps of Britannia still help with names, but not with routes: towns stand where they always did, and almost everything between them is new. Use this page, not an outside guide, for how to get somewhere.
+
+===== The towns you know =====
+
+Britain, Yew, Minoc, Vesper, Trinsic, Cove, Jhelom, Skara Brae, Moonglow, Magincia, Nujel'm, Serpent's Hold, Buccaneer's Den, Papua, Delucia and Wind are where they were. Each town's moongate stands in the stone circle the author built for it, on the same spot as before, a little higher or lower.
+
+What is different:
+
+  * **New Haven** is now the old Haven town on Haven Island (around 3614-3722, 2516-2657): its bank, docks, smithy, shops and Uzeraan's Mansion. The League's field office, the guildmasters and the trainers have moved into its buildings. New Haven's moongate stands east of the square. On Felucca the same ground is **Ocllo**.
+  * **Moonglow, Magincia and Nujel'm are one land**, joined by a desert. You can walk between them.
+  * **Buccaneer's Den and Serpent's Hold** can be reached on foot from the mainland. On Felucca that makes the pirate town a walk away, not only a sail.
+  * **Jhelom, Skara Brae and Haven Island** are islands, as before: take a boat or the moongate. Skara Brae's East Docks are on the mainland side.
+  * **Wind** is reached as it always was, by the magic teleporter in the mountains for mages of skill.
+
+===== New towns =====
+
+Seven towns are new. Six have a bank, a healer, a smith, a provisioner and other shops, guards, a town crier and townsfolk:
+
+^ Town ^ Around (x, y) ^ Getting there ^
+| Valunstead | 482, 430 (its bank) | an island in the far north-west with a walled town and a moated keep; **no dock or moongate yet**: sail or use magic |
+| Hammerhill | 1481-1622, 959-1068 | on foot, north of Britain |
+| Kameron Kove | 1200-1341, 2391-2558 | on foot, south-west of Britain's forest |
+| Elmhaven | 1891-2049, 3135-3263 | on foot, in the Trinsic jungle country |
+| Kettleburg | 427-733, 2316-2618 | on foot, in the west |
+| Fort Yondall | 3366-3413, 308-406 | on foot, in the north-east; its main gate does not open, so go up the gatehouse stairs and over the walkway |
+
+The seventh, **Elandrim Nur Shaz** (860-920, 987-1052, beside Fort Whitestone), is a guarded town with no shops or townsfolk yet.
+
+===== Keeps and landmarks =====
+
+  * **Garrisoned keeps**, with guards at the gate and inside: Fort Whitestone (890, 1055), Castle Dunbain (1333, 1377) and Fort Stormhammer (1490, 1323) north of Britain, Tigerclaw Fortress (2595, 1085) in the Covetous forest, and Khalahandra Keep (around 2314-2606, 1501-1743).
+  * **Britain's forests** hold Camp Ironfang, the Dhampire Ruins, Fort Silverblood and Ivanguard Manor; the Compassion desert has a pyramid; Glimmerwood is a new woodland in the south-east.
+  * **Wild land** on the new desert continent, in Glimmerwood and on the new islands has the creatures that live on that kind of ground elsewhere: scorpions and giant spiders on sand, the forest kinds in the woods.
+
+===== Dungeons =====
+
+  * **The classic dungeons** stand where they did. The author rebuilt many of their entrances on the new land, and the ways in still take you inside. Which are open, and what is different here, is on the [[:uo:world:dungeons|Dungeons]] page.
+  * **The new map's own dungeons are sealed** (34 of them, among them the Hammerhill Sewers, the Britain Sewers, the Haven Catacombs, the Azurite Caverns, Fortress Calcifina, this map's Khaldun and Solen Hives, and the walled Swamp of Desolation north-east of Britain). Each opens when it has its monsters, and is announced when it does. A doorway that looks finished does not mean it is open.
+  * **Blackthorn's dungeon** is closed for now: the new map has other dungeons where it stood. It will come back in a new place.
+
+===== Closed land =====
+
+The map was released unfinished, so five areas are closed: the rooster-shaped island, the north-east snow isles, the bare land east of Haven, the land round Echoback Estuary and Darkfathom Hollow, and Glimmerwood's broken cliffs. Walk up to one and you stop with "Thick fog rolls in; the way is lost." You cannot recall, gate or mark a rune inside, and nobody can build a house there. Boats sail past them. This is the same on Trammel and Felucca.
+
+===== Trammel and Felucca =====
+
+Both facets stand on the same land and keep their own rules. On Felucca, Buccaneer's Den has no guards; every other town Felucca guarded before is still guarded, and so are the new towns. Felucca's old way to Ter Mur is gone with its old land; Trammel's is still there. Ilshenar, Malas, Tokuno and Ter Mur do not change.
+
+===== Credit =====
+
+Siege of Sosaria Trammel Map 3.0 by **Zigholtul**, who invites others to use it. We keep our own copy (his update 2 was his last) and add our own changes on top: the Wakening Isle, the Rootdeep Burrows, boulders at the foot of some cliffs near towns and roads, and the fences and seals above.
+
+===== Related pages =====
+
+  * [[:uo:world:new_haven|New Haven]]
+  * [[:uo:world:dungeons|Dungeons]]
+  * [[:uo:world:maps|Maps]]

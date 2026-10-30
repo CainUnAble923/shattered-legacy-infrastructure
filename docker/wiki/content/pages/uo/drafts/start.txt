@@ -6,6 +6,7 @@ Pages here describe things that are **on the test shard only**, not yet finished
   * [[levels_and_loops|Levels and loops]]: what a loop is today, and the level and loop ladder that is still planned
   * [[companions|Companions and evo pets]]: the tutorial's starter pets and the planned companions
   * [[guild_halls|The guilds' main halls]]: placed on the test shard only so far
+  * [[world_map|The world map: Sosaria]]: Trammel and Felucca's new land, from the day of the Siege of Sosaria swap; not live yet
   * [[rootdeep_burrows|The Rootdeep Burrows]]: the dungeon under Old Haven; built, but not open to players yet
   * [[levelable_gear|Levelable crafted gear]]: built, but the Smith's Seal has no player source yet
   * [[red_dragon|The rideable red dragon]]: staff are trying it; players cannot get one yet
