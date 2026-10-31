@@ -2,7 +2,13 @@
 // change). Ported to ModernUO from the ServUO scripts kept for reference in D:\UO\third-party\code (credits and terms
 // in Tutorial/IsleAddons-SOURCE.txt):
 //   - the wreck on the wake-up beach: Celestial's "Shipwrecks! East, West and North facing", the West one (its bow
-//     points out to sea on the isle's west tip; Chase 10-28 12:18);
+//     points out to sea on the isle's west tip; Chase 10-28 12:18). cc-P741 (Chase 10-30: "shipwreck may need
+//     orientation and both ship halves"): Celestial's West wreck is one half of a ship (20 of the art's 30 "East"
+//     pieces). It is now the whole ship as OSI itself lays this art, the only time it does (Malas 1693-1708,
+//     1635-1640; shard-migration notes/cc-P741-tools/survey_wrecks.py): both halves, 30 pieces each, broken open
+//     toward each other across a swirl of water, with driftwood and seaweed round it. It lies across the west tip's
+//     waterline the way a ship runs aground: one half in the shallows, the break in the surf, the other half up
+//     the beach;
 //   - the lighthouse on the point north of the dock: Milva's "New Lighthouse";
 //   - the frame round the dock's moongate: Carl Hamilton's "MoongateStructure ADDON". The gate (TutorialTravelGate)
 //     stands on the frame's dais, where the original leaves a blue tile for a moongate;
@@ -19,8 +25,15 @@ namespace Server.Tutorial;
 
 public static class TutorialIsleAddons
 {
-    /// <summary>The wreck's centre on the west tip's waterline, a few tiles west of the wake-up spot (6638,3993).</summary>
-    public static readonly Point3D WreckSpot = new(6627, 3995, -3);
+    /// <summary>
+    /// The wreck's break, in the surf on the west tip's waterline (the shore runs down x 6626 here): the West half lies
+    /// in the shallows (x 6617-6623), the East half up the beach (6626-6632), 6 tiles west of the wake-up spot
+    /// (6638,3993). cc-P741; P724 had one half at 6627,3995,-3.
+    /// </summary>
+    public static readonly Point3D WreckSpot = new(6624, 3995, -4);
+
+    /// <summary>P724's one-half wreck: an existing world's is swapped for the whole ship (cc-P741).</summary>
+    public static readonly Point3D OldWreckSpot = new(6627, 3995, -3);
 
     /// <summary>The lighthouse on the grass-and-sand point north of the dock, clear of the road (y 3989-3991).</summary>
     public static readonly Point3D LighthouseSpot = new(6815, 3984, 0);
@@ -47,28 +60,41 @@ public static class TutorialIsleAddons
             (() => new WakeningIsleMoongateFrameAddon(), typeof(WakeningIsleMoongateFrameAddon), frameSpot),
             (() => new WakeningIsleBrassFountain(), typeof(WakeningIsleBrassFountain), FountainSpot)
         };
+        // cc-P741: upgrade in place: a wreck that is not the whole ship at its spot (P724's half) goes, and the whole
+        // ship is placed below like any missing addon
+        var stale = new List<Item>();
+        foreach (var item in map.GetItemsInRange(WreckSpot, 12))
+        {
+            if (item is WakeningIsleShipwreckAddon w && !w.Deleted &&
+                (w.Location != WreckSpot || w.Components.Count != WakeningIsleShipwreckAddon.Pieces.Length))
+            {
+                stale.Add(w);
+            }
+        }
+
         var missing = new List<(Func<Item> Make, Point3D Spot)>();
         foreach (var row in rows)
         {
-            if (!Has(map, row.Type, row.Spot)) { missing.Add((row.Make, row.Spot)); }
+            if (!Has(map, row.Type, row.Spot, stale)) { missing.Add((row.Make, row.Spot)); }
         }
 
         var gate = FindGate(map);
         var lift = gate != null && gate.Z != GateOnFrame(map).Z;
         if (!dryRun)
         {
+            foreach (var old in stale) { old.Delete(); }
             foreach (var (make, spot) in missing) { make().MoveToWorld(spot, map); }
             if (lift) { gate!.Z = GateOnFrame(map).Z; }
         }
 
-        return $"Isle addons: {(dryRun ? "would place" : "placed")} {missing.Count}{(lift ? ", the gate stood on its frame" : "")}.";
+        return $"Isle addons: {(dryRun ? "would place" : "placed")} {missing.Count}{(stale.Count > 0 ? $", replaced {stale.Count} old wreck" : "")}{(lift ? ", the gate stood on its frame" : "")}.";
     }
 
-    private static bool Has(Map map, Type type, Point3D spot)
+    private static bool Has(Map map, Type type, Point3D spot, List<Item> stale)
     {
         foreach (var item in map.GetItemsInRange(spot, 0))
         {
-            if (!item.Deleted && type.IsInstanceOfType(item)) { return true; }
+            if (!item.Deleted && type.IsInstanceOfType(item) && !stale.Contains(item)) { return true; }
         }
         return false;
     }
@@ -89,16 +115,33 @@ public static class TutorialIsleAddons
     }
 }
 
-/// <summary>Celestial's west-facing shipwreck (servuo.dev 1123), the bow toward the sea.</summary>
+/// <summary>
+/// The whole wreck, both halves (cc-P741): OSI's own composition of the ShipwreckBow art on Malas, the "West" half's 30
+/// pieces (0x47B8-0x47D5) and the "East" half's 30 (0x48A4-0x490F), its driftwood (0x0C2D-0x0C30), the waves and
+/// swirl in the break (0x1FBC, 0x1FC5, 0x3492) and the seaweed (0x0D34) that falls on land. Offsets from the break.
+/// Generated by shard-migration notes/cc-P741-tools/gen_wreck.py. Celestial's West wreck (P724) was the East half.
+/// </summary>
 [SerializationGenerator(0, false)]
 public partial class WakeningIsleShipwreckAddon : BaseAddon
 {
     public static readonly (int Id, int X, int Y, int Z)[] Pieces =
     [
-        (18694, 2, 2, 0), (18687, 3, 1, 0), (18702, 0, 3, 0), (18697, -1, 3, 0), (18696, -2, 3, 0), (18684, -1, 1, 0),
-        (18691, -1, 2, 0), (18686, 2, 1, 0), (18693, 1, 2, 0), (18596, 1, 1, 0), (18692, 0, 2, 0), (18685, 0, 1, 0),
-        (18682, 3, 0, 0), (18671, 0, -1, 0), (18681, 2, 0, 0), (18672, 1, -1, 0), (18681, 1, 0, 0), (18599, 0, -2, 0),
-        (18680, 1, 0, 0), (18677, 0, 0, 0)
+        (18389, -7, -1, 0), (18388, -7, 0, 0), (18387, -7, 1, 0), (18375, -6, -2, 0), (18386, -6, -1, 0), (18385, -6, 0, 0),
+        (18384, -6, 1, 0), (18383, -6, 2, 0), (18382, -5, -1, 0), (18381, -5, 0, 0), (18380, -5, 1, 0), (18379, -5, 2, 0),
+        (18377, -4, -2, 0), (18376, -4, -1, 0), (18360, -4, 0, 0), (18374, -4, 1, 0), (18373, -4, 2, 0), (18378, -4, 3, 0),
+        (18371, -3, -2, 0), (18370, -3, -1, 0), (18369, -3, 0, 0), (18368, -3, 1, 0), (18367, -3, 2, 0), (18366, -3, 3, 0),
+        (18372, -2, -2, 0), (18363, -2, 1, 0), (18364, -2, 2, 0), (18365, -2, 3, 0), (18361, -1, 0, 0), (18362, -1, 1, 0),
+        (18674, 2, 0, 0), (18683, 2, 1, 0), (18597, 3, -2, 0), (18669, 3, -1, 0), (18675, 3, 0, 0), (18696, 3, 3, 0),
+        (18598, 4, -2, 0), (18670, 4, -1, 0), (18676, 4, 0, 0), (18684, 4, 1, 0), (18691, 4, 2, 0), (18697, 4, 3, 0),
+        (18599, 5, -2, 0), (18671, 5, -1, 0), (18677, 5, 0, 0), (18685, 5, 1, 0), (18692, 5, 2, 0), (18702, 5, 3, 0),
+        (18672, 6, -1, 0), (18680, 6, 0, 0), (18596, 6, 1, 0), (18693, 6, 2, 0), (18673, 7, -1, 0), (18681, 7, 0, 0),
+        (18686, 7, 1, 0), (18694, 7, 2, 0), (18703, 7, 3, 0), (18682, 8, 0, 0), (18687, 8, 1, 0), (18695, 8, 2, 0),
+        (3117, -5, 3, 0), (3117, -4, 3, 0), (3117, -4, 4, 0), (3117, -3, -3, 0), (3117, -3, 3, 0), (8124, -1, -1, 0),
+        (13458, -1, -1, 0), (8124, -1, 0, 0), (13458, -1, 0, 0), (13458, -1, 1, 0), (8124, -1, 2, 0), (13458, -1, 2, 0),
+        (13458, 0, -1, 0), (13458, 0, 0, 0), (13458, 0, 1, 0), (13458, 0, 2, 0), (8133, 1, 0, 0), (8133, 1, 2, 0),
+        (3120, 3, 6, 0), (3118, 5, -8, 0), (3118, 5, -5, 0), (3380, 5, -4, 0), (3117, 5, 3, 0), (3118, 5, 7, 0),
+        (3118, 6, -6, 0), (3380, 6, -4, 0), (3117, 6, -2, 0), (3117, 6, 2, 0), (3119, 6, 6, 0), (3117, 7, -1, 0),
+        (3380, 7, 3, 0), (3119, 8, -9, 0), (3117, 8, 1, 0), (3118, 8, 9, 0)
     ];
 
     [Constructible]

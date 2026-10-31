@@ -59,7 +59,7 @@ public static class TutorialCorePlacement
         "core.paperdoll" => Ground(TutorialWorld.Rack),
         "core.chat" => Ground(TutorialWorld.Signpost),
         "core.farm" => Ground(TutorialWorld.FarmGate),
-        "core.healing" => Ground(new Point2D(6690, 3979)), // the farmhouse door's step
+        "core.healing" => Ground(new Point2D(6702, 3979)), // the farmhouse door's step (cc-P741: the farmhouse moved east)
         "core.death" => Ground(TutorialWorld.Yard),
         "core.banking" => Ground(TutorialWorld.BankStop),
         "core.league" => Ground(TutorialWorld.LodgeStop),
@@ -71,31 +71,38 @@ public static class TutorialCorePlacement
     /// cc-P720 item 3: where each lesson's signpost stands, beside its stop. The standing signpost is impassable, so it
     /// cannot stand on the stop (the road runs through it). Each is the nearest tile to the stop that is off the walked
     /// route and the road, outside every building, clear of every spot, door and gate, fits a person, and leaves the stop
-    /// reachable (shard-migration notes/cc-P720-tools/sign_spots.py, on the built isle).
+    /// reachable. cc-P741 (Chase 10-30: "all signs should be north of path"): and north of its path, beside it, so its
+    /// board (0xA854 reads from the south) faces the path as a trainee walks up; the travel lesson's sign stands where
+    /// the road meets the dock, clear of the moongate frame's glow, where it is seen before the dock (Chase: "sign next
+    /// to moongate at end is hard to see"). shard-migration notes/cc-P741-tools/sign_spots741.py, on the built isle.
     /// </summary>
     public static Point2D SignPoint(string key) => key switch
     {
-        "core.movement" => new Point2D(6646, 3994),
-        "core.backpack" => new Point2D(6656, 3992),
-        "core.paperdoll" => new Point2D(6665, 3993),
-        "core.chat" => new Point2D(6692, 3991),
-        "core.farm" => new Point2D(6714, 3981),
+        "core.movement" => new Point2D(6646, 3990),
+        "core.backpack" => new Point2D(6656, 3988),
+        "core.paperdoll" => new Point2D(6665, 3989),
+        "core.chat" => new Point2D(6691, 3987),
+        "core.farm" => new Point2D(6698, 3978),
         "core.healing" => HealingSign,
-        "core.death" => new Point2D(6736, 3996),
-        "core.banking" => new Point2D(6762, 3982),
-        "core.league" => new Point2D(6780, 3994),
+        "core.death" => new Point2D(6736, 3989),
+        "core.banking" => new Point2D(6766, 3981),
+        "core.league" => new Point2D(6782, 3989),
         "core.loop" => new Point2D(6794, 3981),
-        "core.travel" => new Point2D(6831, 3992),
+        "core.travel" => new Point2D(6811, 3988),
         _ => new Point2D(MarkerSpot(key).X, MarkerSpot(key).Y)
     };
 
     public static Point3D SignSpot(string key) => Ground(SignPoint(key));
 
+    /// <summary>cc-P741: where the road meets the dock; the travel lesson's sign stands north of it.</summary>
+    public static readonly Point2D DockRoadEnd = new(6811, 3991);
+
     /// <summary>
-    /// cc-P726: the healing lesson's signpost, outside the farmhouse door (6690,3978) to the south-west, clear of its steps
-    /// (6689-6691,3979) and its own sign (6692,3979). The seeder's fit check refuses the isle if it is blocked.
+    /// cc-P726: the healing lesson's signpost, outside the farmhouse door. cc-P741: the farmhouse moved east (door
+    /// 6702,3978, steps 6701-6703,3979): the sign stands south-west of the steps, north of the road, clear of the door's
+    /// line. The seeder's fit check refuses the isle if it is blocked.
     /// </summary>
-    public static readonly Point2D HealingSign = new(6688, 3980);
+    public static readonly Point2D HealingSign = new(6701, 3980);
 
     /// <summary>cc-P720 item 3: the lesson sign's name, shown on a single click: "Lesson 5: The farm: ...".</summary>
     public static string SignName(string key)
@@ -125,7 +132,9 @@ public static class TutorialCorePlacement
 
     // cc-P718 item 6: a standing post with its sign board (0xA854, "sign_post"), where the chat lesson's post stood. The
     // old art, 0x0B97, is the arm that hangs a shop sign from a wall: on the ground it read as debris (Chase, 10-28).
-    public static readonly Point2D ChatSignpost = new(TutorialWorld.Signpost.X, TutorialWorld.Signpost.Y - 2);
+    // cc-P741: north of the road (it stood on the road's edge, 2 north of the stop), beside the chat lesson's own sign.
+    public static readonly Point2D ChatSignpost = new(TutorialWorld.Signpost.X - 2, TutorialWorld.Signpost.Y - 4);
+    public static readonly Point2D OldChatSignpostSpot = new(TutorialWorld.Signpost.X, TutorialWorld.Signpost.Y - 2);
     public const int SignpostId = 0xA854;
     public const string ChatSignpostName = "Farm signpost: say 'I am ready to learn'";
     public const int OldSignpostId = 0x0B97;
@@ -196,20 +205,37 @@ public static class TutorialCorePlacement
         return null;
     }
 
-    /// <summary>cc-P720: moves every lesson marker still on its stop (a rune, before cc-P720) to its sign spot.</summary>
+    /// <summary>
+    /// cc-P720: moves every lesson marker still on its stop (a rune, before cc-P720) to its sign spot. cc-P741: every
+    /// lesson marker anywhere on the isle that is not at its sign spot (the signs moved north of their paths), and one
+    /// sign per lesson: a second one for a lesson is removed. Returns how many it moved or removed.
+    /// </summary>
     public static int MoveOldMarkers(Map map)
     {
         var moved = new List<TutorialStationMarker>();
-        foreach (var station in TutorialStations.Core)
+        var seen = new Dictionary<string, TutorialStationMarker>();
+        var extra = new List<TutorialStationMarker>();
+        var all = new List<TutorialStationMarker>();
+        foreach (var item in map.GetItemsInRange<TutorialStationMarker>(TutorialWorld.Ground(map, IsleCentre), IsleReach))
         {
-            foreach (var item in map.GetItemsInRange<TutorialStationMarker>(TutorialWorld.Ground(map, new Point2D(MarkerSpot(station.Key).X, MarkerSpot(station.Key).Y)), 0))
-            {
-                if (!item.Deleted && item.StationKey == station.Key && item.Location != TutorialWorld.Ground(map, SignPoint(station.Key))) { moved.Add(item); }
-            }
+            if (!item.Deleted && item.StationKey != null) { all.Add(item); }
         }
+
+        // the one already at its spot is kept first
+        foreach (var item in all.OrderBy(i => i.Location == TutorialWorld.Ground(map, SignPoint(i.StationKey)) ? 0 : 1))
+        {
+            if (seen.ContainsKey(item.StationKey)) { extra.Add(item); continue; }
+            seen[item.StationKey] = item;
+            if (item.Location != TutorialWorld.Ground(map, SignPoint(item.StationKey))) { moved.Add(item); }
+        }
+        foreach (var m in extra) { m.Delete(); }
         foreach (var m in moved) { m.MoveToSign(); }
-        return moved.Count;
+        return moved.Count + extra.Count;
     }
+
+    /// <summary>cc-P741: the isle's middle and a reach that covers it all (x 6594-6865, y 3905-4049).</summary>
+    public static readonly Point2D IsleCentre = new(6730, 3977);
+    public const int IsleReach = 140;
 
     public static string Seed(bool dryRun) => SeedOn(TutorialWorld.Isle, dryRun, withHaven: true);
 
@@ -223,6 +249,8 @@ public static class TutorialCorePlacement
         if (map == null) { return "Tutorial: refused. The Fold (map 32) is not registered."; }
         var haven = HavenSpots.Map;
         if (!dryRun) { MoveOldMarkers(map); } // cc-P720: a rune on its stop becomes the sign beside it
+        if (!dryRun) { MoveChatSignpost(map); } // cc-P741: before the props are counted, so it is moved, not doubled
+        if (!dryRun) { TutorialFarm.MoveFromOldLayout(map); } // cc-P741: Tobin moved before he is looked for
         var markers = TutorialStations.Core.Where(s => FindMarker(s.Key, map) == null).ToArray();
         var mobiles = new (Type Type, Point3D Spot, Func<Mobile> Make)[]
         {
@@ -299,6 +327,22 @@ public static class TutorialCorePlacement
         foreach (var i in map.GetItemsInRange<Static>(Ground(ChatSignpost), 0))
         { if (!i.Deleted && i.ItemID == OldSignpostId && i.Name == OldChatSignpostName) { old.Add(i); } }
         foreach (var i in old) { i.Delete(); }
+        return old.Count;
+    }
+
+    /// <summary>cc-P741: moves the farm signpost from its spot before (on the road's edge) to north of the road.</summary>
+    public static int MoveChatSignpost(Map map)
+    {
+        var old = new List<Item>();
+        foreach (var i in map.GetItemsInRange<Static>(Ground(OldChatSignpostSpot), 0))
+        { if (!i.Deleted && i.ItemID == SignpostId && i.Name == ChatSignpostName) { old.Add(i); } }
+        if (HasItem<Static>(map, Ground(ChatSignpost), i => i.ItemID == SignpostId && i.Name == ChatSignpostName))
+        {
+            foreach (var i in old) { i.Delete(); }
+            return old.Count;
+        }
+        foreach (var i in old.Take(1)) { i.MoveToWorld(Ground(ChatSignpost), map); }
+        foreach (var i in old.Skip(1)) { i.Delete(); }
         return old.Count;
     }
 
