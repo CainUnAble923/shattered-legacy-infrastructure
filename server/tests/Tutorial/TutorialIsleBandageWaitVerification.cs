@@ -91,7 +91,7 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         public void Dispose()
         {
             TutorialCoreTrials.Cancel(Pm);
-            TutorialWake.Stand(Pm);
+            TutorialWake.Stand(Pm, true);
             ClusterFFanfare.FlushAll();
             foreach (var e in Litter)
             {
@@ -149,6 +149,7 @@ public class TutorialIsleBandageWaitVerification : IDisposable
     {
         TutorialTestStart.Begin(p.Pm);
         Assert.True(TutorialWake.OnMoveRequest(p.Pm));
+        TutorialWake.Advance(p.Pm, TutorialWake.GetUpSeconds); // cc-P740: the slow get-up
         Assert.False(TutorialWake.IsLying(p.Pm));
     }
 
@@ -370,6 +371,8 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         TutorialWake.Advance(p.Pm, 10);
         Assert.True(TutorialWake.IsLying(p.Pm)); // still down
         Assert.True(TutorialWake.OnMoveRequest(p.Pm)); // cc-P728: up at the first move
+        Assert.True(TutorialWake.IsRising(p.Pm)); // cc-P740: slowly
+        TutorialWake.Advance(p.Pm, TutorialWake.GetUpSeconds);
         Assert.False(TutorialWake.IsLying(p.Pm));
         Assert.False(p.Pm.Frozen);
         Assert.Equal(TutorialWake.DawnLight[0], TutorialWake.LightOf(p.Pm)); // cc-P732: the dawn, then the isle's own

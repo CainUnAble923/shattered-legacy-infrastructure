@@ -26,6 +26,15 @@
 // frame delay (HoldPose: TazUO draws frame 5, then holds frames 4 and 3, all on the ground, about 20 s each), sent again
 // every HoldEverySeconds. The dark stays until they stand (it came up after 4 s, and the first light packet went out
 // before the client was in the world), then a short dawn. Notes: shard-migration notes/cc-P732-isle-wake-pose.md.
+//
+// cc-P740 (Chase 10-30, a new character: "its dark, and you can not tell you are laying down.. more time to see player
+// get up"): the dusk is lighter (DarkLight), so the trainee and the sand show from the first frame. "You lie on the wet
+// sand..." shows over their head a second in, and "Move to get up." comes sooner (HintSeconds) and again over the head
+// every HintEverySeconds. The first move starts the get-up, drawn slowly (GetUpDelay, about 2.5 s); moves are refused
+// while it plays (GetUpSeconds; the trainee still counts as lying), then the dawn, and only after the dawn the first
+// lesson's lines and, HeldDelay later, the held windows. Notes: shard-migration notes/cc-P740-isle-wake-visible.md.
+// In ClassicUO the refused move's reject, which goes out after the get-up, ends the animation at once (the character
+// stood up in a blink in the P740 run), so the get-up is sent again GetUpResend later, once the reject is through.
 
 #nullable enable
 
@@ -38,7 +47,8 @@ namespace Server.Tutorial;
 
 public static class TutorialWake
 {
-    public const int HintSeconds = 8;
+    public const int HintSeconds = 4; // cc-P740: was 8
+    public const int HintEverySeconds = 12; // cc-P740: "Move to get up." over the head again
     public const int SafetySeconds = 60;
     public const int WaveEverySeconds = 6;
     public static readonly TimeSpan HeldDelay = TimeSpan.FromSeconds(2);
@@ -49,17 +59,28 @@ public static class TutorialWake
     public const int HoldFrames = 5;
     public const int HoldDelay = 255;
     public const int HoldEverySeconds = 20;
-    public const int DarkLight = 24;     // 0 day, 30 near black
-    public static readonly int[] DawnLight = [14, 6]; // after standing, one a second
+    // cc-P740: a dusk the trainee and the sand show in (P732's 24 was near night). Picked from TazUO shots of a new
+    // character (notes/cc-P740-isle-wake-visible.md).
+    public const int DarkLight = 16;     // 0 day, 30 near black
+    public static readonly int[] DawnLight = [10, 5]; // after the get-up, one a second
+    // cc-P740: the get-up, the same animation backward from the ground at a slow pace (TazUO: 80 ms x (delay + 1) a
+    // frame, five frames, so about 2.4 s), sent again GetUpResend later (ClassicUO), and the seconds it is given before
+    // the dawn (moves refused meanwhile; the second-long tick makes it GetUpSeconds - 1 to GetUpSeconds).
+    public const int GetUpDelay = 5;
+    public const int GetUpSeconds = 4;
+    public static readonly TimeSpan GetUpResend = TimeSpan.FromMilliseconds(100); // after the reject; P740 tried 300 (a 0.3 s stand flash)
     public const int WaveSound = 0x12;    // "wave01_l"
     public const string LyingLine = "You wake on cold sand, soaked and aching. Waves wash over your boots...";
     public const string MoveHintLine = "Move to get up.";
+    public const string LieOverheadLine = "You lie on the wet sand...";
 
     private sealed class Lie
     {
         public int Light = DarkLight;
         public int Seconds;
         public int Poses; // cc-P732: how many times the held pose was sent
+        public int Rising = -1; // cc-P740: seconds into the get-up, or -1 while still lying
+        public readonly List<string> Said = new(); // cc-P740: the lines shown over their head, in order
         public Action? Up;
         public TimerExecutionToken Timer;
     }
@@ -85,13 +106,20 @@ public static class TutorialWake
         }
     }
 
+    /// <summary>Lying on the sand, or (cc-P740) still getting up: moves are refused and the first login's windows wait.</summary>
     public static bool IsLying(Mobile m) => _lying.ContainsKey(m.Serial);
+
+    /// <summary>cc-P740: getting up (the slow animation plays; moves are refused until the dawn).</summary>
+    public static bool IsRising(Mobile m) => _lying.TryGetValue(m.Serial, out var l) && l.Rising >= 0;
 
     public static int? LightOf(Mobile m) =>
         _lying.TryGetValue(m.Serial, out var l) ? l.Light : _dawn.TryGetValue(m.Serial, out var d) ? d : null;
 
     /// <summary>cc-P732 (tests): how many times the lying pose has been sent to <paramref name="m"/>, or -1 when not lying.</summary>
     public static int PosesSent(Mobile m) => _lying.TryGetValue(m.Serial, out var l) ? l.Poses : -1;
+
+    /// <summary>cc-P740 (tests): the lines shown over <paramref name="m"/>'s head while lying, in order.</summary>
+    public static IReadOnlyList<string> OverheadSaid(Mobile m) => _lying.TryGetValue(m.Serial, out var l) ? l.Said : [];
 
     /// <summary>FoldRegion.AlterLightLevel: the waking light, for this trainee alone.</summary>
     public static void AlterLight(Mobile m, ref int global, ref int personal)
@@ -152,12 +180,24 @@ public static class TutorialWake
             return;
         }
 
+        // cc-P740: getting up; the dawn and the lines after GetUpSeconds.
+        if (lie.Rising >= 0)
+        {
+            if (++lie.Rising >= GetUpSeconds)
+            {
+                Risen(pm, lie);
+            }
+
+            return;
+        }
+
         var s = ++lie.Seconds;
         // cc-P732: the dark and the pose again a second in (the login's went out before the client was in the world),
         // then the pose every HoldEverySeconds; the light stays dark until they stand.
         if (s == 1)
         {
             pm.CheckLightLevels(true);
+            Overhead(pm, lie, LieOverheadLine); // cc-P740: said where the eye is, once the client is in the world
         }
 
         if (s % HoldEverySeconds == 1)
@@ -173,10 +213,11 @@ public static class TutorialWake
         if (s == HintSeconds)
         {
             ClusterFTutorial.SystemLine(pm, MoveHintLine);
-            if (pm.NetState is { } ns)
-            {
-                pm.PrivateOverheadMessage(MessageType.Regular, 0x3B2, false, MoveHintLine, ns);
-            }
+            Overhead(pm, lie, MoveHintLine);
+        }
+        else if (s > HintSeconds && (s - HintSeconds) % HintEverySeconds == 0)
+        {
+            Overhead(pm, lie, MoveHintLine); // cc-P740: again, over the head only
         }
 
         if (s >= SafetySeconds)
@@ -187,7 +228,8 @@ public static class TutorialWake
 
     /// <summary>
     /// cc-P728: PlayerMobile.Move's first call (PlayerMobile-tutorial-wake-move.patch). A trainee lying on the beach gets
-    /// up, and the request is refused (true). False for anyone else: the move goes on as pinned's.
+    /// up, and the request is refused (true). cc-P740: so is every request while they are getting up. False for anyone
+    /// else: the move goes on as pinned's.
     /// </summary>
     public static bool OnMoveRequest(PlayerMobile pm)
     {
@@ -201,12 +243,48 @@ public static class TutorialWake
     }
 
     /// <summary>
-    /// Gets up (the death animation backward), the light coming back (Dawn), then the lie's lines and, HeldDelay later, the
-    /// windows and lines that were held.
+    /// Gets up: cc-P740: the death animation backward, slowly, for GetUpSeconds (the trainee still counts as lying), then the
+    /// light coming back (Dawn), then the lie's lines and, HeldDelay later, the windows and lines that were held.
+    /// <paramref name="now"/> skips the slow get-up (the vision scene starting).
     /// </summary>
-    public static void Stand(PlayerMobile pm)
+    public static void Stand(PlayerMobile pm, bool now = false)
     {
-        if (!_lying.Remove(pm.Serial, out var lie))
+        if (!_lying.TryGetValue(pm.Serial, out var lie))
+        {
+            return;
+        }
+
+        if (now || pm.Deleted || pm.NetState == null || !pm.Alive)
+        {
+            Risen(pm, lie);
+            return;
+        }
+
+        if (lie.Rising >= 0)
+        {
+            return; // already getting up
+        }
+
+        lie.Rising = 0;
+        GetUp(pm);
+        // cc-P740: again once the refused move's reject is through (ClassicUO ends the animation on it).
+        Timer.StartTimer(GetUpResend, () =>
+        {
+            if (_lying.TryGetValue(pm.Serial, out var current) && current == lie && lie.Rising >= 0 && pm.NetState != null)
+            {
+                GetUp(pm);
+            }
+        });
+    }
+
+    // cc-P732: from frame HoldFrames (on the ground) up; from DieFrames TazUO drew the standing frame first. cc-P740: at
+    // GetUpDelay, so the player sees it.
+    private static void GetUp(PlayerMobile pm) => pm.Animate(DieAnimation, HoldFrames, 1, false, false, GetUpDelay);
+
+    // cc-P740: the get-up is over: the dawn, then the lie's lines and the held windows.
+    private static void Risen(PlayerMobile pm, Lie lie)
+    {
+        if (!_lying.Remove(pm.Serial, out var current) || current != lie)
         {
             return;
         }
@@ -219,19 +297,30 @@ public static class TutorialWake
             return;
         }
 
-        Dawn(pm, 0);
+        Dawn(pm, 0, () => AfterDawn(pm, lie));
+    }
 
-        if (pm.Alive)
+    private static void AfterDawn(PlayerMobile pm, Lie lie)
+    {
+        if (pm.Deleted || pm.NetState == null)
         {
-            // cc-P732: from frame HoldFrames (on the ground) up, at the normal pace; from DieFrames TazUO drew the standing
-            // frame first.
-            pm.Animate(DieAnimation, HoldFrames, 1, false, false, 1);
+            _held.Remove(pm.Serial);
+            return;
         }
 
         lie.Up?.Invoke();
         if (_held.ContainsKey(pm.Serial))
         {
             Timer.StartTimer(HeldDelay, () => Release(pm));
+        }
+    }
+
+    private static void Overhead(PlayerMobile pm, Lie lie, string line)
+    {
+        lie.Said.Add(line);
+        if (pm.NetState is { } ns)
+        {
+            pm.PrivateOverheadMessage(MessageType.Regular, 0x3B2, false, line, ns);
         }
     }
 
@@ -242,7 +331,7 @@ public static class TutorialWake
     /// login will wake them, TutorialStart.WillWake), or they stood up and the held ones have not come yet.
     /// </summary>
     public static bool IsHolding(PlayerMobile pm) =>
-        IsLying(pm) || _held.ContainsKey(pm.Serial) || TutorialStart.WillWake(pm);
+        IsLying(pm) || _dawn.ContainsKey(pm.Serial) || _held.ContainsKey(pm.Serial) || TutorialStart.WillWake(pm);
 
     /// <summary>Runs <paramref name="action"/> now, or after the wake-up when <paramref name="pm"/> is holding.</summary>
     public static void Hold(PlayerMobile pm, Action action)
@@ -301,11 +390,13 @@ public static class TutorialWake
         }
     }
 
-    // cc-P732: the light comes up after they stand, one DawnLight step a second, then the isle's own.
-    private static void Dawn(PlayerMobile pm, int step)
+    // cc-P732: the light comes up after they stand, one DawnLight step a second, then the isle's own. cc-P740: then
+    // <paramref name="after"/> (the lines and the windows); a disconnect or a new lie meanwhile ends it.
+    private static void Dawn(PlayerMobile pm, int step, Action? after = null)
     {
-        if (IsLying(pm) || pm.Deleted)
+        if (IsLying(pm) || pm.Deleted || pm.NetState == null)
         {
+            _dawn.Remove(pm.Serial);
             return;
         }
 
@@ -313,11 +404,12 @@ public static class TutorialWake
         {
             _dawn[pm.Serial] = DawnLight[step];
             pm.CheckLightLevels(true);
-            Timer.StartTimer(TimeSpan.FromSeconds(1), () => Dawn(pm, step + 1));
+            Timer.StartTimer(TimeSpan.FromSeconds(1), () => Dawn(pm, step + 1, after));
             return;
         }
 
         _dawn.Remove(pm.Serial);
         pm.CheckLightLevels(true);
+        after?.Invoke();
     }
 }

@@ -174,7 +174,7 @@ public static class TutorialVisionScene
             return false;
         }
 
-        TutorialWake.Stand(pm); // cc-P721: never both at once
+        TutorialWake.Stand(pm, true); // cc-P721: never both at once (cc-P740: at once, no slow get-up)
         // cc-P721: the windows that sit over the middle of the screen would hide the scene (the P721 capture: the lesson
         // page and the patch notes covered the Gem and the Stranger), so they close as it starts.
         pm.CloseGump<TutorialTrialGump>();

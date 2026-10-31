@@ -147,7 +147,7 @@ public static class TutorialCoreTrials
         "core.paperdoll" => "Follow the arrow to the table by the clothes rack: a chest appears there for you, with your blue cloak of the Wakening Isle inside. Double-click the chest to open it. To move a thing, click it, hold the left mouse button down, move the mouse, and let go: that is drag and drop. Drag the cloak onto your character's picture in the character window to wear it, or into your backpack and double-click it there. If you already wear a cloak, drag it into your backpack first. The cloak is yours to keep.",
         "core.chat" => $"Follow the arrow to the signpost. Press Enter, type '{Phrase}', then press Enter again to speak. The Journal records what you say.",
         "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Hold the pitchfork she gives you and switch to war mode (press Tab), clear the pests in the cabbage rows, then go back to Wren: she gives you a pet of your own and teaches its commands.",
-        "core.healing" => "Follow the arrow into the farmhouse by the field: Pip, the farm boy, sits hurt on the bench inside. Double-click a bandage in your backpack (this lesson gives you some), then click Pip. A bandage takes a few seconds: stand still until you see 'You finish applying the bandages'.",
+        "core.healing" => "Follow the arrow into the farmhouse by the field: Pip, the farm boy, sits hurt on the bench inside. Double-click a bandage in your backpack (this lesson gives you some; more lie on the table beside Pip, or double-click Wren), then click Pip. A bandage takes a few seconds: stand still until you see 'You finish applying the bandages'.",
         "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
         "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
         "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss to finish this lesson; you can read about the League without joining.",
@@ -335,6 +335,9 @@ public static class TutorialCoreTrials
                 // cc-P720 item 4: through the door, the arrow turns to Merrin (and back to the door on leaving)
                 Point(pm, Destination(trial), ArrowLabel(trial));
                 trial.ArrowAt = Destination(trial);
+                break;
+            case "core.healing" when trial.Ticks % 120 == 2:
+                TutorialFarm.HintBandages(pm); // cc-P740 item 4: no bandages? Wren says where, every 30 s
                 break;
             case "core.death" when pm.Alive && trial.Progress.Step == 2 && Nearby(pm, TutorialCorePlacement.HealerSpot, 4):
                 Observe(pm, TutorialAction.Resurrected);
