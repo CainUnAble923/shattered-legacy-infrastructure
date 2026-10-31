@@ -164,7 +164,11 @@ public class GuildHallSosMovesVerification
             Assert.False(oldSign.Deleted);
             Assert.Contains(dry, l => l.Contains("would take away") && l.Contains("GuildHallSign"));
 
-            ClusterFGuildHallPlacement.Place("tinkers", false, true);
+            var done = ClusterFGuildHallPlacement.Place("tinkers", false, true);
+            // cc-P750: the old site's removals stand on their own line, not inside the placed list
+            Assert.Contains(done, l => l.StartsWith("tinkers (") && l.Contains("took away from its old site") && l.Contains("GuildHallSign"));
+            Assert.DoesNotContain(done, l => l.Contains("placed took away") || (l.StartsWith("tinkers (") && l.Contains("placed ") && l.Contains("took away")));
+            Assert.Contains("took away 2 from old sites", done[^1]);
             Assert.True(oldSign.Deleted);
             Assert.True(oldTinker.Deleted);
             Assert.True(stockSign.Visible);
@@ -195,6 +199,46 @@ public class GuildHallSosMovesVerification
             Assert.True(leftOver.Deleted);
             Assert.Null(ClusterFGuildHallPlacement.FindNpc(tinkers));
             Assert.False(lookalike.Deleted);
+        }
+        finally
+        {
+            Clean();
+            foreach (var e in made)
+            {
+                e.Delete();
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- 5 (cc-P750)
+
+    [Fact]
+    public void PlaceTakesTheRangersP708PostAwayInViridian()
+    {
+        var rangers = H("rangers");
+        var shifted = ClusterFGuildHallMoves.Shifted.Single(m => m.Key == "rangers");
+        Assert.Equal(new Point3D(1003, 1004, 0), shifted.Npc);
+        Assert.Equal(new Point3D(1002, 985, 0), rangers.Npc);
+        Assert.True(Math.Max(Math.Abs(shifted.Npc.X - rangers.Npc.X), Math.Abs(shifted.Npc.Y - rangers.Npc.Y)) > 1);
+
+        var old = new OutridersGuildmaster();
+        var made = new List<IEntity> { old };
+        try
+        {
+            Clean();
+            old.MoveToWorld(shifted.Npc, Map.Trammel);
+            var dry = ClusterFGuildHallPlacement.Place("rangers", true, true);
+            Assert.False(old.Deleted);
+            Assert.Contains(dry, l => l.Contains("would take away from its old site") && l.Contains("OutridersGuildmaster"));
+
+            ClusterFGuildHallPlacement.Place("rangers", false, true);
+            Assert.True(old.Deleted);
+            Assert.Equal(rangers.Npc, ClusterFGuildHallPlacement.FindNpc(rangers)!.Location);
+
+            var count = World.Items.Count + World.Mobiles.Count;
+            var again = ClusterFGuildHallPlacement.Place("rangers", false, true);
+            Assert.Contains("placed 0 thing(s)", again[^1]);
+            Assert.Equal(count, World.Items.Count + World.Mobiles.Count);
         }
         finally
         {

@@ -5,7 +5,7 @@ namespace ShatteredLegacy.Tests;
 
 public static class GuildHallPlacementDesignCopy
 {
-    public const string Sha256 = "afc8a517cb65105e340102da5678711e69cf21d0adea98c85840f1e0df6f3090";
+    public const string Sha256 = "0f11454c8b64d36e48a69c33e03891214fd56891ea71c304e30b237d03ba797e";
 
     public const string Json = """"
 {
@@ -13,7 +13,7 @@ public static class GuildHallPlacementDesignCopy
   "halls": [
     {"key": "league", "guild": "The League (headquarters)", "kind": "reuse", "building_name": "Valunstead keep, the gatehouse rooms inside the moat (public registry; the great hall behind is the meeting room) (a place on Zigholtul's Siege of Sosaria map)", "town": "Valunstead", "facet": 1, "rect": [554, 312, 574, 321],
      "npc": {"type": "LeagueSteward", "x": 559, "y": 317, "z": 20, "facing": "East"},
-     "sign": {"type": "BrassSign", "facing": "West", "x": 566, "y": 321, "z": 18, "name": "League Headquarters"},
+     "sign": {"type": "BrassSign", "facing": "North", "x": 567, "y": 321, "z": 18, "name": "League Headquarters"},
      "travel": {"x": 564, "y": 322, "z": 17, "note": "the keep's south door, over the moat bridge"}},
     {"key": "warriors", "guild": "Warriors' Brotherhood", "kind": "reuse", "building_name": "Brothers in Arms", "town": "Jhelom", "facet": 1, "rect": [1352, 3696, 1376, 3720],
      "npc": {"type": "WarriorGuildmaster", "x": 1362, "y": 3716, "z": 0, "facing": "East"},
@@ -28,7 +28,7 @@ public static class GuildHallPlacementDesignCopy
      "sign": {"type": "HealersGuild", "facing": "West", "x": 893, "y": 1056, "z": 30, "name": "The Healers' Covenant"},
      "travel": {"x": 890, "y": 1058, "z": 30, "note": "the causeway outside the south gate"}},
     {"key": "rangers", "guild": "Rangers' League", "kind": "reuse", "building_name": "Fort Viridian, the inner court of the ruined fort (a place on Zigholtul's Siege of Sosaria map)", "town": "Fort Viridian", "facet": 1, "rect": [986, 970, 1016, 1018],
-     "npc": {"type": "OutridersGuildmaster", "x": 1003, "y": 1004, "z": 0, "facing": "East"},
+     "npc": {"type": "OutridersGuildmaster", "x": 1002, "y": 985, "z": 0, "facing": "East"},
      "sign": {"type": "ArchersGuild", "facing": "North", "x": 1014, "y": 1008, "z": 3, "name": "The Rangers' League"},
      "travel": {"x": 1015, "y": 1003, "z": 0, "note": "the east gap in the court wall, by the road"}},
     {"key": "mining", "guild": "Miners' Compact", "kind": "reuse", "building_name": "Minoc Town Hall", "town": "Minoc", "facet": 1, "rect": [2416, 520, 2440, 536],
@@ -43,7 +43,7 @@ public static class GuildHallPlacementDesignCopy
      "decor": [{"set": "smiths", "group": "forge", "x": 3034, "y": 3446, "z": 22}]},
     {"key": "tinkers", "guild": "Tinkers' Union", "kind": "reuse", "building_name": "Hammerhill, the stone workshop on the west lane (ground floor) (a place on Zigholtul's Siege of Sosaria map)", "town": "Hammerhill", "facet": 1, "rect": [1484, 1019, 1494, 1027],
      "npc": {"type": "TinkerGuildmaster", "x": 1488, "y": 1023, "z": 10, "facing": "East"},
-     "sign": {"type": "TinkersGuild", "facing": "North", "x": 1494, "y": 1026, "z": 8, "name": "The Tinkers' Union"},
+     "sign": {"type": "TinkersGuild", "facing": "West", "x": 1494, "y": 1025, "z": 8, "name": "The Tinkers' Union"},
      "travel": {"x": 1495, "y": 1023, "z": 5, "note": "the east doors, on the lane"}},
     {"key": "thieves", "guild": "Thieves' Den", "kind": "reuse", "building_name": "Buccaneer's Bath", "town": "Buccaneer's Den", "facet": 0, "rect": [2655, 2072, 2681, 2096],
      "npc": {"type": "ThiefGuildmaster", "x": 2672, "y": 2092, "z": 5, "facing": "West"},
