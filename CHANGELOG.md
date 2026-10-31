@@ -32,6 +32,7 @@ Example:
 ## 2026.10.30
 
 ### Staff
+- Blackthorn Dungeon is rebuilt for the Siege of Sosaria land, away from the author's dungeons that now stand where it was: the whole dungeon, its invasion rooms too, in a place of its own beside the Wakening Isle, entered by a cellar hatch in the south-west storeroom of Blackthorn Castle's keep on Trammel (Felucca has no way in). Run [GenBlackthorn once on a shard whose map has it; it refuses while the land is missing. The players' line waits with the swap's other go-live lines.
 - The Siege of Sosaria swap's credits are written and wait for the go-live release: the player lines for that release's patch notes and the wiki steps are in player-package/vendor/sos-trammel-map/go-live-changelog.md, and the world map page is in the wiki's drafts (uo:drafts:world_map). Players see none of it while switch.txt says off.
 
 ## 2026.10.29

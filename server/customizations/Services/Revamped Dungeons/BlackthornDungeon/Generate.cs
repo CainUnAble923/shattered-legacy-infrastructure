@@ -1,22 +1,25 @@
-// ServUO: Services/Revamped Dungeons/BlackthornDungeon/Generate.cs (cc-P196).
+// ServUO: Services/Revamped Dungeons/BlackthornDungeon/Generate.cs (cc-P196; moved to the Fold by cc-P691).
 //
-// [GenBlackthorn (Administrator) builds the revamped Blackthorn Dungeon on Trammel AND Felucca, as ServUO's does:
-//   1. On each facet: the DungeonHitchingPost at 6428,2677,0 (pets cannot enter the castle), eight MetalDoors at the
-//      invasion rooms' thresholds, and the sixteen Blockers that close off the New Magincia room's north side.
-//   2. On Felucca only: nine Teleporters between Lord Blackthorn's castle in Britain (1517,1417-1420,9) and the
-//      dungeon's landing (6440,2677-2681,20). The Trammel ones are stock: pinned Data/teleporters.json carries
-//      both directions (the castle's 1477,1471-1475,-8 to 6432,2677-2681,0 and back from 6440,2677-2681,20), the
-//      "create world teleporter section" ServUO's comment relies on.
-//   3. The 54 spawners (BlackthornSpawns): ServUO's "[XmlLoad RevampedSpawns/BlackthornDungeonCreature.xml" and
-//      "...BlackthornDungeonAgent.xml".
+// [GenBlackthorn (Administrator) builds the revamped Blackthorn Dungeon. ServUO builds it on Trammel and Felucca, each
+// facet's own copy of EA's map. cc-P691: on the Siege of Sosaria map that area holds the author's dungeons, so the map
+// patch copies EA's dungeon onto the Fold (map 32) in two pieces (BlackthornFold.cs), and there is one dungeon, there:
+//   1. On the Fold: the DungeonHitchingPost at the landing (pets cannot enter the castle), eight MetalDoors at the
+//      landing hall's thresholds, the sixteen Blockers that close off the New Magincia room's north side, and the
+//      thirty teleporters of the join between the two pieces (BlackthornFold.Join), every ServUO spot through
+//      BlackthornFold.Move.
+//   2. The way in and out: a cellar hatch (a server item) in the author's Blackthorn Castle on Trammel with one
+//      teleporter down to the landing, and five teleporters on ServUO's way out (the top of the east stairs) back to
+//      beside the hatch. These replace ServUO's nine Felucca teleporters (castle 1517,1417-1420,9 <-> 6440,2677-2681,20)
+//      and stock teleporters.json's Trammel pair, which S10 already dropped from the SoS teleporters.
+//   3. The spawners (BlackthornSpawns): ServUO's 22 Trammel dungeon rows on the Fold, and the Trammel Agent of the
+//      Crown in the castle's storeroom by the hatch. ServUO's Felucca rows (its second dungeon and nine city Agents) are
+//      not placed: one dungeon, and no Felucca city spot has been checked on the SoS land.
 // Everything placed is tagged into the "blackthorn" collection and [DeleteBlackthorn (ours) takes it down; running
 // the generator again deletes first, so it replaces rather than doubles (ServUO's Generate places a second set on a
-// re-run; the D-4 rule's kind of fix, notes). The two regions are registered at startup by BlackthornRegions.
-//
-// One ServUO value is corrected: its fourth return teleporter lands at 6440,2680 z 12 where its own three
-// neighbours and the landing tiles are z 20 (Generate.cs:86); z 20 here, argued in the notes.
+// re-run; the D-4 rule's kind of fix, notes). The dungeon region is registered at startup by BlackthornRegions.
+// Nothing is placed at boot: run it once on a shard whose map has the copy (it refuses when the Fold is void there,
+// BlackthornFold.MapReady, as on a server started without the map overlay).
 
-using System.Collections.Generic;
 using Server.Commands;
 using Server.Items;
 
@@ -26,53 +29,40 @@ public static class GenerateBlackthornDungeon
 {
     public const string CollectionKey = "blackthorn";
 
-    public static readonly Point3D HitchingPostLocation = new(6428, 2677, 0);
+    public static readonly Point3D HitchingPostLocation = BlackthornFold.Move(6428, 2677, 0);
 
-    // ServUO Generate(Map): (facing, where), the same eight on each facet.
+    // ServUO Generate(Map): (facing, where).
     public static readonly (DoorFacing Facing, Point3D At)[] Doors =
     {
-        (DoorFacing.WestCCW, new Point3D(6409, 2695, 0)),
-        (DoorFacing.EastCW, new Point3D(6410, 2695, 0)),
-        (DoorFacing.WestCW, new Point3D(6409, 2664, 0)),
-        (DoorFacing.EastCCW, new Point3D(6410, 2664, 0)),
-        (DoorFacing.SouthCW, new Point3D(6394, 2680, 0)),
-        (DoorFacing.NorthCCW, new Point3D(6394, 2679, 0)),
-        (DoorFacing.NorthCW, new Point3D(6425, 2679, 0)),
-        (DoorFacing.SouthCCW, new Point3D(6425, 2680, 0))
+        (DoorFacing.WestCCW, BlackthornFold.Move(6409, 2695, 0)),
+        (DoorFacing.EastCW, BlackthornFold.Move(6410, 2695, 0)),
+        (DoorFacing.WestCW, BlackthornFold.Move(6409, 2664, 0)),
+        (DoorFacing.EastCCW, BlackthornFold.Move(6410, 2664, 0)),
+        (DoorFacing.SouthCW, BlackthornFold.Move(6394, 2680, 0)),
+        (DoorFacing.NorthCCW, BlackthornFold.Move(6394, 2679, 0)),
+        (DoorFacing.NorthCW, BlackthornFold.Move(6425, 2679, 0)),
+        (DoorFacing.SouthCCW, BlackthornFold.Move(6425, 2680, 0))
     };
 
-    // ServUO Generate(Map), Felucca only: (destination, where it stands). Five in, four back.
-    public static readonly (Point3D Dest, Point3D At)[] FeluccaTeleporters =
-    {
-        (new Point3D(1517, 1417, 9), new Point3D(6440, 2677, 20)),
-        (new Point3D(1517, 1418, 9), new Point3D(6440, 2678, 20)),
-        (new Point3D(1517, 1419, 9), new Point3D(6440, 2679, 20)),
-        (new Point3D(1517, 1420, 9), new Point3D(6440, 2680, 20)),
-        (new Point3D(1517, 1420, 9), new Point3D(6440, 2681, 20)),
-        (new Point3D(6440, 2677, 20), new Point3D(1517, 1417, 9)),
-        (new Point3D(6440, 2678, 20), new Point3D(1517, 1418, 9)),
-        (new Point3D(6440, 2679, 20), new Point3D(1517, 1419, 9)),
-        (new Point3D(6440, 2680, 20), new Point3D(1517, 1420, 9)) // ServUO: z 12 (see the header)
-    };
-
+    // ServUO Generate(Map): in the invasion block.
     public static readonly Point3D[] Blockers =
     {
-        new(6435, 2425, -5),
-        new(6435, 2424, -5),
-        new(6435, 2423, -5),
-        new(6435, 2422, -5),
-        new(6435, 2421, -5),
-        new(6434, 2421, -5),
-        new(6433, 2421, -5),
-        new(6432, 2421, -5),
-        new(6442, 2425, -5),
-        new(6442, 2424, -5),
-        new(6442, 2423, -5),
-        new(6442, 2422, -5),
-        new(6442, 2421, -5),
-        new(6443, 2421, -5),
-        new(6444, 2421, -5),
-        new(6445, 2421, -5)
+        BlackthornFold.Move(6435, 2425, -5),
+        BlackthornFold.Move(6435, 2424, -5),
+        BlackthornFold.Move(6435, 2423, -5),
+        BlackthornFold.Move(6435, 2422, -5),
+        BlackthornFold.Move(6435, 2421, -5),
+        BlackthornFold.Move(6434, 2421, -5),
+        BlackthornFold.Move(6433, 2421, -5),
+        BlackthornFold.Move(6432, 2421, -5),
+        BlackthornFold.Move(6442, 2425, -5),
+        BlackthornFold.Move(6442, 2424, -5),
+        BlackthornFold.Move(6442, 2423, -5),
+        BlackthornFold.Move(6442, 2422, -5),
+        BlackthornFold.Move(6442, 2421, -5),
+        BlackthornFold.Move(6443, 2421, -5),
+        BlackthornFold.Move(6444, 2421, -5),
+        BlackthornFold.Move(6445, 2421, -5)
     };
 
     public static void Initialize()
@@ -81,13 +71,13 @@ public static class GenerateBlackthornDungeon
         CommandSystem.Register("DeleteBlackthorn", AccessLevel.Administrator, Delete_OnCommand);
     }
 
-    [ShardCommand(CommandCategory.WorldGeneration, Rerun = CommandRerun.Replaces, Shard = CommandShard.Any, NoDryRun = true, Summary = "Blackthorn Dungeon (revamped) on Trammel and Felucca: the hitching post, the invasion-room doors, the New Magincia blockers, the Felucca castle teleporters, the 44 dungeon spawners and the 10 Agent of the Crown spawners. Deletes its earlier placement first, so it can run again.")]
+    [ShardCommand(CommandCategory.WorldGeneration, Rerun = CommandRerun.Replaces, Shard = CommandShard.Any, NoDryRun = true, Summary = "Blackthorn Dungeon (revamped) on the Fold: the hitching post, the landing hall's doors, the New Magincia blockers, the teleporters between its two pieces, the cellar hatch in Blackthorn Castle (Trammel) with the way down and back, the 22 dungeon spawners and the castle's Agent of the Crown. Deletes its earlier placement first, so it can run again. Refuses until the map patch has the dungeon.")]
     public static void Generate_OnCommand(CommandEventArgs e)
     {
-        if (!BlackthornRegions.OnThisLand)
+        if (!BlackthornFold.MapReady())
         {
-            // cc-P677: its area is the author's dungeons on the Siege of Sosaria land; P691 moves it into the Fold.
-            e.Mobile.SendMessage("Blackthorn Dungeon is off on this land until it moves into the Fold (P691). Nothing placed.");
+            // cc-P691: the dungeon is the map patch's copy on the Fold; without the map overlay the Fold is void there.
+            e.Mobile.SendMessage("Blackthorn Dungeon is not on this server's map (the Fold is void at its landing; is the map overlay missing?). Nothing placed.");
             return;
         }
 
@@ -102,7 +92,7 @@ public static class GenerateBlackthornDungeon
         e.Mobile.SendMessage("Blackthorn Dungeon generation complete.");
     }
 
-    [ShardCommand(CommandCategory.WorldRemoval, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.Unverified, NoDryRun = true, Summary = "DELETES everything GenBlackthorn placed (the post, doors, blockers, Felucca teleporters and all 54 spawners with their spawn).")]
+    [ShardCommand(CommandCategory.WorldRemoval, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.Unverified, NoDryRun = true, Summary = "DELETES everything GenBlackthorn placed (the post, doors, blockers, teleporters, the castle's cellar hatch and all the spawners with their spawn).")]
     private static void Delete_OnCommand(CommandEventArgs e)
     {
         var deleted = Delete();
@@ -111,49 +101,58 @@ public static class GenerateBlackthornDungeon
 
     public static int Delete() => WeakEntityCollection.Delete(CollectionKey);
 
-    /// <summary>ServUO's Generate(Trammel), Generate(Felucca) and the two XmlLoads. Returns a one-line report.</summary>
+    private static T Place<T>(T item, Point3D at, Map map) where T : Item
+    {
+        WeakEntityCollection.Add(CollectionKey, item);
+        item.MoveToWorld(at, map);
+        return item;
+    }
+
+    private static Teleporter PlaceTeleporter(string label, Point3D at, Map map, Point3D to, Map toMap) =>
+        Place(new Teleporter(to, toMap) { Name = $"Blackthorn: {label}" }, at, map);
+
+    /// <summary>ServUO's Generate and the two XmlLoads, on the Fold (cc-P691). Returns a one-line report.</summary>
     public static string Generate()
     {
-        var doors = 0;
-        var blockers = 0;
+        var fold = BlackthornFold.Map;
+
+        if (fold == null)
+        {
+            return "Blackthorn Dungeon: the Fold is not registered on this server. Nothing placed.";
+        }
+
+        Place(new DungeonHitchingPost(), HitchingPostLocation, fold);
+
+        foreach (var (facing, at) in Doors)
+        {
+            Place(new MetalDoor(facing), at, fold);
+        }
+
+        foreach (var p in Blockers)
+        {
+            Place(new Blocker(), p, fold);
+        }
+
         var teleporters = 0;
 
-        foreach (var map in new[] { Map.Trammel, Map.Felucca })
+        foreach (var (at, to) in BlackthornFold.Join)
         {
-            var post = new DungeonHitchingPost();
-            WeakEntityCollection.Add(CollectionKey, post);
-            post.MoveToWorld(HitchingPostLocation, map);
+            PlaceTeleporter(BlackthornFold.Dungeon.Contains(at) ? "the cave, north" : "the corridor, south", at, fold, to, fold);
+            teleporters++;
+        }
 
-            foreach (var (facing, at) in Doors)
-            {
-                var door = new MetalDoor(facing);
-                WeakEntityCollection.Add(CollectionKey, door);
-                door.MoveToWorld(at, map);
-                doors++;
-            }
+        Place(new Static(BlackthornFold.HatchItemId) { Name = BlackthornFold.HatchName }, BlackthornFold.Hatch, Map.Trammel);
+        PlaceTeleporter("the cellar hatch, down", BlackthornFold.HatchTeleporter, Map.Trammel, BlackthornFold.Landing, fold);
+        teleporters++;
 
-            if (map == Map.Felucca)
-            {
-                foreach (var (dest, at) in FeluccaTeleporters)
-                {
-                    var teleporter = new Teleporter(dest, map);
-                    WeakEntityCollection.Add(CollectionKey, teleporter);
-                    teleporter.MoveToWorld(at, map);
-                    teleporters++;
-                }
-            }
-
-            foreach (var p in Blockers)
-            {
-                var blocker = new Blocker();
-                WeakEntityCollection.Add(CollectionKey, blocker);
-                blocker.MoveToWorld(p, map);
-                blockers++;
-            }
+        foreach (var p in BlackthornFold.WayOut)
+        {
+            PlaceTeleporter("the stairs, up to the castle", p, fold, BlackthornFold.BesideHatch, Map.Trammel);
+            teleporters++;
         }
 
         var spawners = BlackthornSpawns.Generate();
 
-        return $"Blackthorn Dungeon: 2 hitching posts, {doors} doors, {blockers} blockers, {teleporters} Felucca teleporters, {spawners.Count} spawners.";
+        return $"Blackthorn Dungeon: 1 hitching post, {Doors.Length} doors, {Blockers.Length} blockers, {teleporters} teleporters, 1 cellar hatch, {spawners.Count} spawners.";
     }
 }

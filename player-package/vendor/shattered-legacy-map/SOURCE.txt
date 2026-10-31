@@ -36,6 +36,15 @@ trammel.mapops   facet 1 (Trammel): the Rootdeep Burrows (x 5136-5247, y 1128-12
                  OSI's tall grey boulders (0x1357-0x135C) at the low side's Z, one more each 20 Z, each under the
                  tile's walking Z (notes/cc-P687-tools/dress.py). S14's five closure boxes are fenced instead.
                  8,389 S+ lines on 6,143 faces.
+                 cc-P691, 2026-10-30 (SoS swap; Chase 10-30, "All of it, two offsets"): EA's Blackthorn dungeon,
+                 moved off the author's dungeons (stock 6151-6563, 2301-2839) into site A for the Fold (map 32).
+                 These lines copy EA's own layout from stock Trammel (every land cell and static of the one
+                 connected piece at 6177-6490, 2315-2803; ids, Z and hues as EA has them), in two pieces, each
+                 shifted by a multiple of 8: the dungeon proper (+40, +1248) to 6217-6511, 3805-4051, and the
+                 invasion block of eight town rooms (+656, +1480) to 6904-7146, 3795-4067. Both were void with no
+                 statics on the SoS + patch file (a block of margin round each); every older line is kept.
+                 86,988 L lines, 32,616 S+ lines, 1,599 more B lines (notes/cc-P691-tools/build_fold.py). Like
+                 the isle's stock art, these are tile numbers and places, not EA's files.
 
 Format: shard-migration scripts/mapbuild/mapops.py (one line per changed land cell, L x y tile z; per static added,
 S+ x y z id hue; per EA static removed, S- x y z id hue; B lines fingerprint EA's blocks so the applier can say

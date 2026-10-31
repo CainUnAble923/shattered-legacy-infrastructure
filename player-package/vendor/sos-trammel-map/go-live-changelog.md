@@ -14,14 +14,15 @@ the bracketed conditions first, then does the wiki steps. Every claim was checke
 - Moonglow, Magincia and Nujel'm are one land now, joined by a desert. Buccaneer's Den and Serpent's Hold can be reached on foot from the mainland. Valunstead is an island with no dock or moongate yet: sail there or use magic.
 - Some of the new land is not finished. Five unfinished areas turn you back in thick fog, and you cannot recall, gate or build a house there; boats can sail past. The new map's own dungeons stay sealed until each has its monsters, and each is announced when it opens.
 - Felucca stands on the same land as Trammel and keeps its own rules: Buccaneer's Den has no guards, and Haven's ground is called Ocllo there. Felucca's old way to Ter Mur is gone with its old land; Trammel's is still there.
-- [Only if cc-P691 has not shipped] Blackthorn's dungeon is closed for now: the new map has other dungeons where it stood. It will come back in a new place.
+- Blackthorn's dungeon has moved: the new map has other dungeons where it stood, so the whole of it, the eight invasion rooms included, now lies in a land of its own. The way in is a cellar hatch in the south-west storeroom of Blackthorn Castle's keep, where the Agent of the Crown now stands; the stairs up from the landing bring you back beside it. Recall, gate and mark still do not work inside.
 
 ### Staff
 - The Siege of Sosaria map ships in the player package (switch.txt on). Credits: the package README, player-package/vendor/sos-trammel-map/SOURCE.txt, the wiki's world map page.
 
 Conditions to check before copying:
-- **Blackthorn** (the last Changed line): drop it if cc-P691 moved Blackthorn into the Fold in this release or an
-  earlier one, and write its own line instead.
+- **Blackthorn** (the last Changed line): cc-P691 (2026-10-30) moved it onto the Fold and wrote that line. Check that
+  the go-live world has had `[GenBlackthorn` run (the hatch stands in the keep at 1515, 1436); if it has not, run it
+  before the release or drop the line.
 - **Rootdeep**: the Burrows are still a draft (not open to players), so no line mentions the cellar hatch. If the
   Burrows open in the same release, add: "The way into the Rootdeep Burrows is a cellar hatch in the Second Bank of
   Haven."
@@ -41,7 +42,7 @@ The page is written and waits in the drafts namespace (`docker/wiki/content/page
    live in the woods just north of town (cc-P678). Rootdeep's line points to the cellar hatch once the Burrows open.
    `uo/drafts/rootdeep_burrows.txt` describes the old way in (the hole behind the bank's collapsed south wall):
    on this map it is the cellar hatch in the Second Bank of Haven, with the ladder up three tiles away.
-4. `uo/world/dungeons.txt`: Blackthorn as the first condition above says; add one line that the new map's own
+4. `uo/world/dungeons.txt`: Blackthorn's way in is the cellar hatch in Blackthorn Castle's keep (cc-P691); add one line that the new map's own
    dungeons are sealed until each opens, linking the world map page.
 5. Publish: the seed sync (`sync-dokuwiki-content.sh`) does not overwrite pages that exist, so the moved and edited
    pages need `SYNC_MODE=overwrite` for those files, as the wiki README says. Then `scripts/Publish-PatchNotes.ps1`.
