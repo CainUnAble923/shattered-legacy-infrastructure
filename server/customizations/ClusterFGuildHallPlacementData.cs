@@ -13,7 +13,7 @@ namespace Server;
 public static class ClusterFGuildHallPlacementData
 {
     public const string DesignFile = "design/guild-halls/halls.json";
-    public const string DesignSha256 = "fbd45145d7eb7a186369ee9ffd5f8cd380c49cdf8b046081ee5d1ef6f27f3443";
+    public const string DesignSha256 = "afc8a517cb65105e340102da5678711e69cf21d0adea98c85840f1e0df6f3090";
 
     /// <summary>Reuse: a free stock building (our sign stands in for its stock sign). Share: stock NPCs stay and our
     /// sign hangs beside theirs. New: OSI's Guild House multi on the survey's plot.</summary>
@@ -40,10 +40,10 @@ public static class ClusterFGuildHallPlacementData
 
     public static readonly Hall[] Halls =
     [
-        new("league", "The League (headquarters)", Kind.Reuse, "Castle British, the keep", "Britain", 1,
-            typeof(LeagueRegistrar), new Point3D(1330, 1622, 50), Direction.South,
-            SignType.BrassSign, SignFacing.North, new Point3D(1360, 1622, 50), "League Headquarters",
-            new Point3D(1362, 1624, 50), "the keep's east door, inside the castle walls",
+        new("league", "The League (headquarters)", Kind.Reuse, "Valunstead keep, the gatehouse rooms inside the moat (public registry; the great hall behind is the meeting room) (a place on Zigholtul's Siege of Sosaria map)", "Valunstead", 1,
+            typeof(LeagueSteward), new Point3D(559, 317, 20), Direction.East,
+            SignType.BrassSign, SignFacing.West, new Point3D(566, 321, 18), "League Headquarters",
+            new Point3D(564, 322, 17), "the keep's south door, over the moat bridge",
             0, Point3D.Zero,
             []),
         new("warriors", "Warriors' Brotherhood", Kind.Reuse, "Brothers in Arms", "Jhelom", 1,
@@ -58,16 +58,16 @@ public static class ClusterFGuildHallPlacementData
             new Point3D(4308, 1014, 0), "the south front",
             0, Point3D.Zero,
             []),
-        new("healers", "Healers' Covenant", Kind.Reuse, "Empath Abbey, the church", "Empath Abbey (Yew)", 1,
-            typeof(HealerGuildmaster), new Point3D(637, 826, 0), Direction.South,
-            SignType.HealersGuild, SignFacing.West, new Point3D(636, 856, 5), "The Healers' Covenant",
-            new Point3D(634, 858, 0), "the church's south doors",
+        new("healers", "Healers' Covenant", Kind.Reuse, "Fort Whitestone, the south wing east of the gate (a place on Zigholtul's Siege of Sosaria map)", "Fort Whitestone", 1,
+            typeof(HealerGuildmaster), new Point3D(902, 1046, 32), Direction.West,
+            SignType.HealersGuild, SignFacing.West, new Point3D(893, 1056, 30), "The Healers' Covenant",
+            new Point3D(890, 1058, 30), "the causeway outside the south gate",
             0, Point3D.Zero,
             []),
-        new("rangers", "Rangers' League", Kind.Share, "Rangers' Guild (stock, shared with pinned's RangerGuildmaster)", "Skara Brae", 1,
-            typeof(OutridersGuildmaster), new Point3D(570, 2145, 0), Direction.East,
-            SignType.ArchersGuild, SignFacing.North, new Point3D(576, 2150, 0), "The Rangers' League",
-            new Point3D(577, 2147, 0), "the east doors",
+        new("rangers", "Rangers' League", Kind.Reuse, "Fort Viridian, the inner court of the ruined fort (a place on Zigholtul's Siege of Sosaria map)", "Fort Viridian", 1,
+            typeof(OutridersGuildmaster), new Point3D(1003, 1004, 0), Direction.East,
+            SignType.ArchersGuild, SignFacing.North, new Point3D(1014, 1008, 3), "The Rangers' League",
+            new Point3D(1015, 1003, 0), "the east gap in the court wall, by the road",
             0, Point3D.Zero,
             []),
         new("mining", "Miners' Compact", Kind.Reuse, "Minoc Town Hall", "Minoc", 1,
@@ -82,10 +82,10 @@ public static class ClusterFGuildHallPlacementData
             new Point3D(3032, 3453, 15), "the guild house steps",
             116, new Point3D(3032, 3444, 15),
             [new("smiths", "forge", new Point3D(3034, 3446, 22))]),
-        new("tinkers", "Tinkers' Union", Kind.Reuse, "The Musician's Hall", "Vesper", 1,
-            typeof(TinkerGuildmaster), new Point3D(2898, 740, 0), Direction.West,
-            SignType.TinkersGuild, SignFacing.North, new Point3D(2904, 737, 0), "The Tinkers' Union",
-            new Point3D(2905, 739, 0), "the east door",
+        new("tinkers", "Tinkers' Union", Kind.Reuse, "Hammerhill, the stone workshop on the west lane (ground floor) (a place on Zigholtul's Siege of Sosaria map)", "Hammerhill", 1,
+            typeof(TinkerGuildmaster), new Point3D(1488, 1023, 10), Direction.East,
+            SignType.TinkersGuild, SignFacing.North, new Point3D(1494, 1026, 8), "The Tinkers' Union",
+            new Point3D(1495, 1023, 5), "the east doors, on the lane",
             0, Point3D.Zero,
             []),
         new("thieves", "Thieves' Den", Kind.Reuse, "Buccaneer's Bath", "Buccaneer's Den", 0,
@@ -118,11 +118,11 @@ public static class ClusterFGuildHallPlacementData
             new Point3D(3777, 1197, 0), "the south doors",
             0, Point3D.Zero,
             []),
-        new("merchants", "Merchants' Exchange", Kind.New, "Merchants' Exchange guild house", "Magincia", 1,
-            typeof(MerchantGuildmaster), new Point3D(3711, 2179, 27), Direction.South,
-            SignType.MerchantsGuild, SignFacing.West, new Point3D(3713, 2184, 36), "The Merchants' Exchange",
-            new Point3D(3709, 2185, 20), "the guild house steps",
-            116, new Point3D(3709, 2176, 20),
+        new("merchants", "Merchants' Exchange", Kind.Reuse, "the counting house in the walled yard north of Valunstead's bank (a place on Zigholtul's Siege of Sosaria map)", "Valunstead", 1,
+            typeof(MerchantGuildmaster), new Point3D(492, 391, 20), Direction.East,
+            SignType.MerchantsGuild, SignFacing.North, new Point3D(498, 390, 18), "The Merchants' Exchange",
+            new Point3D(499, 388, 15), "the east doors, on the yard",
+            0, Point3D.Zero,
             []),
         new("bards", "Bards' Consortium", Kind.Reuse, "The King's Men Theater", "Britain", 1,
             typeof(BardGuildmaster), new Point3D(1454, 1594, 20), Direction.South,
@@ -142,10 +142,10 @@ public static class ClusterFGuildHallPlacementData
             new Point3D(5745, 3210, -1), "the south door",
             0, Point3D.Zero,
             [new("alembic", "scrying", new Point3D(5746, 3192, 15))]),
-        new("custodians", "The Custodians", Kind.Reuse, "the empty brick hall beside the First Bank of Britain", "Britain", 1,
-            typeof(SanitationWarden), new Point3D(1456, 1710, 5), Direction.East,
-            SignType.BrassSign, SignFacing.North, new Point3D(1467, 1708, 5), "The Custodians",
-            new Point3D(1474, 1708, 0), "the east porch",
+        new("custodians", "The Custodians", Kind.Reuse, "Hammerhill, the civic works office north of the bank (ground floor) (a place on Zigholtul's Siege of Sosaria map)", "Hammerhill", 1,
+            typeof(SanitationWarden), new Point3D(1560, 967, 10), Direction.South,
+            SignType.BrassSign, SignFacing.West, new Point3D(1563, 973, 8), "The Custodians",
+            new Point3D(1560, 974, 5), "the south doors, on the street",
             0, Point3D.Zero,
             [])
     ];
