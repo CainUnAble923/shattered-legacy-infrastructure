@@ -128,7 +128,7 @@ namespace Server
                 }
             }
 
-            foreach (var moved in ClusterFGuildHallMoves.All.Where(m => m.Key == h.Key))
+            foreach (var moved in ClusterFGuildHallMoves.All.Concat(ClusterFGuildHallMoves.Shifted).Where(m => m.Key == h.Key))
             {
                 var oldMap = moved.MapIndex >= 0 && moved.MapIndex < Map.Maps.Length ? Map.Maps[moved.MapIndex] : null;
                 if (oldMap == null || oldMap == Map.Internal)
@@ -182,8 +182,9 @@ namespace Server
             }
 
             var lines = new List<string>();
-            int placed = 0, standing = 0;
+            int placed = 0, standing = 0, removed = 0;
             var verb = dryRun ? "would place" : "placed";
+            var awayVerb = dryRun ? "would take away" : "took away";
             foreach (var h in Select(key?.ToLowerInvariant()))
             {
                 var map = MapOf(h);
@@ -195,7 +196,15 @@ namespace Server
 
                 // cc-P708: a moved hall's old site goes first
                 var stale = OldSite(h);
-                var did = TakeAway(stale, dryRun).Select(t => $"{(dryRun ? "would take away" : "took away")} {t}").ToList();
+                // cc-P750: the old site's removals get their own line, apart from what is placed
+                var away = TakeAway(stale, dryRun).ToList();
+                if (away.Count > 0)
+                {
+                    removed += away.Count;
+                    lines.Add($"{h.Key} ({h.Town}): {awayVerb} from its old site {string.Join("; ", away)}.");
+                }
+
+                var did = new List<string>();
                 var parts = Parts(h).Except(stale.OfType<Item>()).ToList();
 
                 if (h.Kind == Kind.New)
@@ -323,7 +332,8 @@ namespace Server
                     : $"{h.Key} ({h.Town}, {h.Building}): {verb} {string.Join("; ", did)}.");
             }
 
-            lines.Add($"Guild halls {(dryRun ? "dry run" : "done")}: {verb} {placed} thing(s), {standing} already standing.");
+            lines.Add($"Guild halls {(dryRun ? "dry run" : "done")}: {verb} {placed} thing(s), {standing} already standing" +
+                $"{(removed > 0 ? $"; {awayVerb} {removed} from old sites" : "")}.");
             return lines;
         }
 

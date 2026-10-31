@@ -13,7 +13,7 @@ namespace Server;
 public static class ClusterFGuildHallPlacementData
 {
     public const string DesignFile = "design/guild-halls/halls.json";
-    public const string DesignSha256 = "afc8a517cb65105e340102da5678711e69cf21d0adea98c85840f1e0df6f3090";
+    public const string DesignSha256 = "0f11454c8b64d36e48a69c33e03891214fd56891ea71c304e30b237d03ba797e";
 
     /// <summary>Reuse: a free stock building (our sign stands in for its stock sign). Share: stock NPCs stay and our
     /// sign hangs beside theirs. New: OSI's Guild House multi on the survey's plot.</summary>
@@ -42,7 +42,7 @@ public static class ClusterFGuildHallPlacementData
     [
         new("league", "The League (headquarters)", Kind.Reuse, "Valunstead keep, the gatehouse rooms inside the moat (public registry; the great hall behind is the meeting room) (a place on Zigholtul's Siege of Sosaria map)", "Valunstead", 1,
             typeof(LeagueSteward), new Point3D(559, 317, 20), Direction.East,
-            SignType.BrassSign, SignFacing.West, new Point3D(566, 321, 18), "League Headquarters",
+            SignType.BrassSign, SignFacing.North, new Point3D(567, 321, 18), "League Headquarters",
             new Point3D(564, 322, 17), "the keep's south door, over the moat bridge",
             0, Point3D.Zero,
             []),
@@ -65,7 +65,7 @@ public static class ClusterFGuildHallPlacementData
             0, Point3D.Zero,
             []),
         new("rangers", "Rangers' League", Kind.Reuse, "Fort Viridian, the inner court of the ruined fort (a place on Zigholtul's Siege of Sosaria map)", "Fort Viridian", 1,
-            typeof(OutridersGuildmaster), new Point3D(1003, 1004, 0), Direction.East,
+            typeof(OutridersGuildmaster), new Point3D(1002, 985, 0), Direction.East,
             SignType.ArchersGuild, SignFacing.North, new Point3D(1014, 1008, 3), "The Rangers' League",
             new Point3D(1015, 1003, 0), "the east gap in the court wall, by the road",
             0, Point3D.Zero,
@@ -84,7 +84,7 @@ public static class ClusterFGuildHallPlacementData
             [new("smiths", "forge", new Point3D(3034, 3446, 22))]),
         new("tinkers", "Tinkers' Union", Kind.Reuse, "Hammerhill, the stone workshop on the west lane (ground floor) (a place on Zigholtul's Siege of Sosaria map)", "Hammerhill", 1,
             typeof(TinkerGuildmaster), new Point3D(1488, 1023, 10), Direction.East,
-            SignType.TinkersGuild, SignFacing.North, new Point3D(1494, 1026, 8), "The Tinkers' Union",
+            SignType.TinkersGuild, SignFacing.West, new Point3D(1494, 1025, 8), "The Tinkers' Union",
             new Point3D(1495, 1023, 5), "the east doors, on the lane",
             0, Point3D.Zero,
             []),

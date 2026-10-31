@@ -22,4 +22,13 @@ public static class ClusterFGuildHallMoves
         new("tinkers", "Vesper", 1, typeof(TinkerGuildmaster), new Point3D(2898, 740, 0)),
         new("custodians", "Britain (beside the First Bank)", 1, typeof(SanitationWarden), new Point3D(1456, 1710, 5))
     ];
+
+    // cc-P750: posts moved within their new place after P708 placed them on the test shard. The Rangers' guildmaster
+    // stood in Fort Viridian's south court, where the rampart in front of it hid him from the game's camera; he now
+    // stands in the open inner court. place and clear take an old guildmaster away here as at a town move's old post.
+    public static readonly Moved[] Shifted =
+    [
+        new("rangers", "Fort Viridian (P708's post in the south court, under the rampart)", 1, typeof(OutridersGuildmaster),
+            new Point3D(1003, 1004, 0))
+    ];
 }

@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.31.3
+
+### Staff
+- The Rangers' guildmaster at Fort Viridian now stands in the fort's open inner court, where you can see him; in the south court the rampart hid him from view. [ClusterFGuildHalls place moves a guildmaster left at the old spot, and its reply lists what it took away from a hall's old site on a line of its own.
+
 ## 2026.10.31
 
 ### Staff
