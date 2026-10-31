@@ -23,8 +23,9 @@ public static class TutorialIslandGate
     // cc-P663 (P605 risk 4): the Fold, where the Wakening Isle is (map 32 and its copies), counts as the island too. That is
     // the allowed route for a loop-0 trainee: the start choice and Rook's remedial trip from Haven onto the isle, and the
     // dock moongate back. Nothing else reaches the Fold (FoldRegion refuses every travel spell into and out of it).
+    // cc-P691: except Blackthorn Dungeon, which is on the Fold too (entered from its castle on Trammel): not the island.
     public static bool IsOnIsland(Point3D location, Map? map) =>
-        FoldMaps.IsFold(map) ||
+        FoldMaps.IsFold(map) && !Server.Engines.Blackthorn.BlackthornFold.Contains(location, map) ||
         map == HavenSpots.Map && (HavenSpots.InIslandBounds(location) || OldHavenBurrowsRegion.Area.Contains(location));
 
     private static bool NeedsGraduation(Mobile? mobile) => Enabled && mobile is PlayerMobile pm &&

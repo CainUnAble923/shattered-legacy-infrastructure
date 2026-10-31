@@ -30,6 +30,14 @@
 // the stables are full), outside the castle at one of four spots (1153053). ServUO's A Visit To Castle Blackthorn
 // quest hook (Town Cryer) is dropped (D, notes).
 //
+// cc-P691 (SoS swap): the dungeon is on the Fold now (BlackthornFold.cs: map 32, two pieces at site A). One region
+// there, over both pieces, with the Fold's rules as its parent (FoldRegion: no housing; its travel ban is this region's
+// own). ServUO's rule for the idle throw, "south of the invasion rooms" (Y > 2575), is now "in the dungeon proper's
+// piece". The eight throw spots and the go spot go through BlackthornFold.Move. One dungeon in place of ServUO's two
+// (Trammel and Felucca); the Fold keeps Trammel's rules. The castle region is not registered any more: the author's
+// Blackthorn Castle is a building of his on SoS Trammel, already a NoHousingRegion in S3's regions-trammel.json, and its
+// no-mount, no-spell, pets-to-the-stables rules were ServUO's for its event. The class stays for a later decision.
+//
 // Conversion notes: GetEnumeratedMobiles is GetMobiles; LocalOverheadMessage is (type, hue, number) here;
 // a player's stabled pets are PlayerMobile.Stabled (a HashSet, AddStabled); AIObject.MoveTo is (mobile, range); CheckTravel is
 // BaseRegion's with the out message; the repeating tick is a DelayCallTimer the registry stops on Unregister.
@@ -52,7 +60,11 @@ public static class BlackthornRegions
     public const string DungeonName = "BlackthornDungeon";
     public const string CastleName = "Blackthorn Castle";
 
-    public static readonly Rectangle2D DungeonBounds = new(6151, 2301, 413, 539);
+    /// <summary>ServUO's region on stock Trammel and Felucca: on SoS the author's dungeons. Nothing of ours goes there.</summary>
+    public static readonly Rectangle2D StockDungeonBounds = new(6151, 2301, 413, 539);
+
+    /// <summary>cc-P691: the region's two rectangles on the Fold.</summary>
+    public static Rectangle2D[] DungeonBounds => BlackthornFold.Bounds;
 
     public static readonly Rectangle2D[] CastleBounds =
     {
@@ -62,32 +74,18 @@ public static class BlackthornRegions
     };
 
     private static readonly Dictionary<Map, BlackthornDungeon> _dungeons = new();
-    private static BlackthornCastle _castle;
 
     /// <summary>
-    ///     cc-P677 (SoS swap S8): off. On the Siege of Sosaria land the dungeon's area (DungeonBounds) holds the author's
-    ///     own dungeons and the castle's is his town, so neither region registers at start and [GenBlackthorn refuses.
-    ///     The code stays whole for P691, which moves Blackthorn into the Fold's zone 5 and turns this on there.
+    ///     cc-P691: the dungeon region on the Fold (cc-P677 had switched both regions off while the dungeon had no place on
+    ///     the SoS land). Registered whether or not the map patch is on this server: a region over void is harmless, and
+    ///     [GenBlackthorn refuses until the map is there (BlackthornFold.MapReady).
     /// </summary>
-    public static bool OnThisLand { get; set; }
-
-    public static void Initialize()
-    {
-        if (!OnThisLand)
-        {
-            return;
-        }
-
-        Register(Map.Trammel);
-        Register(Map.Felucca);
-    }
+    public static void Initialize() => Register(BlackthornFold.Map);
 
     public static BlackthornDungeon GetDungeon(Map map) => _dungeons.GetValueOrDefault(map);
 
-    public static BlackthornCastle Castle => _castle;
-
     /// <summary>
-    ///     Registers the dungeon region on a facet (and the castle on Trammel). Safe to call twice: the second call
+    ///     Registers the dungeon region on a map (the Fold; tests may name another). Safe to call twice: the second call
     ///     returns the first registration.
     /// </summary>
     public static BlackthornDungeon Register(Map map)
@@ -105,29 +103,16 @@ public static class BlackthornRegions
         var dungeon = new BlackthornDungeon(map);
         dungeon.Register();
         _dungeons[map] = dungeon;
-
-        if (map == Map.Trammel && _castle?.Registered != true)
-        {
-            _castle = new BlackthornCastle(map);
-            _castle.Register();
-        }
-
         return dungeon;
     }
 
-    /// <summary>Test support: unregisters the facet's dungeon region (and the castle with Trammel's).</summary>
+    /// <summary>Test support: unregisters the map's dungeon region.</summary>
     public static void Unregister(Map map)
     {
-        if (_dungeons.Remove(map, out var dungeon) && dungeon != null)
+        if (map != null && _dungeons.Remove(map, out var dungeon) && dungeon != null)
         {
             dungeon.StopTick();
             dungeon.Unregister();
-        }
-
-        if (map == Map.Trammel && _castle != null)
-        {
-            _castle.Unregister();
-            _castle = null;
         }
     }
 }
@@ -136,26 +121,26 @@ public class BlackthornDungeon : DungeonRegion
 {
     public static readonly TimeSpan TickInterval = TimeSpan.FromSeconds(5);
     public const long IdleMilliseconds = 120000;
-    public const int InvasionRoomsSouthEdge = 2575;
 
+    // ServUO's eight spots, moved with the dungeon proper (cc-P691).
     public static readonly Point3D[] RandomLocations =
     {
-        new(6459, 2781, 0),
-        new(6451, 2781, 0),
-        new(6443, 2781, 0),
-        new(6409, 2792, 0),
-        new(6356, 2781, 0),
-        new(6272, 2702, 0),
-        new(6272, 2656, 0),
-        new(6456, 2623, 0)
+        BlackthornFold.Move(6459, 2781, 0),
+        BlackthornFold.Move(6451, 2781, 0),
+        BlackthornFold.Move(6443, 2781, 0),
+        BlackthornFold.Move(6409, 2792, 0),
+        BlackthornFold.Move(6356, 2781, 0),
+        BlackthornFold.Move(6272, 2702, 0),
+        BlackthornFold.Move(6272, 2656, 0),
+        BlackthornFold.Move(6456, 2623, 0)
     };
 
     private Timer _tick;
 
     public BlackthornDungeon(Map map)
-        : base(BlackthornRegions.DungeonName, map, DefaultPriority, ConvertTo3D(BlackthornRegions.DungeonBounds))
+        : base(BlackthornRegions.DungeonName, map, FoldRegion.On(map), DefaultPriority, ConvertTo3D(BlackthornRegions.DungeonBounds))
     {
-        GoLocation = new Point3D(6430, 2678, 0);
+        GoLocation = BlackthornFold.Move(6430, 2678, 0);
         _tick = Timer.DelayCall(TickInterval, TickInterval, OnTick);
     }
 
@@ -184,12 +169,15 @@ public class BlackthornDungeon : DungeonRegion
                 m.RevealingAction();
             }
 
-            if (m.Y > InvasionRoomsSouthEdge && m.LastMoveTime + IdleMilliseconds < Core.TickCount)
+            if (InDungeonProper(m.Location) && m.LastMoveTime + IdleMilliseconds < Core.TickCount)
             {
                 MoveLocation(m);
             }
         }
     }
+
+    /// <summary>ServUO's "Y > 2575": south of the invasion rooms, which is the dungeon proper's piece on the Fold.</summary>
+    public static bool InDungeonProper(Point3D p) => BlackthornFold.Dungeon.Contains(p);
 
     public void MoveLocation(Mobile m)
     {

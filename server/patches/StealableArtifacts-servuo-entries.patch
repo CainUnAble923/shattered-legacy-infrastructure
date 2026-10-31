@@ -2,7 +2,7 @@ diff --git a/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs b/Proje
 index 4cd8d8c..640023d 100644
 --- a/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs
 +++ b/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs
-@@ -172,8 +172,83 @@
+@@ -172,8 +172,86 @@
          new(Map.Malas, new Point3D(146, 623, 1), 18432, 27648, typeof(Painting6WestArtifact)),
          new(Map.Malas, new Point3D(178, 629, -1), 18432, 27648, typeof(ManStatuetteEastArtifact)),
  
@@ -66,15 +66,18 @@ index 4cd8d8c..640023d 100644
 +        new(Map.TerMur, new Point3D(1131, 1128, -42), 18432, 27648, typeof(BlockAndTackleArtifact)),
 +        // Shattered Legacy (cc-P677): parked on Map.Internal, never spawned (CheckRespawn), slots kept. The Siege of
 +        // Sosaria map puts the author's dungeons where the Ararat wreck and Castle Blackthorne stood (this shard builds
-+        // no wreck; Blackthorn is off until P691 moves it into the Fold, which gives its 6 their new spots).
++        // no wreck). cc-P691: Blackthorn's dungeon is on the Fold (map 32) now, one dungeon where ServUO had a Trammel
++        // and a Felucca one, so its first three stand there, ServUO's spots moved by the dungeon's offset (+40, +1248,
++        // BlackthornFold.cs); the second three stay parked. Fold is null only before FoldMaps.Configure (priority 3, before
++        // this class's Configure); then they stay parked too.
 +        //Ararat Stealables (Exploring the Deep) - Artifact rarity 8
 +        new(Map.Internal, new Point3D(6303, 1664, 11), 9216, 13824, typeof(SternAnchorOfBmvArarat)),
 +        new(Map.Internal, new Point3D(6303, 1756, 20), 9216, 13824, typeof(ShipsBellOfBmvArarat)),
 +        new(Map.Internal, new Point3D(6313, 1753, -14), 9216, 13824, typeof(FigureheadOfBmvArarat)),
 +        // Castle Blackthorne Stealables - Rarity 8 - does not show rarity on items
-+        new(Map.Internal, new Point3D(6436, 2606, 11), 9216, 13824, typeof(KingsGildedStatue)),
-+        new(Map.Internal, new Point3D(6298, 2673, 0), 9216, 13824, typeof(KingsPainting1)),
-+        new(Map.Internal, new Point3D(6455, 2700, 0), 9216, 13824, typeof(KingsPainting2)),
++        new(FoldMaps.Fold ?? Map.Internal, new Point3D(6476, 3854, 11), 9216, 13824, typeof(KingsGildedStatue)),
++        new(FoldMaps.Fold ?? Map.Internal, new Point3D(6338, 3921, 0), 9216, 13824, typeof(KingsPainting1)),
++        new(FoldMaps.Fold ?? Map.Internal, new Point3D(6495, 3948, 0), 9216, 13824, typeof(KingsPainting2)),
 +        new(Map.Internal, new Point3D(6436, 2606, 11), 9216, 13824, typeof(KingsGildedStatue)),
 +        new(Map.Internal, new Point3D(6298, 2673, 0), 9216, 13824, typeof(KingsPainting1)),
 +        new(Map.Internal, new Point3D(6455, 2700, 0), 9216, 13824, typeof(KingsPainting2)),
@@ -88,7 +91,7 @@ index 4cd8d8c..640023d 100644
      };
  
      public static Type[] TypesOfEntries
-@@ -416,6 +491,11 @@
+@@ -416,6 +494,11 @@
                  Item = null;
              }
  

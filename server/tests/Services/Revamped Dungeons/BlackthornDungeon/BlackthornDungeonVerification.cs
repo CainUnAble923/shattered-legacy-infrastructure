@@ -13,6 +13,10 @@
 // (D16); Player is set before MoveToWorld. Expected values are literals, never the port's own constants, so a break in
 // the port cannot move the expectation with it (the first red proof found two that did). Notes:
 // shard-migration/notes/cc-P196-port-blackthorn-dungeon.md.
+//
+// cc-P691: the dungeon is on the Fold (map 32) in two pieces; the generator, the cellar hatch and the region facts are
+// rewritten for it (notes/cc-P691-blackthorn-to-fold.md). The test host has no map files, so these facts check where
+// things go and what they do; the TazUO shots in the notes show the copied map itself.
 
 using System;
 using System.Buffers.Binary;
@@ -28,6 +32,7 @@ using Server.Engines.Spawners;
 using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
+using Server.Regions;
 using Server.Spells;
 using Server.Spells.Chivalry;
 using Server.Spells.First;
@@ -44,7 +49,7 @@ public class BlackthornDungeonVerification
 
     public BlackthornDungeonVerification(ITestOutputHelper output) => _out = output;
 
-    private static readonly Point3D DungeonEntrance = new(6430, 2678, 0);
+    private static readonly Point3D DungeonEntrance = new(6470, 3926, 0); // cc-P691: ServUO's 6430,2678 on the Fold
     private static readonly Point3D CastleCourt = new(1529, 1477, 0);
 
     private static PlayerMobile NewPlayer(Point3D loc, Map map = null)
@@ -113,6 +118,23 @@ public class BlackthornDungeonVerification
         return entries;
     }
 
+    // cc-P691: the dungeon is on the Fold (map 32) in two pieces; literals, as everywhere here.
+    private static readonly Rectangle2D FoldDungeon = new(6216, 3804, 297, 249);      // x 6216-6512, y 3804-4052
+    private static readonly Rectangle2D FoldInvasionRooms = new(6904, 3795, 243, 273); // x 6904-7146, y 3795-4067
+    private static readonly Rectangle2D OldArea = new(6151, 2301, 413, 539);           // ServUO's region, the author's dungeons on SoS
+    private static readonly Rectangle2D Storeroom = new(1513, 1432, 9, 7);             // the castle keep's south-west room, Trammel
+
+    private static bool OnFoldPieces(Point3D p) => FoldDungeon.Contains(p) || FoldInvasionRooms.Contains(p);
+
+    private static Map Fold
+    {
+        get
+        {
+            FoldMaps.Configure(); // idempotent; the test host runs no Configure
+            return Map.Maps[32];
+        }
+    }
+
     private static void ClearBlackthorn()
     {
         GenerateBlackthornDungeon.Delete();
@@ -121,8 +143,9 @@ public class BlackthornDungeonVerification
         {
             if (item is DungeonHitchingPost or Blocker ||
                 item is Spawner spawner && BlackthornSpawns.IsBlackthornSpawner(spawner) ||
-                item is MetalDoor && BlackthornRegions.DungeonBounds.Contains(item.Location) ||
-                item is Teleporter && item.Map == Map.Felucca && (BlackthornRegions.DungeonBounds.Contains(item.Location) || item.X == 1517 && item.Y is >= 1417 and <= 1420))
+                item is Teleporter t && t.Name?.StartsWith("Blackthorn: ") == true ||
+                item is Static { ItemID: 0x3E65 } && item.Map == Map.Trammel && Storeroom.Contains(item.Location) ||
+                item is MetalDoor && (OnFoldPieces(item.Location) || OldArea.Contains(item.Location)))
             {
                 item.Delete();
             }
@@ -131,12 +154,14 @@ public class BlackthornDungeonVerification
         foreach (var mobile in World.Mobiles.Values.ToList())
         {
             if (mobile is AgentOfTheCrown or Invader ||
-                mobile is BaseCreature { Spawner: null } bc && !bc.Controlled && BlackthornRegions.DungeonBounds.Contains(bc.Location) && bc.Map != Map.Internal)
+                mobile is BaseCreature { Spawner: null } bc && !bc.Controlled && bc.Map != Map.Internal &&
+                (OnFoldPieces(bc.Location) || OldArea.Contains(bc.Location)))
             {
                 mobile.Delete();
             }
         }
 
+        BlackthornRegions.Unregister(Map.Maps[32]);
         BlackthornRegions.Unregister(Map.Trammel);
         BlackthornRegions.Unregister(Map.Felucca);
         BlackthornData.Instance.DungeonPoints.Clear();
@@ -151,10 +176,17 @@ public class BlackthornDungeonVerification
         bc.Kill();
     }
 
+    private static List<T> Ours<T>(Map map) where T : IEntity =>
+        typeof(Item).IsAssignableFrom(typeof(T))
+            ? World.Items.Values.OfType<T>().Where(i => !i.Deleted && i.Map == map).ToList()
+            : World.Mobiles.Values.OfType<T>().Where(m => !m.Deleted && m.Map == map).ToList();
+
     [Fact]
-    public void GenerateBuildsTheDungeonAndDeleteRemovesIt()
+    public void GeneratePlacesEverythingInsideTheFoldPiecesAndNothingInTheOldArea()
     {
         ShardTestClock.Arm();
+        var fold = Fold;
+        Assert.NotNull(fold);
         ClearBlackthorn();
 
         try
@@ -162,116 +194,98 @@ public class BlackthornDungeonVerification
             var report = GenerateBlackthornDungeon.Generate();
             _out.WriteLine(report);
 
-            // The hitching posts, doors and blockers, per facet.
-            foreach (var map in new[] { Map.Trammel, Map.Felucca })
-            {
-                var post = Assert.Single(World.Items.Values.OfType<DungeonHitchingPost>(), p => !p.Deleted && p.Map == map);
-                Assert.Equal(GenerateBlackthornDungeon.HitchingPostLocation, post.Location);
-                Assert.False(post.Movable);
+            // The hitching post at the landing, the eight doors of the landing hall, the sixteen blockers in the New
+            // Magincia room: on the Fold, ServUO's spots moved by their piece's offset.
+            var post = Assert.Single(Ours<DungeonHitchingPost>(fold));
+            Assert.Equal(new Point3D(6468, 3925, 0), post.Location);
+            Assert.False(post.Movable);
 
-                var doors = World.Items.Values.OfType<MetalDoor>().Where(d => !d.Deleted && d.Map == map && BlackthornRegions.DungeonBounds.Contains(d.Location)).ToList();
-                Assert.Equal(8, doors.Count);
-                Assert.All(GenerateBlackthornDungeon.Doors, d => Assert.Contains(doors, door => door.Location == d.At));
+            var doors = Ours<MetalDoor>(fold).Where(d => OnFoldPieces(d.Location)).Select(d => d.Location).OrderBy(p => p.X).ThenBy(p => p.Y).ToList();
+            Assert.Equal(
+                new[] { new Point3D(6434, 3927, 0), new Point3D(6434, 3928, 0), new Point3D(6449, 3912, 0), new Point3D(6449, 3943, 0),
+                        new Point3D(6450, 3912, 0), new Point3D(6450, 3943, 0), new Point3D(6465, 3927, 0), new Point3D(6465, 3928, 0) },
+                doors);
 
-                var blockers = World.Items.Values.OfType<Blocker>().Where(b => !b.Deleted && b.Map == map && BlackthornRegions.DungeonBounds.Contains(b.Location)).ToList();
-                Assert.Equal(16, blockers.Count);
-                Assert.All(GenerateBlackthornDungeon.Blockers, p => Assert.Contains(blockers, b => b.Location == p));
-            }
+            var blockers = Ours<Blocker>(fold).Select(b => b.Location).ToHashSet();
+            Assert.Equal(16, blockers.Count);
+            Assert.All(blockers, b => Assert.True(FoldInvasionRooms.Contains(b) && b.Z == -5, b.ToString()));
+            Assert.Contains(new Point3D(7091, 3905, -5), blockers);
+            Assert.Contains(new Point3D(7088, 3901, -5), blockers);
+            Assert.Contains(new Point3D(7101, 3901, -5), blockers);
 
-            // The Felucca teleporters, both ways; none placed on Trammel (stock teleporters.json has those).
-            var tele = World.Items.Values.OfType<Teleporter>().Where(t => !t.Deleted && t.Map == Map.Felucca &&
-                (BlackthornRegions.DungeonBounds.Contains(t.Location) || t.X == 1517 && t.Y is >= 1417 and <= 1420)).ToList();
-            Assert.Equal(9, tele.Count);
-
-            foreach (var (dest, at) in GenerateBlackthornDungeon.FeluccaTeleporters)
-            {
-                var t = Assert.Single(tele, x => x.Location == at);
-                Assert.Equal(dest, t.PointDest);
-                Assert.Equal(Map.Felucca, t.MapDest);
-            }
-
-            Assert.Equal(20, Assert.Single(tele, t => t.Location == new Point3D(1517, 1420, 9)).PointDest.Z); // ServUO's z 12, corrected
-            Assert.DoesNotContain(World.Items.Values.OfType<Teleporter>(), t => !t.Deleted && t.Map == Map.Trammel && BlackthornRegions.DungeonBounds.Contains(t.Location));
-
-            // The 54 spawners: 22 dungeon rows a facet, 9 Felucca Agents and the Trammel one, each full.
+            // The spawners: ServUO's 22 Trammel dungeon rows on the Fold, each full, every spawn inside the dungeon piece;
+            // the castle's Agent in the storeroom by the hatch. No Felucca row.
             var spawners = World.Items.Values.OfType<Spawner>().Where(s => !s.Deleted && BlackthornSpawns.IsBlackthornSpawner(s)).ToList();
-            Assert.Equal(54, spawners.Count);
-            Assert.Equal(BlackthornSpawns.Definitions.Length, spawners.Count);
-            Assert.Equal(22, spawners.Count(s => s.Name == BlackthornSpawns.DungeonSpawnerName && s.Map == Map.Trammel));
-            Assert.Equal(22, spawners.Count(s => s.Name == BlackthornSpawns.DungeonSpawnerName && s.Map == Map.Felucca));
-            Assert.Equal(9, spawners.Count(s => s.Name == BlackthornSpawns.AgentSpawnerName && s.Map == Map.Felucca));
-            Assert.Equal(1, spawners.Count(s => s.Name == BlackthornSpawns.AgentSpawnerName && s.Map == Map.Trammel));
+            Assert.Equal(23, spawners.Count);
+            Assert.Equal(22, spawners.Count(s => s.Name == "Spawner_Blackthorn" && s.Map == fold && FoldDungeon.Contains(s.Location)));
+            var agentSpawner = Assert.Single(spawners, s => s.Name == "AgentOfTheCrown");
+            Assert.Equal((Map.Trammel, new Point3D(1521, 1434, 15)), (agentSpawner.Map, agentSpawner.Location));
 
-            var capacity = BlackthornSpawns.Definitions.Where(d => !d.IsAgent && !d.Felucca).Sum(d => d.Capacity);
-            Assert.Equal(104, capacity);
-            Assert.Equal(capacity, BlackthornSpawns.Definitions.Where(d => !d.IsAgent && d.Felucca).Sum(d => d.Capacity));
-
+            Assert.Equal(104, spawners.Where(s => s.Map == fold).Sum(s => s.Spawned.Count));
             var typesSeen = new HashSet<Type>();
 
-            foreach (var def in BlackthornSpawns.Definitions)
+            foreach (var s in spawners.Where(s => s.Map == fold))
             {
-                var spawner = Assert.Single(spawners, s => s.Name == def.Name && s.Map == def.Map && s.Location == new Point3D(def.CentreX, def.CentreY, def.CentreZ));
-                Assert.Equal(def.Capacity, spawner.Spawned.Count);
-                Assert.Equal(def.MaxCount, spawner.Count);
-                Assert.Equal(TimeSpan.FromSeconds(def.MinDelaySeconds), spawner.MinDelay);
-                Assert.Equal(TimeSpan.FromSeconds(def.MaxDelaySeconds), spawner.MaxDelay);
-                Assert.Equal(def.Range, spawner.WalkingRange);
-                Assert.Equal(def.HomeRangeRelative, spawner.SpawnLocationIsHome);
-                Assert.Equal(def.Entries.Length, spawner.Entries.Count);
-                Assert.True(spawner.Running, $"{def.Name} at {spawner.Location} is not running");
+                Assert.True(s.Running, $"{s.Name} at {s.Location} is not running");
+                Assert.Equal(s.Count, s.Spawned.Count);
 
-                var rect = new Rectangle2D(def.X, def.Y, Math.Max(1, def.Width), Math.Max(1, def.Height));
-                var allowed = def.Entries.Select(e => e.Type).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var spawn in spawner.Spawned.Keys)
+                foreach (var spawn in s.Spawned.Keys)
                 {
                     var m = Assert.IsAssignableFrom<BaseCreature>(spawn);
-                    Assert.Equal(def.Map, m.Map);
-                    Assert.True(rect.Contains(m.Location), $"{m.GetType().Name} at {m.Location} outside {rect} of {def.Name}");
-                    Assert.Contains(m.GetType().Name, allowed);
-                    Assert.Equal(def.Range, m.RangeHome);
+                    Assert.Equal(fold, m.Map);
+                    Assert.True(FoldDungeon.Contains(m.Location), $"{m.GetType().Name} at {m.Location}");
                     typesSeen.Add(m.GetType());
                 }
-
-                foreach (var entry in def.Entries)
-                {
-                    Assert.Equal(entry.MaxCount, spawner.Spawned.Keys.Count(s => string.Equals(s.GetType().Name, entry.Type, StringComparison.OrdinalIgnoreCase)));
-                }
             }
 
-            Assert.Equal(22, typesSeen.Count); // 21 stock creatures and the Agent
+            Assert.Equal(21, typesSeen.Count); // the 21 stock creatures
 
-            // The ten Agents, each with the 136 display items in his pack and his property line.
-            var agents = World.Mobiles.Values.OfType<AgentOfTheCrown>().Where(a => !a.Deleted).ToList();
-            Assert.Equal(10, agents.Count);
-            Assert.Equal(9, agents.Count(a => a.Map == Map.Felucca));
+            // ServUO's first row (the hell hounds at 6363,2679) stands at 6403,3927 and spawns in 6392-6412, 3914-3938.
+            var hounds = Assert.Single(spawners, s => s.Location == new Point3D(6403, 3927, 0));
+            Assert.All(hounds.Spawned.Keys, m => Assert.True(new Rectangle2D(6392, 3914, 21, 25).Contains(((Mobile)m).Location)));
 
-            foreach (var agent in agents)
+            var agent = Assert.Single(World.Mobiles.Values.OfType<AgentOfTheCrown>(), a => !a.Deleted);
+            Assert.Equal(Map.Trammel, agent.Map);
+            Assert.True(Storeroom.Contains(agent.Location), agent.Location.ToString());
+            Assert.Equal(136, agent.Backpack.Items.Count(i => AgentOfTheCrown.DisplayTypes.Contains(i.GetType())));
+
+            // Every Blackthorn object on the Fold is inside the two pieces; on Trammel only the hatch, its teleporter and
+            // the Agent, all in the storeroom; nothing on Felucca; nothing in the old area on any map.
+            var foldItems = Ours<Item>(fold).Where(i => i is DungeonHitchingPost or Blocker or MetalDoor or Spawner || i is Teleporter t && t.Name?.StartsWith("Blackthorn: ") == true).ToList();
+            Assert.Equal(1 + 8 + 16 + 22 + 30 + 5, foldItems.Count);
+            Assert.All(foldItems, i => Assert.True(OnFoldPieces(i.Location), $"{i.GetType().Name} at {i.Location}"));
+
+            var trammelOurs = Ours<Item>(Map.Trammel).Where(i => i is Spawner sp && BlackthornSpawns.IsBlackthornSpawner(sp) ||
+                i is Teleporter t && t.Name?.StartsWith("Blackthorn: ") == true || i is Static { ItemID: 0x3E65 }).ToList();
+            Assert.Equal(3, trammelOurs.Count);
+            Assert.All(trammelOurs, i => Assert.True(Storeroom.Contains(i.Location), $"{i.GetType().Name} at {i.Location}"));
+
+            foreach (var map in new[] { Map.Trammel, Map.Felucca, fold })
             {
-                Assert.Equal("the Agent Of The Crown", agent.Title);
-                Assert.Equal(0x190, agent.Body.BodyID);
-                Assert.True(agent.IsInvulnerable);
-                Assert.NotNull(agent.Backpack);
-                Assert.Equal(136, agent.Backpack.Items.Count(i => AgentOfTheCrown.DisplayTypes.Contains(i.GetType())));
-                Assert.All(agent.Backpack.Items.Where(i => AgentOfTheCrown.DisplayTypes.Contains(i.GetType())), i => Assert.False(i.Movable));
-                Assert.Contains(ReadProperties(agent), e => e.Number == 1154517);
+                Assert.DoesNotContain(World.Items.Values, i => !i.Deleted && i.Map == map && OldArea.Contains(i.Location) &&
+                    (i is DungeonHitchingPost or Blocker or MetalDoor or Spawner or Teleporter));
+                Assert.DoesNotContain(World.Mobiles.Values, m => !m.Deleted && m.Map == map && OldArea.Contains(m.Location) && m is BaseCreature);
             }
+
+            Assert.DoesNotContain(World.Items.Values, i => !i.Deleted && i.Map == Map.Felucca &&
+                (i is DungeonHitchingPost or Blocker || i is Spawner sp && BlackthornSpawns.IsBlackthornSpawner(sp) || i is Teleporter t && t.Name?.StartsWith("Blackthorn: ") == true));
 
             // A second run replaces rather than doubles.
             var deleted = GenerateBlackthornDungeon.Delete();
-            Assert.True(deleted >= 54 + 2 + 16 + 32 + 9, $"deleted {deleted}");
+            Assert.True(deleted >= 1 + 8 + 16 + 36 + 1 + 23, $"deleted {deleted}");
             GenerateBlackthornDungeon.Generate();
-            Assert.Equal(54, World.Items.Values.OfType<Spawner>().Count(s => !s.Deleted && BlackthornSpawns.IsBlackthornSpawner(s)));
-            Assert.Equal(2, World.Items.Values.OfType<DungeonHitchingPost>().Count(p => !p.Deleted));
-            Assert.Equal(10, World.Mobiles.Values.OfType<AgentOfTheCrown>().Count(a => !a.Deleted));
+            Assert.Equal(23, World.Items.Values.OfType<Spawner>().Count(s => !s.Deleted && BlackthornSpawns.IsBlackthornSpawner(s)));
+            Assert.Single(World.Items.Values.OfType<DungeonHitchingPost>(), p => !p.Deleted);
+            Assert.Single(World.Mobiles.Values.OfType<AgentOfTheCrown>(), a => !a.Deleted);
 
-            // Delete takes it all down, spawn included.
+            // Delete takes it all down, spawn and the hatch included.
             GenerateBlackthornDungeon.Delete();
             Assert.DoesNotContain(World.Items.Values.OfType<Spawner>(), s => !s.Deleted && BlackthornSpawns.IsBlackthornSpawner(s));
             Assert.DoesNotContain(World.Items.Values.OfType<DungeonHitchingPost>(), p => !p.Deleted);
-            Assert.DoesNotContain(World.Items.Values.OfType<Blocker>(), b => !b.Deleted && BlackthornRegions.DungeonBounds.Contains(b.Location));
+            Assert.DoesNotContain(World.Items.Values.OfType<Teleporter>(), t => !t.Deleted && t.Name?.StartsWith("Blackthorn: ") == true);
+            Assert.DoesNotContain(World.Items.Values.OfType<Static>(), s => !s.Deleted && s.ItemID == 0x3E65 && s.Map == Map.Trammel && Storeroom.Contains(s.Location));
             Assert.DoesNotContain(World.Mobiles.Values.OfType<AgentOfTheCrown>(), a => !a.Deleted);
-            Assert.DoesNotContain(World.Mobiles.Values.OfType<BaseCreature>(), c => !c.Deleted && c.Map != Map.Internal && BlackthornRegions.DungeonBounds.Contains(c.Location));
+            Assert.DoesNotContain(World.Mobiles.Values.OfType<BaseCreature>(), c => !c.Deleted && c.Map == fold && OnFoldPieces(c.Location));
         }
         finally
         {
@@ -280,12 +294,117 @@ public class BlackthornDungeonVerification
     }
 
     [Fact]
-    public void TheRegionsRevealTheHiddenThrowTheIdleBanRecallAndTallyKills()
+    public void TheCellarHatchTheWayOutAndTheJoinWork()
+    {
+        ShardTestClock.Arm();
+        var fold = Fold;
+        ClearBlackthorn();
+        BlackthornRegions.Register(fold);
+        var mobiles = new List<Mobile>();
+
+        try
+        {
+            GenerateBlackthornDungeon.Generate();
+
+            Teleporter TeleporterAt(Map map, Point3D p) =>
+                Assert.Single(World.Items.Values.OfType<Teleporter>(), t => !t.Deleted && t.Map == map && t.Location == p);
+
+            // The hatch: OSI's 0x3E65 one below the storeroom's floor (Z 15) on its clear east side, its teleporter at the Z a
+            // player stands at on it.
+            var hatch = Assert.Single(World.Items.Values.OfType<Static>(), s => !s.Deleted && s.ItemID == 0x3E65 && s.Map == Map.Trammel && Storeroom.Contains(s.Location));
+            Assert.Equal(new Point3D(1519, 1437, 14), hatch.Location);
+            Assert.False(hatch.Movable);
+            var down = TeleporterAt(Map.Trammel, new Point3D(1519, 1437, 17));
+            Assert.True(down.Active);
+            Assert.False(down.Creatures);
+            Assert.Equal((fold, new Point3D(6472, 3927, 0)), (down.MapDest, down.PointDest));
+
+            // Down the hatch: on the Fold at the foot of the east stairs, in the dungeon's region.
+            var walker = NewPlayer(new Point3D(1521, 1437, 15), Map.Trammel);
+            mobiles.Add(walker);
+            Assert.False(down.OnMoveOver(walker));
+            Assert.Equal((fold, new Point3D(6472, 3927, 0)), (walker.Map, walker.Location));
+            Assert.IsType<BlackthornDungeon>(walker.Region);
+
+            // Up the stairs: any of the five tiles at their top brings the player back beside the hatch, not on it.
+            for (var y = 3925; y <= 3929; y++)
+            {
+                var up = TeleporterAt(fold, new Point3D(6480, y, 20));
+                walker.MoveToWorld(new Point3D(6479, y, 20), fold);
+                Assert.False(up.OnMoveOver(walker));
+                Assert.Equal((Map.Trammel, new Point3D(1521, 1437, 15)), (walker.Map, walker.Location));
+                Assert.DoesNotContain(World.Items.Values.OfType<Teleporter>(), t => !t.Deleted && t.Map == Map.Trammel && t.X == walker.X && t.Y == walker.Y);
+            }
+
+            // The join: the corridor's north end (x 6396-6410, y 3836) goes into the invasion block's cave (y 4065); the
+            // cave's south row (x 7012-7026, y 4067) comes back to the corridor (y 3837). No arrival is a teleporter.
+            for (var i = 0; i <= 14; i++)
+            {
+                var north = TeleporterAt(fold, new Point3D(6396 + i, 3836, 0));
+                walker.MoveToWorld(new Point3D(6396 + i, 3838, 0), fold);
+                Assert.False(north.OnMoveOver(walker));
+                Assert.Equal(new Point3D(7012 + i, 4065, 0), walker.Location);
+                Assert.True(FoldInvasionRooms.Contains(walker.Location));
+                Assert.IsType<BlackthornDungeon>(walker.Region);
+
+                var south = TeleporterAt(fold, new Point3D(7012 + i, 4067, 0));
+                Assert.False(south.OnMoveOver(walker));
+                Assert.Equal(new Point3D(6396 + i, 3837, 0), walker.Location);
+                Assert.True(FoldDungeon.Contains(walker.Location));
+            }
+
+            Assert.DoesNotContain(World.Items.Values.OfType<Teleporter>(), t => !t.Deleted && t.Map == fold &&
+                (t.Location.Y == 4065 || t.Location.Y == 3837) && t.Name?.StartsWith("Blackthorn: ") == true);
+
+            // A creature does not take the hatch.
+            var skeleton = new Skeleton();
+            mobiles.Add(skeleton);
+            skeleton.MoveToWorld(new Point3D(1521, 1437, 15), Map.Trammel);
+            Assert.True(down.OnMoveOver(skeleton));
+            Assert.Equal(Map.Trammel, skeleton.Map);
+
+            // Without the map (the Fold void at the landing), the command places nothing.
+            GenerateBlackthornDungeon.Delete();
+            var ready = BlackthornFold.MapReady;
+            try
+            {
+                BlackthornFold.MapReady = () => false;
+                var admin = NewPlayer(new Point3D(1521, 1437, 15), Map.Trammel);
+                mobiles.Add(admin);
+                admin.AccessLevel = AccessLevel.Administrator;
+                GenerateBlackthornDungeon.Generate_OnCommand(new CommandEventArgs(admin, "GenBlackthorn", "", Array.Empty<string>()));
+                Assert.DoesNotContain(World.Items.Values.OfType<Spawner>(), s => !s.Deleted && BlackthornSpawns.IsBlackthornSpawner(s));
+                Assert.DoesNotContain(World.Items.Values.OfType<Teleporter>(), t => !t.Deleted && t.Name?.StartsWith("Blackthorn: ") == true);
+            }
+            finally
+            {
+                BlackthornFold.MapReady = ready;
+            }
+
+            // The tutorial's island gate does not count the dungeon as the Wakening Isle (it is on the Fold too).
+            Assert.False(Server.Tutorial.TutorialIslandGate.IsOnIsland(new Point3D(6472, 3927, 0), fold));
+            Assert.False(Server.Tutorial.TutorialIslandGate.IsOnIsland(new Point3D(7012, 4065, 0), fold));
+            Assert.True(Server.Tutorial.TutorialIslandGate.IsOnIsland(new Point3D(6638, 3993, 0), fold));
+        }
+        finally
+        {
+            foreach (var m in mobiles)
+            {
+                m.Delete();
+            }
+
+            ClearBlackthorn();
+        }
+    }
+
+    [Fact]
+    public void TheRegionRulesApplyOnTheFoldPieces()
     {
         // D16: the NetState first, then Arm, then anything with a timer.
         var ns = PacketTestUtilities.CreateTestNetState();
         ShardTestClock.Arm();
         EnsureCorpses();
+        var fold = Fold;
         ClearBlackthorn();
 
         PlayerMobile pm = null, idleNorth = null, rider = null;
@@ -294,43 +413,52 @@ public class BlackthornDungeonVerification
 
         try
         {
-            var dungeonTram = BlackthornRegions.Register(Map.Trammel);
-            var dungeonFel = BlackthornRegions.Register(Map.Felucca);
+            BlackthornRegions.Initialize();
+            var dungeon = BlackthornRegions.GetDungeon(fold);
 
-            Assert.NotNull(dungeonTram);
-            Assert.True(dungeonTram.Registered);
-            Assert.Same(dungeonTram, BlackthornRegions.Register(Map.Trammel)); // idempotent
-            Assert.Same(dungeonTram, Region.Find(DungeonEntrance, Map.Trammel));
-            Assert.Same(dungeonFel, Region.Find(DungeonEntrance, Map.Felucca));
-            Assert.Equal(BlackthornRegions.DungeonName, dungeonTram.Name);
-            Assert.True(dungeonTram.IsPartOf("BlackthornDungeon"));
-            Assert.Equal(new Point3D(6430, 2678, 0), dungeonTram.GoLocation);
+            Assert.NotNull(dungeon);
+            Assert.True(dungeon.Registered);
+            Assert.Same(dungeon, BlackthornRegions.Register(fold)); // idempotent
+            Assert.Same(dungeon, Region.Find(DungeonEntrance, fold));
+            Assert.Same(dungeon, Region.Find(new Point3D(7012, 4060, 0), fold)); // the invasion block's cave
+            Assert.Same(dungeon, Region.Find(new Point3D(7088, 3901, -5), fold)); // the New Magincia room
+            Assert.IsNotType<BlackthornDungeon>(Region.Find(new Point3D(6638, 3993, 0), fold)); // the isle
+            Assert.IsType<FoldRegion>(dungeon.Parent); // the Fold's rules hold inside it
+            Assert.Equal(BlackthornRegions.DungeonName, dungeon.Name);
+            Assert.True(dungeon.IsPartOf("BlackthornDungeon"));
+            Assert.Equal(new Point3D(6470, 3926, 0), dungeon.GoLocation);
 
-            var castle = BlackthornRegions.Castle;
-            Assert.NotNull(castle);
-            Assert.Same(castle, Region.Find(CastleCourt, Map.Trammel));
-            Assert.IsNotType<BlackthornCastle>(Region.Find(CastleCourt, Map.Felucca));
-            Assert.Equal(Region.DefaultPriority + 1, castle.Priority);
-            Assert.False(castle.IsDisabled());
+            // Not in the old area, on any map, and the castle region is not registered.
+            foreach (var map in new[] { Map.Trammel, Map.Felucca })
+            {
+                Assert.Null(BlackthornRegions.GetDungeon(map));
+                Assert.IsNotType<BlackthornDungeon>(Region.Find(new Point3D(6430, 2678, 0), map));
+                Assert.IsNotType<BlackthornDungeon>(Region.Find(new Point3D(6300, 2500, 0), map));
+                Assert.IsNotType<BlackthornCastle>(Region.Find(CastleCourt, map));
+            }
 
-            // Recall, gate and mark are refused in both; teleport is allowed; staff pass.
-            pm = NewPlayer(DungeonEntrance);
-            Assert.False(dungeonTram.CheckTravel(pm, DungeonEntrance, TravelCheckType.RecallTo, out _));
-            Assert.False(dungeonTram.CheckTravel(pm, DungeonEntrance, TravelCheckType.GateTo, out _));
-            Assert.False(dungeonTram.CheckTravel(pm, DungeonEntrance, TravelCheckType.Mark, out _));
-            Assert.False(dungeonTram.CheckTravel(pm, DungeonEntrance, TravelCheckType.RecallFrom, out _));
-            Assert.True(dungeonTram.CheckTravel(pm, DungeonEntrance, TravelCheckType.TeleportTo, out _));
-            Assert.True(dungeonTram.CheckTravel(pm, DungeonEntrance, TravelCheckType.TeleportFrom, out _));
-            Assert.False(castle.CheckTravel(pm, CastleCourt, TravelCheckType.RecallTo, out _));
-            Assert.True(castle.CheckTravel(pm, CastleCourt, TravelCheckType.TeleportTo, out _));
+            // Recall, gate and mark are refused; teleport is allowed; staff pass.
+            pm = NewPlayer(DungeonEntrance, fold);
+            Assert.Same(dungeon, pm.Region);
+            Assert.False(dungeon.CheckTravel(pm, DungeonEntrance, TravelCheckType.RecallTo, out _));
+            Assert.False(dungeon.CheckTravel(pm, DungeonEntrance, TravelCheckType.GateTo, out _));
+            Assert.False(dungeon.CheckTravel(pm, DungeonEntrance, TravelCheckType.Mark, out _));
+            Assert.False(dungeon.CheckTravel(pm, DungeonEntrance, TravelCheckType.RecallFrom, out _));
+            Assert.True(dungeon.CheckTravel(pm, DungeonEntrance, TravelCheckType.TeleportTo, out _));
+            Assert.True(dungeon.CheckTravel(pm, DungeonEntrance, TravelCheckType.TeleportFrom, out _));
             pm.AccessLevel = AccessLevel.GameMaster;
-            Assert.True(dungeonTram.CheckTravel(pm, DungeonEntrance, TravelCheckType.RecallTo, out _));
+            Assert.True(dungeon.CheckTravel(pm, DungeonEntrance, TravelCheckType.RecallTo, out _));
             pm.AccessLevel = AccessLevel.Player;
 
-            // The gas cloud: a hidden player is revealed; one idle two minutes south of the invasion rooms is thrown
-            // to one of the eight spots, poisoned; a player north of them is left alone.
-            idleNorth = NewPlayer(new Point3D(6300, 2500, 0));
-            Assert.Same(dungeonTram, idleNorth.Region);
+            // The dungeon's light, not the Fold's day.
+            int global = 0, personal = 0;
+            dungeon.AlterLightLevel(pm, ref global, ref personal);
+            Assert.Equal(LightCycle.DungeonLevel, global);
+
+            // The gas cloud: a hidden player is revealed; one idle two minutes in the dungeon proper is thrown to one of
+            // the eight spots, poisoned; one idle in the invasion rooms is left alone.
+            idleNorth = NewPlayer(new Point3D(6956, 3980, 0), fold);
+            Assert.Same(dungeon, idleNorth.Region);
             idleNorth.LastMoveTime = Core.TickCount - 130000;
 
             pm.Hidden = true;
@@ -340,55 +468,59 @@ public class BlackthornDungeonVerification
             ShardTestClock.Advance(TimeSpan.FromSeconds(5.016));
 
             Assert.False(pm.Hidden);
-            Assert.Contains(pm.Location, BlackthornDungeon.RandomLocations);
+            Assert.Contains(pm.Location, new[]
+            {
+                new Point3D(6499, 4029, 0), new Point3D(6491, 4029, 0), new Point3D(6483, 4029, 0), new Point3D(6449, 4040, 0),
+                new Point3D(6396, 4029, 0), new Point3D(6312, 3950, 0), new Point3D(6312, 3904, 0), new Point3D(6496, 3871, 0)
+            });
+            Assert.Equal(fold, pm.Map);
             Assert.Same(Poison.Lethal, pm.Poison);
             Assert.True(pm.LastMoveTime > Core.TickCount - 6000, "the throw stamps the move time");
             Assert.Equal(northBefore, idleNorth.Location);
             Assert.Null(idleNorth.Poison);
 
-            // The castle: a rider is dismounted, the mount stabled; a pet walking in is stabled; no spell casts.
-            rider = NewPlayer(new Point3D(1529, 1520, 0));
-            rider.NetState = ns;
-            ns.Mobile = rider;
+            // The castle class still holds ServUO's rules where it is registered (it is not, on this shard): kept for a
+            // later decision, so its rules are checked on a registration of its own.
+            var castle = new BlackthornCastle(Map.Trammel);
+            castle.Register();
+            try
+            {
+                rider = NewPlayer(new Point3D(1529, 1520, 0));
+                rider.NetState = ns;
+                ns.Mobile = rider;
 
-            horse = new Horse();
-            horse.MoveToWorld(rider.Location, Map.Trammel);
-            horse.SetControlMaster(rider);
-            horse.Rider = rider;
-            Assert.Same(horse, rider.Mount);
+                horse = new Horse();
+                horse.MoveToWorld(rider.Location, Map.Trammel);
+                horse.SetControlMaster(rider);
+                horse.Rider = rider;
 
-            pet = new Horse();
-            pet.MoveToWorld(rider.Location, Map.Trammel);
-            pet.SetControlMaster(rider);
+                pet = new Horse();
+                pet.MoveToWorld(rider.Location, Map.Trammel);
+                pet.SetControlMaster(rider);
 
-            rider.Location = CastleCourt;
-            Assert.Same(castle, rider.Region);
-            Assert.Null(rider.Mount);
-            Assert.Null(horse.Rider);
-            Assert.True(horse.IsStabled);
-            Assert.Same(rider, horse.StabledBy);
-            Assert.Contains(horse, rider.Stabled);
-            Assert.Equal(Map.Internal, horse.Map);
-
-            pet.Location = CastleCourt;
-            Assert.True(pet.IsStabled);
-            Assert.Contains(pet, rider.Stabled);
-
-            Assert.False(castle.OnBeginSpellCast(rider, new MagicArrowSpell(rider, null)));
-            Assert.False(castle.OnBeginSpellCast(rider, new CloseWoundsSpell(rider, null)));
-            rider.AccessLevel = AccessLevel.GameMaster;
-            Assert.True(castle.OnBeginSpellCast(rider, new MagicArrowSpell(rider, null)));
-            rider.AccessLevel = AccessLevel.Player;
+                rider.Location = CastleCourt;
+                Assert.Same(castle, rider.Region);
+                Assert.Null(rider.Mount);
+                Assert.True(horse.IsStabled);
+                pet.Location = CastleCourt;
+                Assert.True(pet.IsStabled);
+                Assert.False(castle.OnBeginSpellCast(rider, new MagicArrowSpell(rider, null)));
+                Assert.False(castle.CheckTravel(rider, CastleCourt, TravelCheckType.RecallTo, out _));
+            }
+            finally
+            {
+                castle.Unregister();
+            }
 
             // A kill in the dungeon by a player with looting rights adds fame / 2 to the tally; the roll, when it
             // hits, hands the player a Minax artifact and empties the tally.
             pm.Hidden = false;
-            pm.MoveToWorld(new Point3D(6405, 2595, 0), Map.Trammel);
-            Assert.Same(dungeonTram, pm.Region);
+            pm.MoveToWorld(new Point3D(6445, 3843, 0), fold);
+            Assert.Same(dungeon, pm.Region);
             pm.LastMoveTime = Core.TickCount;
 
             lich = new Lich();
-            lich.MoveToWorld(new Point3D(6406, 2595, 0), Map.Trammel);
+            lich.MoveToWorld(new Point3D(6446, 3843, 0), fold);
             Assert.True(lich.Fame > 0);
             var expected = lich.Fame / 2;
 
@@ -400,7 +532,7 @@ public class BlackthornDungeonVerification
             Assert.True(BlackthornData.ChanceAt(250_000) > 0.0099 && BlackthornData.ChanceAt(250_000) < 0.0101);
 
             lich2 = new Lich();
-            lich2.MoveToWorld(new Point3D(6406, 2596, 0), Map.Trammel);
+            lich2.MoveToWorld(new Point3D(6446, 3844, 0), fold);
 
             var artifact = BlackthornData.Instance.ProcessKill(lich2, pm, true);
             Assert.NotNull(artifact);
@@ -410,12 +542,15 @@ public class BlackthornDungeonVerification
             Assert.True(artifact is BaseWeapon or BaseArmor or BaseJewel or BaseHat, artifact.GetType().Name); // pinned's pool has hats, as ServUO's does
             Assert.False(BlackthornData.Instance.DungeonPoints.ContainsKey(pm));
 
-            // A kill outside the dungeon, or by a creature, tallies nothing.
-            var outside = new Lich();
-            outside.MoveToWorld(new Point3D(1000, 1000, 0), Map.Trammel);
-            Assert.Null(BlackthornData.Instance.ProcessKill(outside, pm));
-            Assert.False(BlackthornData.Instance.DungeonPoints.ContainsKey(pm));
-            outside.Delete();
+            // A kill outside the dungeon (the old area on Trammel included), or by a creature, tallies nothing.
+            foreach (var (where, map) in new[] { (new Point3D(1000, 1000, 0), Map.Trammel), (new Point3D(6405, 2595, 0), Map.Trammel) })
+            {
+                var outside = new Lich();
+                outside.MoveToWorld(where, map);
+                Assert.Null(BlackthornData.Instance.ProcessKill(outside, pm));
+                Assert.False(BlackthornData.Instance.DungeonPoints.ContainsKey(pm));
+                outside.Delete();
+            }
 
             // The points system round-trips its tally and its reward points.
             BlackthornData.Instance.DungeonPoints[pm] = 4321;

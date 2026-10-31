@@ -27,6 +27,11 @@
 // Every creature type is stock pinned ModernUO (HellHound, Skeleton, ExodusMinion, GiantSpider, Brigand,
 // GolemController, Golem, EvilMage, EvilMageLord, Lich, Dragon, Drake, GreaterDragon, FrostOoze, SnowElemental,
 // GoldenElemental, RottingCorpse, EarthElemental, GiantRat, VampireBat, Balron); AgentOfTheCrown is this port's.
+//
+// cc-P691: the table stays ServUO's (stock coordinates, both facets); Generate places what stands now. The 22 Trammel
+// dungeon rows go on the Fold, centre and bounds through BlackthornFold.Move (the dungeon proper's piece). The Trammel
+// Agent stands in the author's Blackthorn Castle by the cellar hatch (BlackthornFold.AgentSpot; ServUO's 1488,1473 is
+// the castle's moat on SoS). The Felucca rows are not placed: one dungeon, and no Felucca city spot is checked on SoS.
 
 using System;
 using System.Collections.Generic;
@@ -56,6 +61,20 @@ public static class BlackthornSpawns
         public bool IsAgent => Name == AgentSpawnerName;
 
         public Map Map => Felucca ? Map.Felucca : Map.Trammel;
+
+        /// <summary>cc-P691: whether Generate places this row (ServUO's Trammel rows only).</summary>
+        public bool Placed => !Felucca;
+
+        /// <summary>cc-P691: the map a placed row goes on: the Fold for the dungeon, Trammel for the castle's Agent.</summary>
+        public Map PlacedMap => IsAgent ? Map.Trammel : BlackthornFold.Map;
+
+        /// <summary>cc-P691: where a placed row's spawner stands.</summary>
+        public Point3D PlacedAt => IsAgent ? BlackthornFold.AgentSpot : BlackthornFold.Move(CentreX, CentreY, CentreZ);
+
+        /// <summary>cc-P691: the rectangle its spawns land in (an Agent's own tile; pinned bounds need one tile).</summary>
+        public Rectangle2D PlacedBounds => IsAgent
+            ? new Rectangle2D(PlacedAt.X, PlacedAt.Y, 1, 1)
+            : BlackthornFold.Move(new Rectangle2D(X, Y, Math.Max(1, Width), Math.Max(1, Height)));
 
         public int Capacity => Math.Min(MaxCount, Entries.Sum(e => e.MaxCount));
     }
@@ -127,8 +146,9 @@ public static class BlackthornSpawns
     public static bool AnyPresent() => World.Items.Values.OfType<Spawner>().Any(s => !s.Deleted && IsBlackthornSpawner(s));
 
     /// <summary>
-    ///     Creates the 54 spawners on their facets, tags them for [DeleteBlackthorn, and fills them, as
-    ///     [GenerateSpawners does for ModernUO's own spawn files (ImportSpawnersCommand.cs:168-177).
+    ///     Creates the placed rows' spawners (cc-P691: 22 on the Fold, the Agent in the castle), tags them for
+    ///     [DeleteBlackthorn, and fills them, as [GenerateSpawners does for ModernUO's own spawn files
+    ///     (ImportSpawnersCommand.cs:168-177).
     /// </summary>
     public static List<Spawner> Generate()
     {
@@ -136,12 +156,18 @@ public static class BlackthornSpawns
 
         foreach (var d in Definitions)
         {
+            if (!d.Placed || d.PlacedMap == null)
+            {
+                continue;
+            }
+
+            var bounds = d.PlacedBounds;
             var spawner = new Spawner(
                 d.MaxCount,
                 TimeSpan.FromSeconds(d.MinDelaySeconds),
                 TimeSpan.FromSeconds(d.MaxDelaySeconds),
                 0,
-                new Rectangle3D(d.X, d.Y, Region.MinZ, Math.Max(1, d.Width), Math.Max(1, d.Height), Region.MaxZ - Region.MinZ)
+                new Rectangle3D(bounds.X, bounds.Y, Region.MinZ, bounds.Width, bounds.Height, Region.MaxZ - Region.MinZ)
             )
             {
                 Name = d.Name,
@@ -155,7 +181,7 @@ public static class BlackthornSpawns
             }
 
             WeakEntityCollection.Add(GenerateBlackthornDungeon.CollectionKey, spawner);
-            spawner.MoveToWorld(new Point3D(d.CentreX, d.CentreY, d.CentreZ), d.Map);
+            spawner.MoveToWorld(d.PlacedAt, d.PlacedMap);
             spawner.Respawn();
 
             list.Add(spawner);
