@@ -434,7 +434,7 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         Assert.All(gates, g => Assert.True(g.Open));
 
         // A pest never steps outside the field fence.
-        Assert.Equal(new Rectangle2D(6696, 3968, 17, 15), TutorialFarm.PestField);
+        Assert.Equal(new Rectangle2D(6678, 3968, 17, 15), TutorialFarm.PestField); // cc-P741: 18 west of P720's
         rat.MoveToWorld(new Point3D(TutorialFarm.PestField.End.X - 1, TutorialFarm.PestSpot.Y, 0), p.Pm.Map);
         Assert.False(rat.CheckMovement(Direction.East, out _));
     }
