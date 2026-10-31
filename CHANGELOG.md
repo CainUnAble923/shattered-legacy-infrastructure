@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.30.3
+
+### Changed
+- Test shard: waking on the Wakening Isle's beach is easier to see. The dusk is lighter, so you can see yourself lying on the sand, and "You lie on the wet sand..." shows over your head. When you move, your character gets up slowly, then the light comes up, and only then do the patch notes and other windows open.
+- Test shard: in the healing lesson, if you have no bandages, Wren tells you where to get more. Double-click Wren for more, or pick up bandages from the table beside Pip in the farmhouse.
+
 ## 2026.10.30
 
 ### Staff

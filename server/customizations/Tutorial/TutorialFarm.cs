@@ -80,6 +80,14 @@ using Server.Network;
 // struck by the trainee. An old record keeps its progress: pests done and the pet claimed with its commands is step 4,
 // and the old heal key counts for core.healing (ClusterFTutorial.IsDone).
 
+// cc-P740 (Chase 10-30: "might need a hint of speech from Wren to talk again to get bandages.... possibly have bandages on
+// table in farm to pick up and use on the healing npc"): both. A small stack of bandages lies on the farmhouse table beside
+// Pip (TutorialTableBandages): double-click it, or try to pick it up, and a trainee on the healing lesson with none in
+// their backpack gets TableBandagesGiven of their own (it stays on the table for the next; TableTakes a character). Wren,
+// double-clicked during the healing lesson, hands bandages again (the farm's GiveBandages) or says where they are, and
+// while the trainee has none she says so over her head (HintBandages, every 30 s, HintTimes in a row). Either way a bandage
+// on Pip finishes the lesson. Notes: shard-migration notes/cc-P740-isle-wake-visible.md.
+
 namespace Server.Tutorial
 {
     public static class TutorialFarm
@@ -142,6 +150,19 @@ namespace Server.Tutorial
         public const double IsleSelfBandageSeconds = 4.0;
         // cc-P718 item 9: the one line on making more, said after the bandages are handed over.
         public const string MakeBandagesLine = "Later you can make your own bandages: double-click a pair of scissors, then click a pile of cloth to cut it into bandages.";
+
+        // cc-P740 item 4: more bandages for the healing lesson, from Wren or from the farmhouse table.
+        public const int TableBandagesGiven = 5;
+        public const int TableTakes = 5;
+        public const int HintTimes = 3;
+        public const string WrenBandageHintLine = "No bandages? Double-click me for more, or take some from the table beside Pip in the farmhouse.";
+        public const string WrenMoreBandagesLine = "Here are more bandages. Pip is on the bench in the farmhouse: double-click a bandage, then click him.";
+        public const string WrenHasBandagesLine = "You have bandages in your backpack. Double-click one, then click Pip on the bench in the farmhouse.";
+        public const string WrenTableLine = "I have none left to spare, but there are bandages on the table beside Pip in the farmhouse. Double-click them.";
+        public const string TableTakenLine = "You take some bandages from the table. Double-click one, then click Pip.";
+        public const string TableHasSomeLine = "You already have bandages in your backpack. Double-click one, then click Pip.";
+        public const string TableNotYoursLine = "These bandages are for the healing lesson. They stay on the table.";
+        public const string TableNoMoreLine = "You have taken all the bandages you need from this table.";
 
         // cc-P718 item 10: the pet commands, the first part of step 2.
         public const string FollowKey = "farm.cmd.follow";
@@ -375,11 +396,121 @@ namespace Server.Tutorial
                     break;
                 default:
                     CheckDone(pm);
-                    hand.SayTo(pm, DoneLine);
+                    hand.SayTo(pm, HealingOn(pm) ? WrenBandages(pm) : DoneLine); // cc-P740 item 4
                     break;
             }
 
             return step;
+        }
+
+        // -- cc-P740 item 4: bandages again, from Wren or the farmhouse table --
+
+        // How many times each character took from the table, and how many hints Wren gave in a row (not saved).
+        private static readonly Dictionary<Serial, int> _tableTaken = new();
+        private static readonly Dictionary<Serial, int> _hinted = new();
+
+        public static bool HasBandages(PlayerMobile pm) => pm.Backpack?.FindItemByType<Bandage>() != null;
+
+        /// <summary>Wren, double-clicked during the healing lesson: bandages again (or where to find them), and Pip.</summary>
+        public static string WrenBandages(PlayerMobile pm)
+        {
+            var gift = GiveBandages(pm);
+            if (gift is BandageGift.Given or BandageGift.HasSome)
+            {
+                FindPip(pm.Map)?.PointTo(pm);
+            }
+
+            return gift switch
+            {
+                BandageGift.Given => WrenMoreBandagesLine,
+                BandageGift.HasSome => WrenHasBandagesLine,
+                BandageGift.NoRoom => NoRoomForBandagesLine,
+                _ => WrenTableLine
+            };
+        }
+
+        /// <summary>
+        /// The healing lesson's tick (every 30 s): while the trainee has no bandages, Wren says where to get them, over her
+        /// head (HintTimes in a row; again once they had some and ran out). True when she said it.
+        /// </summary>
+        public static bool HintBandages(PlayerMobile pm)
+        {
+            if (!HealingOn(pm) || HasBandages(pm))
+            {
+                _hinted.Remove(pm.Serial);
+                return false;
+            }
+
+            var said = _hinted.GetValueOrDefault(pm.Serial);
+            if (said >= HintTimes || TutorialFarmhand.Find(TutorialWorld.MapOf(pm)) is not { } wren)
+            {
+                return false;
+            }
+
+            _hinted[pm.Serial] = said + 1;
+            wren.SayTo(pm, WrenBandageHintLine);
+            return true;
+        }
+
+        /// <summary>
+        /// The farmhouse table's bandages, double-clicked or lifted: a stack of the trainee's own when the healing lesson is
+        /// theirs and their backpack has none (TableTakes a character). The table's stack stays. True when given.
+        /// </summary>
+        public static bool TakeTableBandages(PlayerMobile pm)
+        {
+            if (!HealingOn(pm))
+            {
+                pm.SendMessage(0x3B2, TableNotYoursLine);
+                return false;
+            }
+
+            if (HasBandages(pm))
+            {
+                pm.SendMessage(0x3B2, TableHasSomeLine);
+                return false;
+            }
+
+            var taken = _tableTaken.GetValueOrDefault(pm.Serial);
+            if (taken >= TableTakes)
+            {
+                pm.SendMessage(0x3B2, TableNoMoreLine);
+                return false;
+            }
+
+            var stack = new Bandage(TableBandagesGiven);
+            if (!pm.PlaceInBackpack(stack))
+            {
+                stack.Delete();
+                pm.SendMessage(0x3B2, NoRoomForBandagesLine);
+                return false;
+            }
+
+            _tableTaken[pm.Serial] = taken + 1;
+            _hinted.Remove(pm.Serial);
+            pm.SendMessage(0x3B2, TableTakenLine);
+            FindPip(pm.Map)?.PointTo(pm);
+            return true;
+        }
+
+        /// <summary>cc-P740: the farmhouse table (TutorialIsleFarmLayout's 0x0B90 at 6690,3975, Z 7, 6 high), beside Pip.</summary>
+        public static readonly Point3D TableBandagesSpot = new(6690, 3975, 13);
+
+        public static TutorialTableBandages? FindTableBandages(Map? map)
+        {
+            if (map == null)
+            {
+                return null;
+            }
+
+            foreach (var item in map.GetItemsInRange<TutorialTableBandages>(TableBandagesSpot, 2))
+            {
+                if (!item.Deleted)
+                {
+                    return item;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>Step 1: the pet. Null when refused (not on this step, not a farm line, or no follower slot).</summary>
@@ -1137,6 +1268,12 @@ namespace Server.Tutorial
                 }
             }
 
+            // cc-P740 item 4: the bandages on the farmhouse table beside Pip (a prop, like Pip's bench: not counted).
+            if (FindTableBandages(map) == null && !dryRun)
+            {
+                new TutorialTableBandages().MoveToWorld(TableBandagesSpot, map);
+            }
+
             if (FindPip(map) is { } pip)
             {
                 present++;
@@ -1711,6 +1848,59 @@ namespace Server.Mobiles
 
         public override void HandleInvalidTransfer(Mobile from) =>
             from.SendMessage(0x3B2, "Your farmhand's pitchfork is yours alone. Keep it in your backpack or hold it.");
+    }
+
+    /// <summary>
+    /// cc-P740 item 4: the bandages on the farmhouse table beside Pip. They never leave the table: double-clicking them, or
+    /// trying to pick them up, gives a trainee on the healing lesson a stack of their own (TutorialFarm.TakeTableBandages).
+    /// </summary>
+    [SerializationGenerator(0, false)]
+    public partial class TutorialTableBandages : Item
+    {
+        [Constructible]
+        public TutorialTableBandages() : base(0x0E21)
+        {
+            Name = "bandages";
+            Movable = false;
+        }
+
+        public override bool Decays => false;
+
+        public override void OnDoubleClick(Mobile from)
+        {
+            if (from is not PlayerMobile pm)
+            {
+                return;
+            }
+
+            if (!pm.InRange(GetWorldLocation(), 2))
+            {
+                pm.SendMessage(0x3B2, "Move closer to the table, then double-click the bandages again.");
+                return;
+            }
+
+            TutorialFarm.TakeTableBandages(pm);
+        }
+
+        // A drag reaches CheckLift (pinned Mobile.Lift asks VerifyMove first), which hands the trainee their own stack and
+        // keeps this one on the table. Staff move it as usual.
+        public override bool VerifyMove(Mobile from) => from is PlayerMobile || base.VerifyMove(from);
+
+        public override bool CheckLift(Mobile from, Item item, ref LRReason reject)
+        {
+            if (from.AccessLevel >= AccessLevel.GameMaster && Movable)
+            {
+                return base.CheckLift(from, item, ref reject);
+            }
+
+            if (from is PlayerMobile pm && from.AccessLevel < AccessLevel.GameMaster)
+            {
+                TutorialFarm.TakeTableBandages(pm);
+            }
+
+            reject = LRReason.Inspecific;
+            return false;
+        }
     }
 
     /// <summary>

@@ -103,7 +103,7 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         public void Dispose()
         {
             TutorialCoreTrials.Cancel(Pm);
-            TutorialWake.Stand(Pm);
+            TutorialWake.Stand(Pm, true);
             ClusterFFanfare.FlushAll();
             foreach (var e in Litter)
             {
@@ -187,9 +187,13 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         TutorialWake.Advance(p.Pm, 20);
         Assert.False(ClusterFAchievementSystem.HasEarned(p.Account, "exploration.citizen")); // still down
 
-        // Up: the first lines, then the held windows a moment later.
+        // Up: the first lines, then the held windows a moment later. cc-P740: after the slow get-up and the dawn.
         Assert.False(p.Pm.Move(Direction.North));
+        Assert.True(TutorialWake.IsRising(p.Pm));
+        TutorialWake.Advance(p.Pm, TutorialWake.GetUpSeconds);
         Assert.False(TutorialWake.IsLying(p.Pm));
+        Assert.False(ClusterFAchievementSystem.HasEarned(p.Account, "exploration.citizen"));
+        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialWake.DawnLight.Length + 0.5));
         Assert.False(ClusterFAchievementSystem.HasEarned(p.Account, "exploration.citizen"));
         ShardTestClock.Advance(TutorialWake.HeldDelay + TimeSpan.FromSeconds(1));
         Assert.True(ClusterFAchievementSystem.HasEarned(p.Account, "exploration.citizen"));
@@ -228,6 +232,10 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         var at = p.Pm.Location;
         Assert.False(p.Pm.Move(Direction.North));
         Assert.Equal(at, p.Pm.Location);
+        Assert.True(TutorialWake.IsRising(p.Pm)); // cc-P740: getting up, slowly
+        Assert.False(p.Pm.Move(Direction.North)); // moves refused while it plays
+        Assert.Equal(at, p.Pm.Location);
+        TutorialWake.Advance(p.Pm, TutorialWake.GetUpSeconds);
         Assert.False(TutorialWake.IsLying(p.Pm));
         Assert.False(p.Pm.Frozen);
         Assert.Equal(TutorialWake.DawnLight[0], TutorialWake.LightOf(p.Pm)); // cc-P732: the dawn after standing
@@ -241,6 +249,8 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         TutorialWake.Advance(q.Pm, TutorialWake.SafetySeconds - 1);
         Assert.True(TutorialWake.IsLying(q.Pm));
         TutorialWake.Advance(q.Pm, 1);
+        Assert.True(TutorialWake.IsRising(q.Pm));
+        TutorialWake.Advance(q.Pm, TutorialWake.GetUpSeconds);
         Assert.False(TutorialWake.IsLying(q.Pm));
         Assert.False(q.Pm.Frozen);
 
@@ -277,10 +287,71 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         var facing = p.Pm.Direction & Direction.Mask;
         var turn = (Direction)(((int)facing + 2) & 7);
         Assert.False(p.Pm.Move(turn));
-        Assert.False(TutorialWake.IsLying(p.Pm));
+        Assert.True(TutorialWake.IsRising(p.Pm));
         Assert.Equal(at, p.Pm.Location);
         Assert.Equal(facing, p.Pm.Direction & Direction.Mask);
+        TutorialWake.Advance(p.Pm, TutorialWake.GetUpSeconds);
+        Assert.False(TutorialWake.IsLying(p.Pm));
         Assert.Equal(-1, TutorialWake.PosesSent(p.Pm));
+    }
+
+    // cc-P740 (Chase 10-30, a new character: "its dark, and you can not tell you are laying down.. more time to see player
+    // get up"): a lighter dusk; "You lie on the wet sand..." over the head a second in and "Move to get up." sooner and
+    // again; the first move plays a slow get-up (moves refused, still dark, nothing shown), then the dawn, and only then
+    // the first lines and, HeldDelay later, the held windows. Notes: shard-migration notes/cc-P740-isle-wake-visible.md.
+    [Fact]
+    public void TheDuskShowsThemLyingAndTheGetUpPlaysBeforeTheLightAndTheWindows()
+    {
+        Assert.InRange(TutorialWake.DarkLight, 12, 18); // a dusk (P732's 24 hid the trainee in TazUO)
+        Assert.True(TutorialWake.DawnLight[0] < TutorialWake.DarkLight);
+        Assert.InRange(5 * 80 * (TutorialWake.GetUpDelay + 1), 2000, 3000); // TazUO: five frames up, 2 to 3 s
+        // The dawn waits for it, sent again GetUpResend later (ClassicUO): the rise lasts at least GetUpSeconds - 1 s.
+        Assert.True((TutorialWake.GetUpSeconds - 1) * 1000 >= TutorialWake.GetUpResend.TotalMilliseconds + 5 * 80 * (TutorialWake.GetUpDelay + 1));
+
+        using var p = new Player();
+        TutorialStart.Record(p.Pm, TutorialStart.Choice.Isle);
+        ClusterFAchievementSystem.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
+        Assert.True(TutorialWake.IsLying(p.Pm));
+        Assert.Equal(TutorialWake.DarkLight, TutorialWake.LightOf(p.Pm));
+        Assert.Empty(TutorialWake.OverheadSaid(p.Pm));
+
+        TutorialWake.Advance(p.Pm, 1);
+        Assert.Equal(new[] { TutorialWake.LieOverheadLine }, TutorialWake.OverheadSaid(p.Pm));
+        TutorialWake.Advance(p.Pm, TutorialWake.HintSeconds - 1);
+        Assert.Equal(new[] { TutorialWake.LieOverheadLine, TutorialWake.MoveHintLine }, TutorialWake.OverheadSaid(p.Pm));
+        TutorialWake.Advance(p.Pm, TutorialWake.HintEverySeconds);
+        Assert.Equal(3, TutorialWake.OverheadSaid(p.Pm).Count); // the hint again
+        Assert.Equal(TutorialWake.MoveHintLine, TutorialWake.OverheadSaid(p.Pm)[2]);
+
+        // The first move: the slow get-up. Moves are refused while it plays; still dusk; nothing comes yet.
+        var at = p.Pm.Location;
+        Assert.True(TutorialWake.OnMoveRequest(p.Pm));
+        for (var s = 0; s < TutorialWake.GetUpSeconds; s++)
+        {
+            Assert.True(TutorialWake.IsRising(p.Pm));
+            Assert.True(TutorialWake.OnMoveRequest(p.Pm));
+            Assert.Equal(at, p.Pm.Location);
+            Assert.Equal(TutorialWake.DarkLight, TutorialWake.LightOf(p.Pm));
+            Assert.True(TutorialWake.IsHolding(p.Pm));
+            TutorialWake.Advance(p.Pm, 1);
+        }
+
+        // Then the dawn; the windows still wait.
+        Assert.False(TutorialWake.IsLying(p.Pm));
+        Assert.Equal(TutorialWake.DawnLight[0], TutorialWake.LightOf(p.Pm));
+        Assert.True(TutorialWake.IsHolding(p.Pm));
+        Assert.True(TutorialWake.HeldCount(p.Pm) >= 1);
+        Assert.Null(p.Pm.FindGump<AchievementEarnedGump>());
+        Assert.False(TutorialWake.OnMoveRequest(p.Pm)); // they can walk now
+
+        // The light back, then (HeldDelay later) the windows.
+        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialWake.DawnLight.Length + 0.5));
+        Assert.Null(TutorialWake.LightOf(p.Pm));
+        Assert.Null(p.Pm.FindGump<AchievementEarnedGump>());
+        ShardTestClock.Advance(TutorialWake.HeldDelay + TimeSpan.FromSeconds(1));
+        Assert.NotNull(p.Pm.FindGump<AchievementEarnedGump>());
+        Assert.Equal(0, TutorialWake.HeldCount(p.Pm));
     }
 
     // ---------------------------------------------------------------- 3
