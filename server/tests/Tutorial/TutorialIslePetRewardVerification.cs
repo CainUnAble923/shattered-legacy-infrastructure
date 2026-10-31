@@ -88,7 +88,7 @@ public class TutorialIslePetRewardVerification : IDisposable
         public void Dispose()
         {
             TutorialCoreTrials.Cancel(Pm);
-            TutorialWake.Stand(Pm);
+            TutorialWake.Stand(Pm, true);
             foreach (var e in Litter)
             {
                 e.Delete();
