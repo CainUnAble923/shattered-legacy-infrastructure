@@ -189,8 +189,8 @@ public class TutorialIsleWalkFixes2Verification : IDisposable
     [Fact]
     public void TheFarmhouseIsTheCottageAtOneHeightFurnishedAndAnOldFarmIsLaidAgain()
     {
-        // The cottage: walls x 6687-6693, y 3972-3978, its door in the south wall.
-        var house = TutorialIsleFarmLayout.Pieces.Where(p => p.X is >= 6687 and <= 6693 && p.Y is >= 3972 and <= 3978).ToArray();
+        // The cottage: walls x 6699-6705, y 3972-3978 (cc-P741: east of the field), its door in the south wall.
+        var house = TutorialIsleFarmLayout.Pieces.Where(p => p.X is >= 6699 and <= 6705 && p.Y is >= 3972 and <= 3978).ToArray();
         int[] foundation = [0x0063, 0x0064, 0x0065];
         int[] walls = [0x00A6, 0x00A7, 0x00A8, 0x00A9, 0x00AB, 0x00AD, 0x00B9];
         int[] thatch = [0x05A4, 0x05A5, 0x05A6];
@@ -199,7 +199,7 @@ public class TutorialIsleWalkFixes2Verification : IDisposable
         Assert.All(house.Where(p => walls.Contains(p.Id)), p => Assert.Equal(7, p.Z));
         Assert.All(house.Where(p => p.Id is >= 0x04A9 and <= 0x04B4), p => Assert.Equal(7, p.Z));
         Assert.All(TutorialIsleFarmLayout.Pieces.Where(p => thatch.Contains(p.Id)), p => Assert.True(p.Z >= 27, $"thatch at {p.Z}"));
-        Assert.Equal(new Point3D(6690, 3978, 7), TutorialIsleFarmLayout.DoorSpot);
+        Assert.Equal(new Point3D(6702, 3978, 7), TutorialIsleFarmLayout.DoorSpot);
         // nothing stray: no loose chimney, no chicken coop on the roof
         Assert.DoesNotContain(TutorialIsleFarmLayout.Pieces, p => p.Id is 0x08D5 or 0x4514);
         // furnished: a hearth, a bed, a table; the house sign is named
@@ -216,13 +216,16 @@ public class TutorialIsleWalkFixes2Verification : IDisposable
         piece.Offset = new Point3D(piece.Offset.X, piece.Offset.Y, piece.Offset.Z + 9);
         old.MoveToWorld(TutorialIsleFarmLayout.Anchor, isle);
         var oldDoor = new DarkWoodDoor(DoorFacing.SouthCW);
-        oldDoor.MoveToWorld(TutorialIsleFarmLayout.OldDoorSpot, isle);
+        oldDoor.MoveToWorld(TutorialIsleFarmLayout.OldDoorSpots[0], isle);
+        var p720Door = new DarkWoodDoor(DoorFacing.WestCW); // cc-P741: the cottage's door before it moved east
+        p720Door.MoveToWorld(TutorialIsleFarmLayout.OldDoorSpots[1], isle);
         Assert.False(TutorialFarm.IsCurrent(old));
 
         var r = TutorialFarm.Seed(isle, false);
         Assert.Equal(1, r.Addons);
         Assert.True(old.Deleted);
         Assert.True(oldDoor.Deleted);
+        Assert.True(p720Door.Deleted);
         var laid = TutorialFarm.FindAddon(isle)!;
         Assert.True(TutorialFarm.IsCurrent(laid));
         Assert.Contains(laid.Components, c => c.ItemID == TutorialFarm.HouseSignId && c.Name == TutorialFarm.HouseSignName);
@@ -241,8 +244,8 @@ public class TutorialIsleWalkFixes2Verification : IDisposable
         int[] fence = [0x0835, 0x0836, 0x0837];
         var tiles = TutorialIsleFarmLayout.Pieces.Where(p => fence.Contains(p.Id)).Select(p => (p.X, p.Y)).ToHashSet();
         Assert.All(TutorialIsleFarmLayout.Pieces.Where(p => fence.Contains(p.Id)), p => Assert.Equal(0, p.Z));
-        var field = Ring(6695, 3967, 6713, 3983);
-        var pen = Ring(6706, 3967, 6713, 3973);
+        var field = Ring(6677, 3967, 6695, 3983); // cc-P741: 18 west of P720's
+        var pen = Ring(6688, 3967, 6695, 3973);
         var gate = (TutorialFarm.FieldGateSpots[0].X, TutorialFarm.FieldGateSpots[0].Y);
         var fencePiece = (TutorialFarm.FieldFenceSpot.X, TutorialFarm.FieldFenceSpot.Y);
         Assert.Contains(gate, field);
@@ -278,7 +281,10 @@ public class TutorialIsleWalkFixes2Verification : IDisposable
             Assert.Equal(TutorialCorePlacement.SignSpot(key), sign.Location);
             var at = TutorialCorePlacement.MarkerSpot(key);
             Assert.NotEqual((at.X, at.Y), (sign.X, sign.Y)); // beside the stop, never on it
-            Assert.True(Math.Max(Math.Abs(at.X - sign.X), Math.Abs(at.Y - sign.Y)) <= 2);
+            // cc-P741: north of its path, which puts a sign across the road from a stop south of it (the yard's, 6
+            // north), and the travel lesson's where the road meets the dock (TutorialCorePlacement.DockRoadEnd)
+            var near = key == "core.travel" ? TutorialCorePlacement.DockRoadEnd : new Point2D(at.X, at.Y);
+            Assert.True(Math.Max(Math.Abs(near.X - sign.X), Math.Abs(near.Y - sign.Y)) <= 6, $"{key}'s sign at {sign.Location}");
         }
 
         // the rune became the farm's sign: moved, renamed, one per lesson; no rune is left anywhere on the isle

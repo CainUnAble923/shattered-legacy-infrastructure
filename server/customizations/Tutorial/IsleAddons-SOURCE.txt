@@ -9,6 +9,11 @@ it is not reposted. All four use stock Ultima Online art only: no client change.
 - Shipwreck (the west-facing one) by Celestial: "Shipwrecks! East, West and North facing".
   https://www.servuo.dev/archive/shipwrecks-east-west-and-north-facing.1123/ (folder celestial-shipwrecks)
   Ported: WakeningIsleShipwreckAddon, 20 pieces from ShipwreckWest_Addon.cs.
+  cc-P741 (2026-10-30, Chase: "shipwreck may need orientation and both ship halves"): Celestial's West wreck is one
+  half of a ship. WakeningIsleShipwreckAddon is now OSI's own whole wreck instead: the composition OSI lays on Malas
+  (1693-1708, 1635-1640; both halves of the stock ShipwreckBow art, its driftwood, waves and seaweed), read from the
+  stock map by shard-migration notes/cc-P741-tools/gen_wreck.py. None of Celestial's script is in it now; Celestial is
+  still credited for the wreck the isle had from P724 to P741, and for choosing the art.
 
 - Lighthouse by Milva: "New Lighthouse".
   https://www.servuo.dev/archive/new-lighthouse.157/ (folder new-lighthouse)

@@ -187,21 +187,35 @@ namespace Server.Tutorial
 
         /// <summary>
         /// cc-P718 item 7: inside the field fence (P276's x 3381-3399, y 2603-2619, moved to the isle), where the pests stay.
-        /// End points exclusive (Rectangle2D): x 6696-6712, y 3968-3982.
+        /// End points exclusive (Rectangle2D): x 6678-6694, y 3968-3982 (cc-P741: 18 west of P720's).
         /// </summary>
         public static readonly Rectangle2D PestField = new(OnIsle(new Point2D(3382, 2604)), OnIsle(new Point2D(3399, 2619)));
 
         /// <summary>
-        /// cc-P718: the field's gate, in the two-tile gap of its east fence (6713, 3978-3979; the layout leaves it open).
+        /// cc-P718: the field's gate, in the two-tile gap of its east fence (6695, 3978-3979 since cc-P741; the layout leaves
+        /// it open).
         /// Every wooden gate's art is impassable open or shut, and pinned swings a gate in a north-south fence east by one
         /// tile (BaseDoor offsets), so two halves would stand on both tiles outside the gap (Wren's and the one below it)
         /// and shut the field: the P718 bot run could not get in. So one gate, on the gap's south tile, swinging north-east
         /// onto Wren's own tile (NorthCCW, offset +1,-1), and a fence piece closing the gap's north tile. A player walks in
         /// from the tile below Wren.
         /// </summary>
-        public static readonly Point2D[] FieldGateSpots = [new(6713, 3979)];
+        public static readonly Point2D[] FieldGateSpots = [new(6695, 3979)];
 
-        public static readonly Point2D FieldFenceSpot = new(6713, 3978);
+        public static readonly Point2D FieldFenceSpot = new(6695, 3978);
+
+        /// <summary>
+        /// cc-P741 (Chase 10-30: "farm house should be east of farm and farm shifts west so no doubling back"): the field
+        /// moved 18 tiles west and the farmhouse 12 east. These are where their pieces stood before (P720/P726), which the
+        /// seeder clears from a world laid then: the gate and the fence piece by it, Pip's bench and blood, the pest and
+        /// pen spawners (with what they spawned).
+        /// </summary>
+        public const int FieldMovedX = -18;
+        public const int HouseMovedX = 12;
+        public static readonly Point2D OldFieldGateSpot = new(6713, 3979);
+        public static readonly Point2D OldFieldFenceSpot = new(6713, 3978);
+        public static readonly Point2D OldPestSpot = new(PestSpot.X - FieldMovedX, PestSpot.Y);
+        public static readonly Point2D OldPenSpot = new(PenSpot.X - FieldMovedX, PenSpot.Y);
         public const int FieldFenceId = 0x0837; // the layout's own wooden fence, north-south
         // cc-P707: the pests die to the pet before they bite, so nobody is hurt and a bandage only says "That being is not
         // damaged!". Wren gives an unhurt trainee a scratch to practise on.
@@ -492,8 +506,14 @@ namespace Server.Tutorial
             return true;
         }
 
-        /// <summary>cc-P740: the farmhouse table (TutorialIsleFarmLayout's 0x0B90 at 6690,3975, Z 7, 6 high), beside Pip.</summary>
-        public static readonly Point3D TableBandagesSpot = new(6690, 3975, 13);
+        /// <summary>
+        /// cc-P740: the farmhouse table (TutorialIsleFarmLayout's 0x0B90 at 6702,3975, Z 7, 6 high), beside Pip. cc-P746:
+        /// 12 east of P740's spot, with the farmhouse (cc-P741); MoveFromOldLayout carries a table laid there across.
+        /// </summary>
+        public static readonly Point3D TableBandagesSpot = new(6702, 3975, 13);
+
+        /// <summary>cc-P746: where cc-P740 laid the table, on the farmhouse table before the farmhouse moved (cc-P741).</summary>
+        public static readonly Point3D OldTableBandagesSpot = new(6690, 3975, 13);
 
         public static TutorialTableBandages? FindTableBandages(Map? map)
         {
@@ -869,7 +889,7 @@ namespace Server.Tutorial
             }
 
             // cc-P726: on his bench in the farmhouse, or (a world seeded before) by the barrel at the gate.
-            foreach (var at in new[] { PipBench, TutorialWorld.Ground(map, OldPipSpot) })
+            foreach (var at in new[] { PipBench, OldPipBench, TutorialWorld.Ground(map, OldPipSpot) })
             {
                 foreach (var m in map.GetMobilesInRange(at, 3))
                 {
@@ -888,21 +908,26 @@ namespace Server.Tutorial
         /// between the bed and the box, on the floor boards (Z 7, TutorialIsleFarmLayout), blood on the floor around him.
         /// The client draws a person on a bench tile seated.
         /// </summary>
-        public static readonly Point2D PipSpot = new(6692, 3975);
-        public static readonly Point3D PipBench = new(6692, 3975, 7);
+        public static readonly Point2D PipSpot = new(6704, 3975);
+        public static readonly Point3D PipBench = new(6704, 3975, 7);
         public static readonly Point2D OldPipSpot = new(6715, 3981); // cc-P721's, by the barrel south of the gate
+        public static readonly Point3D OldPipBench = new(6692, 3975, 7); // cc-P726's, before the farmhouse moved (cc-P741)
 
         public const int BenchId = 0x0B2D; // "wooden bench", the north-south piece along the east wall
 
         /// <summary>The bench's two tiles and the blood decals (stock "blood" art 0x122A-0x122E) on the floor beside it.</summary>
         public static readonly (int Id, Point3D At, string Name)[] PipProps =
         [
-            (BenchId, new Point3D(6692, 3975, 7), "wooden bench"),
-            (BenchId, new Point3D(6692, 3976, 7), "wooden bench"),
-            (0x122A, new Point3D(6691, 3975, 7), "blood"),
-            (0x122D, new Point3D(6691, 3976, 7), "blood"),
-            (0x122C, new Point3D(6691, 3974, 7), "blood")
+            (BenchId, new Point3D(6704, 3975, 7), "wooden bench"),
+            (BenchId, new Point3D(6704, 3976, 7), "wooden bench"),
+            (0x122A, new Point3D(6703, 3975, 7), "blood"),
+            (0x122D, new Point3D(6703, 3976, 7), "blood"),
+            (0x122C, new Point3D(6703, 3974, 7), "blood")
         ];
+
+        /// <summary>cc-P741: Pip's props where they stood before the farmhouse moved (cc-P726's), removed by the seeder.</summary>
+        public static readonly (int Id, Point3D At, string Name)[] OldPipProps =
+            PipProps.Select(p => (p.Id, new Point3D(p.At.X - HouseMovedX, p.At.Y, p.At.Z), p.Name)).ToArray();
 
         /// <summary>cc-P721: Pip may be bandaged; every other beneficial act is <paramref name="inner"/>'s (pinned's) to judge.</summary>
         public static bool AllowBeneficial(Mobile from, Mobile target, AllowBeneficialHandler? inner) =>
@@ -1210,13 +1235,17 @@ namespace Server.Tutorial
 
             int addons = 0, doors = 0, hands = 0, spawners = 0, present = 0;
 
+            // cc-P741: a farm laid before the field and the farmhouse swapped sides: its gate, fence piece, Pip's props and
+            // spawners go, and Wren, Tobin and Pip walk to their new spots (the farm addon itself is relaid just below)
+            if (!dryRun) { MoveFromOldLayout(map); }
+
             // cc-P720: a farm laid with an older layout (P663's hillside farmhouse) is taken up, with its door, and laid again.
             if (FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor) is { } old && !IsCurrent(old))
             {
                 if (!dryRun)
                 {
                     old.Delete();
-                    FindDoor(map, TutorialIsleFarmLayout.OldDoorSpot)?.Delete();
+                    foreach (var spot in TutorialIsleFarmLayout.OldDoorSpots) { FindDoor(map, spot)?.Delete(); }
                 }
 
                 addons++;
@@ -1311,6 +1340,89 @@ namespace Server.Tutorial
             var verb = dryRun ? "would place" : "placed";
             return new SeedResult(false, addons, doors, hands, spawners, present,
                 $"Tutorial farm on the isle{(dryRun ? " (dry run)" : "")}: {verb} {addons} farm addon, {doors} door, {hands} Farmhand, {spawners} spawners; already there {present}.");
+        }
+
+        /// <summary>
+        /// cc-P741: clears what a farm laid before the move left where the field and the farmhouse used to be, and walks the
+        /// farm's people to their new spots. Idempotent: on a world laid since, it finds nothing. Returns how many things it
+        /// removed or moved.
+        /// </summary>
+        public static int MoveFromOldLayout(Map map)
+        {
+            var gone = new List<Item>();
+            if (FindDoor(map, TutorialWorld.Ground(map, OldFieldGateSpot)) is TutorialPestGate oldGate) { gone.Add(oldGate); }
+            foreach (var item in map.GetItemsInRange<Static>(TutorialWorld.Ground(map, OldFieldFenceSpot), 0))
+            {
+                if (!item.Deleted && item.ItemID == FieldFenceId) { gone.Add(item); }
+            }
+
+            foreach (var (id, at, name) in OldPipProps)
+            {
+                foreach (var i in map.GetItemsInRange<Static>(at, 0))
+                {
+                    if (!i.Deleted && i.ItemID == id && i.Z == at.Z && i.Name == name) { gone.Add(i); }
+                }
+            }
+
+            foreach (var (spot, now, types) in new[] { (OldPestSpot, PestSpot, PestTypes), (OldPenSpot, PenSpot, PenTypes) })
+            {
+                if (FindSpawner(map, spot, types[0]) is { } s && FindSpawner(map, now, types[0]) != s)
+                {
+                    gone.Add(s); // BaseSpawner.OnDelete removes what it spawned
+                }
+            }
+
+            foreach (var i in gone) { i.Delete(); }
+
+            var moved = 0;
+
+            // cc-P746: P740's bandages on the old farmhouse table go to the new one (or go, when one is there already).
+            var oldTables = new List<TutorialTableBandages>();
+            foreach (var t in map.GetItemsInRange<TutorialTableBandages>(OldTableBandagesSpot, 0))
+            {
+                if (!t.Deleted && t.Location == OldTableBandagesSpot) { oldTables.Add(t); }
+            }
+
+            foreach (var t in oldTables)
+            {
+                if (FindTableBandages(map) == null) { t.MoveToWorld(TableBandagesSpot, map); moved++; }
+                else { t.Delete(); moved++; }
+            }
+            foreach (var (m, spot) in new (Mobile? M, Point2D Spot)[]
+                     {
+                         (FindNear<TutorialFarmhand>(map, FarmhandSpot), FarmhandSpot),
+                         (FindNear<TutorialVeterinarian>(map, FarmVetSpot), FarmVetSpot)
+                     })
+            {
+                if (m != null && (m.X != spot.X || m.Y != spot.Y))
+                {
+                    var at = TutorialWorld.Ground(map, spot);
+                    if (m is BaseCreature bc) { bc.Home = at; }
+                    m.MoveToWorld(at, map);
+                    moved++;
+                }
+            }
+
+            if (FindPip(map) is { } pip && pip.Location != PipBench)
+            {
+                pip.Home = PipBench;
+                pip.Direction = Direction.West;
+                pip.MoveToWorld(PipBench, map);
+                moved++;
+            }
+
+            return gone.Count + moved;
+        }
+
+        /// <summary>The first <typeparamref name="T"/> within 30 tiles of <paramref name="spot"/> (the whole farm), or null.</summary>
+        private static T? FindNear<T>(Map map, Point2D spot) where T : Mobile
+        {
+            foreach (var m in map.GetMobilesInRange(new Point3D(spot.X, spot.Y, 0), 30))
+            {
+                if (m is T t && !t.Deleted) { return t; }
+            }
+
+            return null;
         }
 
         /// <summary>New Haven's farm props for the wing trials: the farm addon, its door and the pen (no Wren, no pests).</summary>

@@ -34,6 +34,12 @@ Example:
 ### Changed
 - Test shard: waking on the Wakening Isle's beach is easier to see. The dusk is lighter, so you can see yourself lying on the sand, and "You lie on the wet sand..." shows over your head. When you move, your character gets up slowly, then the light comes up, and only then do the patch notes and other windows open.
 - Test shard: in the healing lesson, if you have no bandages, Wren tells you where to get more. Double-click Wren for more, or pick up bandages from the table beside Pip in the farmhouse.
+- Test shard: the Wakening Isle's coast reads as one smooth shore: the surf follows the sand all the way round, with no square notches or sand-coloured lumps, and driftwood, seaweed and shells lie along the waterline.
+- Test shard: the shipwreck on the waking beach is now a whole ship, both halves, run aground across the waterline: one half in the shallows, the other up the beach, with driftwood round it.
+- Test shard: every sign on the Wakening Isle stands on the north side of its path, facing it, and the sign for the moongate stands where the road meets the dock, where you see it before you walk out.
+- Test shard: the isle's farm is turned round so its lessons run one way: the field is to the west with its gate on the east side, and the farmhouse, where Pip waits to be bandaged, stands right beside the gate. The field has ploughed soil and fewer, lower crops, so the rats are easy to spot.
+- Test shard: the practice bank sits in the grass with a small paved step at its door and a paved spot round the fountain, instead of a huge square of paving, with plants by its walls and more inside: scales and coin on the counter and a strongbox in the vault.
+- Test shard: the League lodge has an even wooden floor and is furnished as a meeting hall: bookcases on its walls, a long table with chairs, a brazier and candles, and its banners outside between the windows.
 
 ## 2026.10.30
 
