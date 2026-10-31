@@ -18,6 +18,10 @@
 //   [ClusterFGuildHalls go <hall>                 move yourself to the hall's travel stop
 //   [ClusterFGuildHalls runes [hall]              a bag of recall runes marked at the travel stops
 //
+// cc-P708: six halls moved onto the Siege of Sosaria land (ClusterFGuildHallMoves). place and clear first take away what
+// a world still has of a moved hall at its old site: its sign, guild house and doors standing off its current site (a
+// stock sign the old sign hid is shown again), and a guildmaster of the old type within a tile of the old post.
+//
 // TEST SHARD ONLY: place, clear and runes refuse unless testCenter.enable is true (TestCenter.Enabled, as the Staff
 // Hub reads test or live). The guildmasters are found by type within a tile of their post (as ClusterFGuildHallSeeder
 // finds its own); the sign, building and doors are types placed only here, each knowing its hall.
@@ -100,6 +104,70 @@ namespace Server
             $"No hall '{key}'. Halls: {string.Join(", ", Halls.Select(h => h.Key))}" +
             $"{(Waits.Length > 0 ? $"; waiting: {string.Join(", ", Waits.Select(w => w.Key))}" : "")}.";
 
+        /// <summary>
+        /// cc-P708: what a world still has of the hall at an old site: its own parts off its current site, and a
+        /// guildmaster of the old type within a tile of an old post (ClusterFGuildHallMoves). Nothing is changed.
+        /// </summary>
+        public static List<IEntity> OldSite(Hall h)
+        {
+            var map = MapOf(h);
+            var stale = new List<IEntity>();
+            foreach (var part in Parts(h))
+            {
+                var current = part.Map == map && part switch
+                {
+                    GuildHallSign => part.Location == h.Sign,
+                    GuildHallBuilding => h.Kind == Kind.New && part.Location == h.MultiAt,
+                    GuildHallDoor => h.Kind == Kind.New && GuildHouseDoors.Any(d =>
+                        part.Location == new Point3D(h.MultiAt.X + d.Dx, h.MultiAt.Y + d.Dy, h.MultiAt.Z + d.Dz)),
+                    _ => true
+                };
+                if (!current)
+                {
+                    stale.Add(part);
+                }
+            }
+
+            foreach (var moved in ClusterFGuildHallMoves.All.Where(m => m.Key == h.Key))
+            {
+                var oldMap = moved.MapIndex >= 0 && moved.MapIndex < Map.Maps.Length ? Map.Maps[moved.MapIndex] : null;
+                if (oldMap == null || oldMap == Map.Internal)
+                {
+                    continue;
+                }
+
+                foreach (var m in oldMap.GetMobilesInRange(moved.Npc, 1))
+                {
+                    if (!m.Deleted && m.GetType() == moved.NpcType && !(m.Map == map && m.Location == h.Npc))
+                    {
+                        stale.Add(m);
+                    }
+                }
+            }
+
+            return stale;
+        }
+
+        // cc-P708: deletes what OldSite found (showing again a stock sign an old sign hid); one line per thing.
+        private static IEnumerable<string> TakeAway(List<IEntity> stale, bool dryRun)
+        {
+            foreach (var e in stale)
+            {
+                yield return $"the old {e.GetType().Name} at {e.Location}";
+                if (dryRun)
+                {
+                    continue;
+                }
+
+                if (e is GuildHallSign { HiddenStockSign: { Deleted: false } stock })
+                {
+                    stock.Visible = true;
+                }
+
+                e.Delete();
+            }
+        }
+
         public static List<string> Place(string key, bool dryRun, bool isTestShard)
         {
             var refusal = Refusal(isTestShard);
@@ -125,8 +193,10 @@ namespace Server
                     continue;
                 }
 
-                var parts = Parts(h);
-                var did = new List<string>();
+                // cc-P708: a moved hall's old site goes first
+                var stale = OldSite(h);
+                var did = TakeAway(stale, dryRun).Select(t => $"{(dryRun ? "would take away" : "took away")} {t}").ToList();
+                var parts = Parts(h).Except(stale.OfType<Item>()).ToList();
 
                 if (h.Kind == Kind.New)
                 {
@@ -291,6 +361,9 @@ namespace Server
 
                     part.Delete();
                 }
+
+                // cc-P708: a guildmaster still at a moved hall's old post
+                gone.AddRange(TakeAway(OldSite(h).OfType<Mobile>().Cast<IEntity>().ToList(), dryRun));
 
                 var npc = FindNpc(h);
                 if (npc != null)

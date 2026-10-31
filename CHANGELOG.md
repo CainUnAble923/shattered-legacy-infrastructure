@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.31
+
+### Staff
+- Six guild headquarters move onto the Siege of Sosaria land, in places on Zigholtul's map: the League's headquarters (with its own steward, Aldous Penhallow; Elara and joining stay in New Haven) and the Merchants' Exchange in Valunstead, the Healers' Covenant at Fort Whitestone, the Rangers' League at Fort Viridian, and the Custodians and the Tinkers' Union in Hammerhill, each in its own building. [ClusterFGuildHalls place puts them there on the test shard and takes away anything a hall left at its old site. The Society of Smiths stays at Serpent's Hold. Joining a guild never needs a headquarters.
+
 ## 2026.10.30.3
 
 ### Changed

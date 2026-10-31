@@ -7,7 +7,8 @@
 // What the facts pin:
 //   1. The server's table is the design file (design/guild-halls/halls.json, through its generated copy): every hall,
 //      field by field, and the halls that wait.
-//   2. Every hall is a guild (the League apart), placed with that guild's own guildmaster type; every guild but the
+//   2. Every hall is a guild (the League apart, placed with its steward: cc-P708), placed with that guild's own
+//      guildmaster type; every guild but the
 //      Maritime Brotherhood has a hall and the Maritime Brotherhood waits; a new hall is OSI's Guild House; every decor
 //      group is one of cc-P265's; no two halls share a guildmaster tile or a sign tile.
 //   3. On the live shard (isTestShard false) place, clear and runes refuse and change nothing.
@@ -121,7 +122,8 @@ public class GuildHallPlacementVerification
             Assert.True(typeof(Mobile).IsAssignableFrom(h.NpcType), $"{h.Key}: {h.NpcType.Name} is not a mobile");
             if (h.Key == "league")
             {
-                Assert.Equal(typeof(LeagueRegistrar), h.NpcType);
+                // cc-P708: the headquarters at Valunstead has its own steward; Elara stays in New Haven
+                Assert.Equal(typeof(LeagueSteward), h.NpcType);
                 continue;
             }
 

@@ -5,16 +5,16 @@ namespace ShatteredLegacy.Tests;
 
 public static class GuildHallPlacementDesignCopy
 {
-    public const string Sha256 = "fbd45145d7eb7a186369ee9ffd5f8cd380c49cdf8b046081ee5d1ef6f27f3443";
+    public const string Sha256 = "afc8a517cb65105e340102da5678711e69cf21d0adea98c85840f1e0df6f3090";
 
     public const string Json = """"
 {
   "about": "cc-P281 (F-49): where each guild's real hall is, from cc-P151's survey and Chase's picks of 2026-10-21. One row per hall. kind: reuse (a free stock building: our sign takes the stock sign's place while it stands), share (a stock building with stock NPCs who stay: our sign hangs beside theirs), new (OSI's Guild House multi 0x74 on the survey's plot). npc is the guild's own guildmaster or liaison placed inside; sign is a stock sign item (Server.Items.SignType) named for the guild; travel is the tile outside the main door that a travel stop or rune points at; decor groups are cc-P265's templates (GuildHallDecorTemplates) placed from that anchor. Facets: 0 Felucca, 1 Trammel, 3 Malas, 4 Tokuno, 5 Ter Mur. Test shard only until Chase says live (ClusterFGuildHallPlacement). Generated into server/customizations/ClusterFGuildHallPlacementData.cs by shard-migration notes/cc-P281-tools/gen.py.",
   "halls": [
-    {"key": "league", "guild": "The League (headquarters)", "kind": "reuse", "building_name": "Castle British, the keep", "town": "Britain", "facet": 1, "rect": [1320, 1586, 1366, 1665],
-     "npc": {"type": "LeagueRegistrar", "x": 1330, "y": 1622, "z": 50, "facing": "South"},
-     "sign": {"type": "BrassSign", "facing": "North", "x": 1360, "y": 1622, "z": 50, "name": "League Headquarters"},
-     "travel": {"x": 1362, "y": 1624, "z": 50, "note": "the keep's east door, inside the castle walls"}},
+    {"key": "league", "guild": "The League (headquarters)", "kind": "reuse", "building_name": "Valunstead keep, the gatehouse rooms inside the moat (public registry; the great hall behind is the meeting room) (a place on Zigholtul's Siege of Sosaria map)", "town": "Valunstead", "facet": 1, "rect": [554, 312, 574, 321],
+     "npc": {"type": "LeagueSteward", "x": 559, "y": 317, "z": 20, "facing": "East"},
+     "sign": {"type": "BrassSign", "facing": "West", "x": 566, "y": 321, "z": 18, "name": "League Headquarters"},
+     "travel": {"x": 564, "y": 322, "z": 17, "note": "the keep's south door, over the moat bridge"}},
     {"key": "warriors", "guild": "Warriors' Brotherhood", "kind": "reuse", "building_name": "Brothers in Arms", "town": "Jhelom", "facet": 1, "rect": [1352, 3696, 1376, 3720],
      "npc": {"type": "WarriorGuildmaster", "x": 1362, "y": 3716, "z": 0, "facing": "East"},
      "sign": {"type": "WarriorsGuild", "facing": "North", "x": 1368, "y": 3713, "z": 0, "name": "The Warriors' Brotherhood"},
@@ -23,14 +23,14 @@ public static class GuildHallPlacementDesignCopy
      "npc": {"type": "MageGuildmaster", "x": 4313, "y": 983, "z": 0, "facing": "South"},
      "sign": {"type": "MagesGuild", "facing": "West", "x": 4308, "y": 1012, "z": 0, "name": "The Arcane Society"},
      "travel": {"x": 4308, "y": 1014, "z": 0, "note": "the south front"}},
-    {"key": "healers", "guild": "Healers' Covenant", "kind": "reuse", "building_name": "Empath Abbey, the church", "town": "Empath Abbey (Yew)", "facet": 1, "rect": [623, 816, 647, 856],
-     "npc": {"type": "HealerGuildmaster", "x": 637, "y": 826, "z": 0, "facing": "South"},
-     "sign": {"type": "HealersGuild", "facing": "West", "x": 636, "y": 856, "z": 5, "name": "The Healers' Covenant"},
-     "travel": {"x": 634, "y": 858, "z": 0, "note": "the church's south doors"}},
-    {"key": "rangers", "guild": "Rangers' League", "kind": "share", "building_name": "Rangers' Guild (stock, shared with pinned's RangerGuildmaster)", "town": "Skara Brae", "facet": 1, "rect": [552, 2136, 576, 2160],
-     "npc": {"type": "OutridersGuildmaster", "x": 570, "y": 2145, "z": 0, "facing": "East"},
-     "sign": {"type": "ArchersGuild", "facing": "North", "x": 576, "y": 2150, "z": 0, "name": "The Rangers' League"},
-     "travel": {"x": 577, "y": 2147, "z": 0, "note": "the east doors"}},
+    {"key": "healers", "guild": "Healers' Covenant", "kind": "reuse", "building_name": "Fort Whitestone, the south wing east of the gate (a place on Zigholtul's Siege of Sosaria map)", "town": "Fort Whitestone", "facet": 1, "rect": [880, 1040, 912, 1056],
+     "npc": {"type": "HealerGuildmaster", "x": 902, "y": 1046, "z": 32, "facing": "West"},
+     "sign": {"type": "HealersGuild", "facing": "West", "x": 893, "y": 1056, "z": 30, "name": "The Healers' Covenant"},
+     "travel": {"x": 890, "y": 1058, "z": 30, "note": "the causeway outside the south gate"}},
+    {"key": "rangers", "guild": "Rangers' League", "kind": "reuse", "building_name": "Fort Viridian, the inner court of the ruined fort (a place on Zigholtul's Siege of Sosaria map)", "town": "Fort Viridian", "facet": 1, "rect": [986, 970, 1016, 1018],
+     "npc": {"type": "OutridersGuildmaster", "x": 1003, "y": 1004, "z": 0, "facing": "East"},
+     "sign": {"type": "ArchersGuild", "facing": "North", "x": 1014, "y": 1008, "z": 3, "name": "The Rangers' League"},
+     "travel": {"x": 1015, "y": 1003, "z": 0, "note": "the east gap in the court wall, by the road"}},
     {"key": "mining", "guild": "Miners' Compact", "kind": "reuse", "building_name": "Minoc Town Hall", "town": "Minoc", "facet": 1, "rect": [2416, 520, 2440, 536],
      "npc": {"type": "MinersCompactLiaison", "x": 2431, "y": 532, "z": 0, "facing": "West"},
      "sign": {"type": "MinersGuild", "facing": "West", "x": 2428, "y": 536, "z": 0, "name": "The Miners' Compact"},
@@ -41,10 +41,10 @@ public static class GuildHallPlacementDesignCopy
      "sign": {"type": "BlacksmithsGuild", "facing": "West", "x": 3036, "y": 3452, "z": 31, "name": "The Society of Smiths"},
      "travel": {"x": 3032, "y": 3453, "z": 15, "note": "the guild house steps"},
      "decor": [{"set": "smiths", "group": "forge", "x": 3034, "y": 3446, "z": 22}]},
-    {"key": "tinkers", "guild": "Tinkers' Union", "kind": "reuse", "building_name": "The Musician's Hall", "town": "Vesper", "facet": 1, "rect": [2880, 736, 2904, 752],
-     "npc": {"type": "TinkerGuildmaster", "x": 2898, "y": 740, "z": 0, "facing": "West"},
-     "sign": {"type": "TinkersGuild", "facing": "North", "x": 2904, "y": 737, "z": 0, "name": "The Tinkers' Union"},
-     "travel": {"x": 2905, "y": 739, "z": 0, "note": "the east door"}},
+    {"key": "tinkers", "guild": "Tinkers' Union", "kind": "reuse", "building_name": "Hammerhill, the stone workshop on the west lane (ground floor) (a place on Zigholtul's Siege of Sosaria map)", "town": "Hammerhill", "facet": 1, "rect": [1484, 1019, 1494, 1027],
+     "npc": {"type": "TinkerGuildmaster", "x": 1488, "y": 1023, "z": 10, "facing": "East"},
+     "sign": {"type": "TinkersGuild", "facing": "North", "x": 1494, "y": 1026, "z": 8, "name": "The Tinkers' Union"},
+     "travel": {"x": 1495, "y": 1023, "z": 5, "note": "the east doors, on the lane"}},
     {"key": "thieves", "guild": "Thieves' Den", "kind": "reuse", "building_name": "Buccaneer's Bath", "town": "Buccaneer's Den", "facet": 0, "rect": [2655, 2072, 2681, 2096],
      "npc": {"type": "ThiefGuildmaster", "x": 2672, "y": 2092, "z": 5, "facing": "West"},
      "sign": {"type": "ThievesGuild", "facing": "West", "x": 2666, "y": 2096, "z": 5, "name": "The Thieves' Den"},
@@ -65,11 +65,10 @@ public static class GuildHallPlacementDesignCopy
      "npc": {"type": "TailorGuildmaster", "x": 3781, "y": 1190, "z": 0, "facing": "South"},
      "sign": {"type": "TailorsGuild", "facing": "West", "x": 3776, "y": 1196, "z": 0, "name": "The Tailors' Circle"},
      "travel": {"x": 3777, "y": 1197, "z": 0, "note": "the south doors"}},
-    {"key": "merchants", "guild": "Merchants' Exchange", "kind": "new", "building_name": "Merchants' Exchange guild house", "town": "Magincia", "facet": 1, "rect": [3702, 2169, 3716, 2184],
-     "building": {"multi": 116, "x": 3709, "y": 2176, "z": 20},
-     "npc": {"type": "MerchantGuildmaster", "x": 3711, "y": 2179, "z": 27, "facing": "South"},
-     "sign": {"type": "MerchantsGuild", "facing": "West", "x": 3713, "y": 2184, "z": 36, "name": "The Merchants' Exchange"},
-     "travel": {"x": 3709, "y": 2185, "z": 20, "note": "the guild house steps"}},
+    {"key": "merchants", "guild": "Merchants' Exchange", "kind": "reuse", "building_name": "the counting house in the walled yard north of Valunstead's bank (a place on Zigholtul's Siege of Sosaria map)", "town": "Valunstead", "facet": 1, "rect": [487, 383, 497, 398],
+     "npc": {"type": "MerchantGuildmaster", "x": 492, "y": 391, "z": 20, "facing": "East"},
+     "sign": {"type": "MerchantsGuild", "facing": "North", "x": 498, "y": 390, "z": 18, "name": "The Merchants' Exchange"},
+     "travel": {"x": 499, "y": 388, "z": 15, "note": "the east doors, on the yard"}},
     {"key": "bards", "guild": "Bards' Consortium", "kind": "reuse", "building_name": "The King's Men Theater", "town": "Britain", "facet": 1, "rect": [1440, 1576, 1460, 1600],
      "npc": {"type": "BardGuildmaster", "x": 1454, "y": 1594, "z": 20, "facing": "South"},
      "sign": {"type": "BardicGuild", "facing": "West", "x": 1454, "y": 1600, "z": 20, "name": "The Bards' Consortium"},
@@ -84,10 +83,10 @@ public static class GuildHallPlacementDesignCopy
      "sign": {"type": "ReagentShop", "facing": "West", "x": 5742, "y": 3209, "z": 16, "name": "The Order of the Alembic"},
      "travel": {"x": 5745, "y": 3210, "z": -1, "note": "the south door"},
      "decor": [{"set": "alembic", "group": "scrying", "x": 5746, "y": 3192, "z": 15}]},
-    {"key": "custodians", "guild": "The Custodians", "kind": "reuse", "building_name": "the empty brick hall beside the First Bank of Britain", "town": "Britain", "facet": 1, "rect": [1447, 1701, 1474, 1716],
-     "npc": {"type": "SanitationWarden", "x": 1456, "y": 1710, "z": 5, "facing": "East"},
-     "sign": {"type": "BrassSign", "facing": "North", "x": 1467, "y": 1708, "z": 5, "name": "The Custodians"},
-     "travel": {"x": 1474, "y": 1708, "z": 0, "note": "the east porch"}}
+    {"key": "custodians", "guild": "The Custodians", "kind": "reuse", "building_name": "Hammerhill, the civic works office north of the bank (ground floor) (a place on Zigholtul's Siege of Sosaria map)", "town": "Hammerhill", "facet": 1, "rect": [1555, 964, 1566, 973],
+     "npc": {"type": "SanitationWarden", "x": 1560, "y": 967, "z": 10, "facing": "South"},
+     "sign": {"type": "BrassSign", "facing": "West", "x": 1563, "y": 973, "z": 8, "name": "The Custodians"},
+     "travel": {"x": 1560, "y": 974, "z": 5, "note": "the south doors, on the street"}}
   ],
   "waiting": [
     {"key": "maritime", "guild": "Maritime Brotherhood", "why": "Chase asked whether High Seas has a big dock area. The overseer suggested the High Seas Sea Market (a floating port) if cc-P268 confirms it is in our data. Not placed: waits on P268."}
