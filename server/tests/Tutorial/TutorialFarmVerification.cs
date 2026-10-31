@@ -227,7 +227,7 @@ public class TutorialFarmVerification
 
             var door = TutorialFarm.FindDoor(isle);
             Assert.IsType<DarkWoodDoor>(door);
-            Assert.Equal(0x06A5, door!.ItemID); // cc-P720: the cottage's door, in its south wall (WestCW)
+            Assert.Equal(TutorialFarm.IsleDoorClosedId, door!.ItemID); // cc-P720: the cottage's door, in its south wall; cc-P751: WestCCW
             Assert.Equal(TutorialIsleFarmLayout.DoorSpot, door.Location);
 
             var hand = TutorialFarmhand.Find(isle);

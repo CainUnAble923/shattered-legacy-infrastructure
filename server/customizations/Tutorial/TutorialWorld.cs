@@ -52,8 +52,11 @@ public static class TutorialWorld
     public static readonly Point2D Rack = new(6665, 3992);
     /// <summary>Stop 4, the signpost at the meadow's edge: the chat lesson.</summary>
     public static readonly Point2D Signpost = new(6692, 3990);
-    /// <summary>Stop 5, the farm gate (the farm's own spots are in TutorialFarm, moved with the farm).</summary>
-    public static readonly Point2D FarmGate = new(6714, 3979);
+    /// <summary>
+    /// Stop 5, the farm gate (the farm's own spots are in TutorialFarm, moved with the farm): the tile below Wren, where a
+    /// trainee walks in. cc-P741: the field moved 18 west (was 6714, 3979).
+    /// </summary>
+    public static readonly Point2D FarmGate = new(6696, 3979);
     /// <summary>Stop 6, the training yard's gate (x 6726-6748, y 3994-4010): the death lesson inside.</summary>
     public static readonly Point2D Yard = new(6736, 3995);
     public static readonly Point2D Echo = new(6736, 3998);
