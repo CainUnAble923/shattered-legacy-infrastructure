@@ -79,7 +79,9 @@ public class TestCenterVerification
         var args = new CharacterCreatedEventArgs(
             ns, account, name, false, 0, stats, city, [],
             0, 0, 0, 0, 0, 0,
-            0, // no profession
+            // cc-P714: a start the shorter creation accepts while the test center (and so the school gates) is on;
+            // with no skills at all a custom start is refused and no character is made.
+            ClusterFStartChoices.FighterId,
             Race.Human
         );
 

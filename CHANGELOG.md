@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.31.8
+
+### Changed
+- Test shard: Chivalry and Necromancy each begin with a teacher's quest. Until you finish it you cannot cast that school's spells or train it, whatever books or scrolls you carry. Sister Aveline at Fort Whitestone teaches Chivalry (A Place on the Watch); Oren Pike at the Dhampire Ruins teaches Necromancy for the Keepers of the Last Door (Names for the Last Door). Each quest gives you the school's book and a few starting supplies, once. Your skill starts at zero, and you can learn both.
+- Test shard: a new character starts as a Fighter, Archer (Thrower for gargoyles), Mage or Maker, or chooses its own skills from a shorter list. Paladin, Necromancer, Samurai and Ninja are no longer starting choices: their skills are learned in the world.
+- Test shard: in the tutorial, the Chivalry and Necromancy lessons show you the school and send you to its teacher. The casting lesson opens once you have learned the school.
+
+### Staff
+- [SchoolGate on, off or auto turns the Chivalry and Necromancy gates on or off (auto: the test shard only); [SchoolGate status, grant and revoke work on one player and are logged. [Initiation place puts the two teachers, the patrol, the courtyard ankh and the Dhampire graves in the world on the test shard; [Initiation reset restarts a player's quest.
+
 ## 2026.10.31.7
 
 ### Changed

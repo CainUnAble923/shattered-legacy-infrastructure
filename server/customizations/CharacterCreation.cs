@@ -195,6 +195,7 @@ public static partial class CharacterCreation
     [OnEvent(nameof(CharacterCreatedEvent))]
     private static void OnCharacterCreated(CharacterCreatedEventArgs args)
     {
+        var requestedProfession = args.Profession; // cc-P714: before the line below turns an unknown id (the Archer's 8) to 0
         if (!ProfessionInfo.GetProfession(args.Profession, out var profession))
         {
             args.Profession = 0;
@@ -205,6 +206,22 @@ public static partial class CharacterCreation
         if (state == null)
         {
             return;
+        }
+
+        // cc-P714: while the school gates are in force, a player starts from a template or the shorter custom list
+        // (ClusterFStartChoices). A refused request makes no character: no slot is used, and the client is disconnected
+        // with "Character creation blocked." (pinned's handler for a null Mobile).
+        StartChoice start = null;
+        if (ClusterFStartChoices.Enabled && args.Account?.AccessLevel == AccessLevel.Player)
+        {
+            var startRace = Core.Expansion >= args.Race.RequiredExpansion ? args.Race : Race.DefaultRace;
+            start = ClusterFStartChoices.Resolve(requestedProfession, args.Skills, args.Stats, startRace, state.NewCharacterCreation, out var why);
+            if (start == null)
+            {
+                logger.Information("Login: {NetState}: Character creation refused (account={Account}): {Why}", state, args.Account.Username, why);
+                args.Mobile = null;
+                return;
+            }
         }
 
         var newChar = CreateMobile(args.Account as Account);
@@ -244,9 +261,19 @@ public static partial class CharacterCreation
                 }
             }
 
-            SetStats(newChar, state, profession?.Stats ?? args.Stats);
-            SetSkills(newChar, profession?.Skills ?? args.Skills);
-            GiveProfessionItems(newChar, profession, args.ShirtHue, args.PantsHue);
+            if (start != null)
+            {
+                // cc-P714: the start's own stats (a template's are ours, 90 in all), skills and kit.
+                newChar.InitStats(start.Stats[0], start.Stats[1], start.Stats[2]);
+                SetSkills(newChar, start.Skills);
+                GiveProfessionItems(newChar, start.Kit, args.ShirtHue, args.PantsHue);
+            }
+            else
+            {
+                SetStats(newChar, state, profession?.Stats ?? args.Stats);
+                SetSkills(newChar, profession?.Skills ?? args.Skills);
+                GiveProfessionItems(newChar, profession?.Name, args.ShirtHue, args.PantsHue);
+            }
 
             if (race.ValidateHair(newChar, args.HairID))
             {
@@ -509,12 +536,12 @@ public static partial class CharacterCreation
         }
     }
 
-    private static void GiveProfessionItems(Mobile m, ProfessionInfo profession, int shirtHue, int pantsHue)
+    private static void GiveProfessionItems(Mobile m, string professionName, int shirtHue, int pantsHue)
     {
         var elf = m.Race == Race.Elf;
         var gargoyle = m.Race == Race.Gargoyle;
 
-        switch (profession?.Name.ToLowerInvariant())
+        switch (professionName?.ToLowerInvariant())
         {
             case "necromancer":
                 {

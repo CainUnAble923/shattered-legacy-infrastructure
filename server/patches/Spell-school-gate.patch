@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Spells/Base/Spell.cs	2026-10-31 00:00:00.000000000 -0500
++++ b/Projects/UOContent/Spells/Base/Spell.cs	2026-10-31 00:00:00.000000000 -0500
+@@ -509,6 +509,10 @@
+             else if ((Caster as PlayerMobile)?.DuelContext?.AllowSpellCast(Caster, this) == false)
+             {
+             }
++            // cc-P714: a gated school (Chivalry, Necromancy) needs its initiation first; the refusal names the teacher.
++            else if (!ClusterFSchoolGate.CanCast(Caster, this))
++            {
++            }
+             else if (Caster is PlayerMobile { AccessLevel: < AccessLevel.Administrator } &&
+                      FeatureFlagManager.IsSpellBlocked(GetType()))
+             {
