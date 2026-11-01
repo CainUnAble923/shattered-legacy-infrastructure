@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.01.2
+
+### Staff
+- The Golems' night shift no longer sits idle when Claude's usage report is incomplete: it takes the missing figure from the plan usage page, works on the week's figure alone when no 5-hour figure is reported anywhere, and when both reports are out of date it still runs one batch a night if the last known week is on pace. A Golem now always takes the prompt picked as its Run next, even one marked for the Codex lane.
+
 ## 2026.10.31.11
 
 ### Changed
