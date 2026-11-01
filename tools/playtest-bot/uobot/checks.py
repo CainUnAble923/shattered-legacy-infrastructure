@@ -10,6 +10,8 @@ from collections import namedtuple
 
 from . import packets as P
 
+HAVEN_CITY = 1   # cc-P735: creation's New Haven entry (uobot.run.HAVEN_CITY; TutorialStart.Cities)
+
 Check = namedtuple("Check", "id title kind left_for_chase fn")
 REGISTRY = []
 SHARED = {}            # results one check hands to another (P64-1's runs feed P64-2)
@@ -153,7 +155,9 @@ def p64_1(ctx):
     unused = [a for a in ctx.pool_rest if a not in ctx.first_logins]
     if not unused:
         raise RuntimeError("no pool account left for a first login")
-    c = ctx.fresh(race="human", female=False, label="fresh")
+    # cc-P735: New Haven's start (creation's city 1). On an isle-ready world city 0 wakes on the isle, where the bulletin
+    # waits until the trainee stands up (cc-P728), so this checks a character whose account skipped the tutorial.
+    c = ctx.fresh(race="human", female=False, label="fresh", city=HAVEN_CITY, first_login=True)
     try:
         seen = ctx.first_logins.get(c.account)
         if seen is None:
@@ -179,13 +183,16 @@ def p64_1(ctx):
         acct, slot = c.account, c.chars.index("") if "" in c.chars else 0
         c.close()
         from .client import Client
-        c2 = Client(acct, ctx.secrets["playerPassword"], ctx.tr, ctx.cliloc, "relog")
-        chars = c2.login()
-        c2.play(chars.index(c.name) if c.name in chars else 0)
-        c2.sleep(3.0)
-        again = [x for x in c2.gumps if any(re.match(r"^Shattered Legacy \d{4}\.", t) for t in all_text(c2, x))]
+        # cc-P735: the pool's password, as fresh() logs in (run2: playerPassword is the Golem's own player's, refused)
+        c2 = Client(acct, ctx.secrets.get("poolPassword", ctx.secrets["playerPassword"]), ctx.tr, ctx.cliloc, "relog")
         c2.account = acct
-        ctx.done(c2)
+        try:
+            chars = c2.login()
+            c2.play(chars.index(c.name) if c.name in chars else 0)
+            c2.sleep(3.0)
+            again = [x for x in c2.gumps if any(re.match(r"^Shattered Legacy \d{4}\.", t) for t in all_text(c2, x))]
+        finally:
+            ctx.done(c2)   # run2: a refused relog left the account busy for ever
         SHARED.setdefault("p64_2", []).append((bool(h) and not again,
             "history gump after All patch notes: %s; bulletin on relog: %s" % ("yes" if h else "NO", "YES" if again else "none")))
         return ok, ev
@@ -355,7 +362,9 @@ def t_039(ctx):
     # 3633, 2585, 0; cc-P678).
     race, female = RACES[SHARED.setdefault("t039", 0) % len(RACES)]
     SHARED["t039"] += 1
-    c = ctx.fresh(race=race, female=female)
+    # cc-P735: New Haven's start (creation's city 1), a character whose account skipped the tutorial; city 0 wakes on the
+    # isle once the isle is ready (cc-P688 found it on the bot's world).
+    c = ctx.fresh(race=race, female=female, city=HAVEN_CITY)
     try:
         m = c.find_text(r"Guild Board", timeout=12)
         line = c.wait(lambda: next((t for g in c.gumps for t in all_text(c, g) if "Guild Board" in t), None), 3)
