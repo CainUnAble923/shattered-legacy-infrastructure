@@ -5,7 +5,7 @@ namespace ShatteredLegacy.Tests;
 
 public static class GuildHallPlacementDesignCopy
 {
-    public const string Sha256 = "0f11454c8b64d36e48a69c33e03891214fd56891ea71c304e30b237d03ba797e";
+    public const string Sha256 = "a35b1515b09e71d16c38bf4de48181f33ea927c0f14c9a899faf9a609b24a275";
 
     public const string Json = """"
 {
@@ -86,7 +86,7 @@ public static class GuildHallPlacementDesignCopy
     {"key": "custodians", "guild": "The Custodians", "kind": "reuse", "building_name": "Hammerhill, the civic works office north of the bank (ground floor) (a place on Zigholtul's Siege of Sosaria map)", "town": "Hammerhill", "facet": 1, "rect": [1555, 964, 1566, 973],
      "npc": {"type": "SanitationWarden", "x": 1560, "y": 967, "z": 10, "facing": "South"},
      "sign": {"type": "BrassSign", "facing": "West", "x": 1563, "y": 973, "z": 8, "name": "The Custodians"},
-     "travel": {"x": 1560, "y": 974, "z": 5, "note": "the south doors, on the street"}}
+     "travel": {"x": 1561, "y": 973, "z": 7, "note": "the top step at the south doors (P753: 1560,974 was hidden by the house south of the lane)"}}
   ],
   "waiting": [
     {"key": "maritime", "guild": "Maritime Brotherhood", "why": "Chase asked whether High Seas has a big dock area. The overseer suggested the High Seas Sea Market (a floating port) if cc-P268 confirms it is in our data. Not placed: waits on P268."}
