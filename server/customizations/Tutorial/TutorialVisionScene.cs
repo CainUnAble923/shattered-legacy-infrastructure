@@ -100,6 +100,14 @@ public static class TutorialVisionScene
     public const int ShardsId = 0x5738;    // "crystal shards"
     public const int RobeId = 0x1F03;
     public const int HoodId = 0x2684;      // "hooded shroud"
+    public const int CowlId = 0xA410;      // cc-P761: "Hood_Assassin", the Assassin's Cowl (AssassinsCowl.cs), a deep hood
+    public const int CloakId = 0x1515;     // cc-P761: a plain cloak
+
+    /// <summary>
+    /// cc-P761: the one hue of the Stranger's cowl, robe and cloak. The Stranger is the player's own final self (Chase's
+    /// vision-shrine design), so this is the single value to swap per account later.
+    /// </summary>
+    public const int StrangerHue = DarkHue;
 
     /// <summary>The subtitles, in order (P481 section 6). Speech lines are also said above the speaker's head.</summary>
     public static readonly string[] Subtitles =
@@ -812,10 +820,17 @@ public partial class TutorialVisionFigure : Mobile
         Player = false;
     }
 
-    public static TutorialVisionFigure Stranger()
+    /// <summary>
+    /// cc-P761: a hooded, faceless figure in what a player could wear: a deep cowl over the head and face, a robe and a
+    /// cloak, all in one hue (<paramref name="hue"/>, TutorialVisionScene.StrangerHue), and the sword it strikes with.
+    /// No name: the client shows none over it or on a click.
+    /// </summary>
+    public static TutorialVisionFigure Stranger(int hue = TutorialVisionScene.StrangerHue)
     {
-        var f = new TutorialVisionFigure("the Stranger") { Hue = 0x83EA };
-        f.AddItem(new TutorialVisionProp(TutorialVisionScene.RobeId) { Hue = TutorialVisionScene.DarkHue, Layer = Layer.OuterTorso });
+        var f = new TutorialVisionFigure("") { Hue = 0x83EA };
+        f.AddItem(new TutorialVisionProp(TutorialVisionScene.CowlId) { Hue = hue, Layer = Layer.Helm });
+        f.AddItem(new TutorialVisionProp(TutorialVisionScene.RobeId) { Hue = hue, Layer = Layer.OuterTorso });
+        f.AddItem(new TutorialVisionProp(TutorialVisionScene.CloakId) { Hue = hue, Layer = Layer.Cloak });
         f.AddItem(new TutorialVisionProp(TutorialVisionScene.SwordId) { Layer = Layer.OneHanded });
         return f;
     }
