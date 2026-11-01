@@ -1,0 +1,20 @@
+--- a/Projects/UOContent/Engines/Harvest/Fishing.cs
++++ b/Projects/UOContent/Engines/Harvest/Fishing.cs
+@@ -378,6 +378,8 @@
+                         chest.TrapPower = 0;
+                         chest.TrapLevel = 0;
+ 
++                        Server.LootBoxes.ClusterFLootBoxes.OnSosRecovered(from, sos.Level); // Shattered Legacy (cc-P763): a Sailor box
++
+                         sos.Delete();
+ 
+                         return chest;
+@@ -449,6 +451,8 @@
+ 
+         public override void SendSuccessTo(Mobile from, Item item, HarvestResource resource)
+         {
++            Server.LootBoxes.ClusterFLootBoxes.OnFished(from, item); // Shattered Legacy (cc-P763): a Fisher box
++
+             if (item is BigFish fish)
+             {
+                 from.SendLocalizedMessage(1042635); // Your fishing pole bends as you pull a big fish from the depths!

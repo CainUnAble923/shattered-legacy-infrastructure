@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using Server.Commands;
 
 namespace Server
 {
@@ -230,6 +231,37 @@ namespace Server
             return $"automatic check: {(Automatic ? "on" : $"off ({AutomaticKey} is false)")}; it last brought the world " +
                    $"{(last == null ? "to nothing yet" : last.Value ? "up" : "down")}, and acts again only when the season changes. " +
                    $"Dates: {StartKey} = {Window.StartText}, {EndKey} = {Window.EndText}.";
+        }
+    }
+
+    /// <summary>
+    /// cc-P763: the spring season, for the loot boxes' spring slot (ClusterFLootBoxes.ActiveSeason). It has no decor, so
+    /// its up and down place and take away nothing; the switch keeps its window, clusterf.seasonal.spring.start and .end
+    /// in modernuo.json (default 03-20 to 04-20), like the Halloween and winter windows.
+    /// </summary>
+    public static class ClusterFSpringSeason
+    {
+        public const string SeasonName = "spring";
+        public const string Label = "SpringSeason";
+        public const string DefaultStart = "03-20";
+        public const string DefaultEnd = "04-20";
+
+        public static readonly ClusterFSeasonalSwitch Season =
+            new(SeasonName, Label, DefaultStart, DefaultEnd, _ => new List<string>(), _ => new List<string>());
+
+        public static void Configure()
+        {
+            Season.Configure();
+            CommandSystem.Register("ClusterFSpring", AccessLevel.Administrator, OnCommand);
+        }
+
+        [Usage("ClusterFSpring")]
+        [Description("The spring season (cc-P763, the loot boxes' spring slot): whether it is on, its dates and the automatic check.")]
+        [ShardCommand(CommandCategory.Diagnostic, Shard = CommandShard.Any, Summary = "Says whether the spring season (the loot boxes' spring slot) is on, its dates and the automatic check. Changes nothing.")]
+        private static void OnCommand(CommandEventArgs e)
+        {
+            var today = Season.Clock();
+            e.Mobile.SendMessage($"Spring: {Season.SeasonText(today)}. {Season.AutomaticText()}");
         }
     }
 

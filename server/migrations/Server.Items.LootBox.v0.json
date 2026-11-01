@@ -1,0 +1,16 @@
+{
+  "version": 0,
+  "type": "Server.Items.LootBox",
+  "properties": [
+    { "name": "Theme",        "type": "Server.LootBoxes.BoxTheme", "rule": "EnumMigrationRule" },
+    { "name": "Tier",         "type": "int",    "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "BoundAccount", "type": "string", "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "Contents",     "type": "System.Collections.Generic.List<Server.Item>", "rule": "ListMigrationRule", "ruleArguments": ["Server.Item", "SerializableInterfaceMigrationRule"] },
+    { "name": "Gold",         "type": "int",    "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "Renown",       "type": "int",    "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "BoxName",      "type": "string", "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "EarnedFor",    "type": "string", "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "OpenedAt",     "type": "System.DateTime", "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "RareSlots",    "type": "System.Collections.Generic.List<int>", "rule": "ListMigrationRule", "ruleArguments": ["int", "PrimitiveTypeMigrationRule", ""] }
+  ]
+}

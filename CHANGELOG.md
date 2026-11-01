@@ -29,6 +29,21 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.01.4
+
+### Added
+- Loot boxes now roll a rarity when you earn them: Common, Rare, Epic or Legendary. Rarer boxes hold more items in bigger stacks, Epic and Legendary boxes add a guaranteed prize for their kind, and each step has a bigger celebration; a Legendary box is announced to the whole shard. Higher-grade boxes are rare more often.
+- Six new kinds of loot box: Fisher's (your first catch of each High Seas fish), Sailor's (your first SOS chest of each level), Herbalist's (each kind of plant you first set to decorative), Society (each new rank in a crafting guild; the Maritime Brotherhood gives Fisher's and Sailor's boxes, the Healers' Covenant Herbalist's), Delver's (a boss's first kill inside a dungeon) and League Dive (every tenth guild work order).
+- Seasonal loot boxes: while Halloween, winter or spring is on, every box you earn holds one extra seasonal treat or decoration and carries the season's name.
+- New loot box prizes: Bags of Holding in five sizes, which hold a set number of items however heavy (after TheArt's Bags of Holding), and a Reagent Bag that holds only reagents and makes them lighter (after Bittiez's Regeant Bag); paintings, trophies, crystal balls and other house decorations; tools, trap training kits, pet treats, dyes, League title deeds and more.
+
+### Changed
+- Everything in a loot box now does something: the placeholder items, loop scroll fragments and epic components are gone from boxes, recipe scrolls come only for crafts you have 50 or more skill in, and a boss box holds a real trophy named for the boss.
+- Loot box grades are now named Plain, Sturdy, Fine, Grand, Exalted and Celestial, and a box's name shows its rarity, grade and kind, as in "Epic Fine Explorer's Box".
+
+### Staff
+- [LootBox give takes an optional rarity and season, [LootBox season says which season's slot boxes earned now get, and [ClusterFSpring shows the new spring window (clusterf.seasonal.spring.start and .end in modernuo.json, 03-20 to 04-20). Every loot box number and item list is in loot-boxes.json.
+
 ## 2026.11.01.3
 
 ### Changed
