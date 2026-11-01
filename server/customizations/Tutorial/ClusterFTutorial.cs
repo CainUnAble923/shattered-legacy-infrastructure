@@ -107,12 +107,12 @@ public static class ClusterFTutorial
                 }
                 else if (IsParticipant(pm))
                 {
-                    SystemLine(pm, "Your finished lessons are saved. Double-click Rook on the New Haven plaza to continue.");
+                    SystemLine(pm, "Your finished lessons are saved. Double-click Rook on his bench by the Albatross tavern in New Haven to continue.");
                     TutorialRecruiter.PointTo(pm);
                 }
                 else if (RecordOf(pm) is { } waiting && CompanionPending(waiting) && IsRecordedCharacter(pm, waiting))
                 {
-                    SystemLine(pm, "You still have a pet to choose. Double-click Rook on the New Haven plaza to open the choices.");
+                    SystemLine(pm, "You still have a pet to choose. Double-click Rook on his bench by the Albatross tavern in New Haven to open the choices.");
                     TutorialRecruiter.PointTo(pm);
                 }
             }
@@ -152,7 +152,7 @@ public static class ClusterFTutorial
 
         if (!quiet)
         {
-            SystemLine(pm, "Your tutorial has started. Tamsin, your guide, waits on the Wakening Isle's beach; Rook on the New Haven plaza can send you there.");
+            SystemLine(pm, "Your tutorial has started. Tamsin, your guide, waits on the Wakening Isle's beach; Rook on his bench by the Albatross tavern in New Haven can send you there.");
             TutorialGuide.PointTo(pm);
         }
 
@@ -235,7 +235,7 @@ public static class ClusterFTutorial
     {
         if (!IsParticipant(pm))
         {
-            SystemLine(pm, "You do not have an active tutorial. Double-click Rook on the New Haven plaza to check your progress.");
+            SystemLine(pm, "You do not have an active tutorial. Double-click Rook on his bench by the Albatross tavern in New Haven to check your progress.");
             return;
         }
 
@@ -385,7 +385,7 @@ public static class ClusterFTutorial
     {
         if (!IsParticipant(pm) || RecordOf(pm) is not { IsActive: true } record)
         {
-            return "You do not have an active tutorial. Double-click Rook on the New Haven plaza to check your progress.";
+            return "You do not have an active tutorial. Double-click Rook on his bench by the Albatross tavern in New Haven to check your progress.";
         }
 
         if (!CoreDone(record))

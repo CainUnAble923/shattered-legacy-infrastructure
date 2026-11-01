@@ -353,7 +353,8 @@ public class TutorialFarmVerification
             TutorialFarm.CheckCommands(p.Pm);
             pet.ControlOrder = OrderType.Guard;
             Assert.True(TutorialFarm.CheckCommands(p.Pm));
-            Assert.Contains(TutorialFarm.TamingStation, p.Record.StationsDone);
+            // cc-P743 item 4: the isle's pet and its commands do not finish New Haven's Animals lesson.
+            Assert.DoesNotContain(TutorialFarm.TamingStation, p.Record.StationsDone);
             Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
 
             // 4. The healing lesson (cc-P726: its own, after the farm): bandages, then a heal that worked (on the pet).

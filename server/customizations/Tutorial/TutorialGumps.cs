@@ -247,7 +247,7 @@ public class TutorialRecruiterGump : Gump
             case BtnGraduate:
                 if (Guide || !TutorialCoreTrials.Nearby(_pm, TutorialRecruiter.Spot, 4, HavenSpots.Map))
                 {
-                    ClusterFTutorial.SystemLine(_pm, "Follow the arrow back to Rook on the New Haven plaza. Double-click Rook and choose Graduate.");
+                    ClusterFTutorial.SystemLine(_pm, "Follow the arrow back to Rook on his bench by the Albatross tavern in New Haven. Double-click Rook and choose Graduate.");
                     TutorialRecruiter.PointTo(_pm);
                     return;
                 }

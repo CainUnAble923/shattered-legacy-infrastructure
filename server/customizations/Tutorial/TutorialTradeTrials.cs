@@ -75,9 +75,10 @@ namespace Server.Tutorial
         public static readonly TradeTrial[] Trades =
         [
             // -- Gathering --
-            new("gathering.mining", AtYard, TradesYard,
-                [S(SkillName.Mining, "Mining: dig ore from the gray stone patch")],
-                "Double-click the loaned pickaxe in your backpack, then click the gray stone patch named practice vein. Repeat until you dig up ore, which you can keep."),
+            // cc-P743 item 3: at the cave on the mountain path south of town, on its own cave floor (no practice vein).
+            new("gathering.mining", MiningWhere, new Point2D(HavenSpots.MiningCave.X, HavenSpots.MiningCave.Y),
+                [S(SkillName.Mining, "Mining: dig ore from the cave floor")],
+                "Double-click the loaned pickaxe in your backpack (your own pickaxe or shovel works too), then click the dark cave floor beside you or the rock of the cave wall. Repeat until you dig up ore, which you can keep."),
             new("gathering.lumberjacking", AtYard, TradesYard,
                 [S(SkillName.Lumberjacking, "Lumberjacking: chop logs from the practice tree")],
                 "Double-click the loaned hatchet, then click the walnut tree beside you. Repeat until you get logs, which you can keep."),
@@ -128,17 +129,16 @@ namespace Server.Tutorial
                 null, [typeof(LocalMap)]),
 
             // -- Animals (the farm, P276) --
-            new("animals.taming", "the farm's animal pen, through the gate", FarmField,
+            // cc-P743 item 4: an injured horse in the stables' sick-bay stall; the trainee keeps it (NewHavenLessons.cs).
+            new("animals.taming", StablesWhere, new Point2D(HavenSpots.Stables.X, HavenSpots.Stables.Y),
                 [
-                    S(SkillName.Herding, "Herding: use the crook on the goat, then click a spot"),
-                    S(SkillName.AnimalTaming, "Animal Taming: use on the practice goat"),
-                    S(SkillName.AnimalLore, "Animal Lore: use on your goat or gain it while taming"),
-                    S(SkillName.Veterinary, "Veterinary: double-click a bandage, then your goat")
+                    S(SkillName.Veterinary, "Veterinary: bandage the injured horse"),
+                    S(SkillName.AnimalTaming, "Animal Taming: tame the healed horse")
                 ],
-                "Double-click the loaned crook, click the practice goat, then click a place to send it. Use Animal Taming and Animal Lore from Skills, then bandage the goat; it stays at the farm."),
+                "In the stall, double-click a bandage, then click the injured horse. When it is healed, open Skills on your character window, use Animal Taming, and click the horse. Use Animal Lore on it any time to see its health."),
 
             // -- Bard --
-            new("bard.trial", AtYard, TradesYard,
+            new("bard.trial", BardWhere, new Point2D(HavenSpots.BardicGuild.X, HavenSpots.BardicGuild.Y), // cc-P743 item 7
                 [
                     S(SkillName.Peacemaking, "Peacemaking: use on a blue training echo"),
                     S(SkillName.Provocation, "Provocation: use on one echo, then the other"),
@@ -164,29 +164,30 @@ namespace Server.Tutorial
                 ForensicLine),
 
             // -- The tours --
-            new("housing.basics", "the first stop", TourCentre,
-                [("stop0", "The farmhouse porch"), ("stop1", "The bank")],
-                "Follow the arrow to the first stop. Walk close to each stop to read its lesson.",
+            // cc-P743 item 9 (Chase 10-30, "housing tutorial is not clear"): three stops, one goal each, a signpost at each
+            // stop, and each stop's text ends with where to go next.
+            new("housing.basics", "the small cottage east of the square (stop 1 of 3)", TourCentre,
+                [("stop0", "Stop 1: look at a small house"), ("stop1", "Stop 2: learn where houses can be built"), ("stop2", "Stop 3: the bank, where a deed is kept")],
+                "Follow the arrow. At each stop, stand beside its signpost and read the lesson in your System window; then the arrow points to the next stop.",
                 Stops:
                 [
-                    (() => Ground(3708, 2593), "the farmhouse porch", // cc-P678: the stables farmhouse's south porch
-                        "Use a house deed on open land where housing is allowed, then lock items in place and secure containers inside. TazUO's Options can make nearby roofs and walls transparent."),
-                    (() => ClusterFNewHavenSeeder.BankAnchor, "the bank",
-                        "Keep a house deed in your bank until you are ready to use it. Visit your house regularly to refresh it and prevent decay.")
+                    (() => HousingStop(0), "stop 1, the small cottage", HousingStop1),
+                    (() => HousingStop(1), "stop 2, the field south of the cottage", HousingStop2),
+                    (() => ClusterFNewHavenSeeder.BankAnchor, "stop 3, the bank", HousingStop3)
                 ]),
             new("travel.wing", "the first stop", TourCentre,
-                [("stop0", "The moongate"), ("stop1", "The plaza")],
+                [("stop0", "The moongate"), ("stop1", "Rook's bench")],
                 "Follow the arrow to each stop and read the lesson when you arrive. The blank recall rune in your backpack is a loan and disappears when the tour ends.",
                 Stops:
                 [
                     // cc-P663: the tutorial's own gate is on the isle now; the tour starts at New Haven's public one.
                     (() => HavenSpots.PublicMoongate, "the moongate",
                         "This public moongate offers destinations across the lands; the isle's moongate only ever brings trainees to Rook. Shipwrights sell boat deeds for travel by sea."),
-                    (() => TutorialRecruiter.Spot, "the plaza",
+                    (() => TutorialRecruiter.Spot, "Rook's bench",
                         "A recall rune stores a location when you cast Mark on it. Return with Recall, Gate Travel, or Sacred Journey; a runebook stores up to 16 runes.")
                 ]),
             new("reputation.wing", "the first stop", TourCentre,
-                [("stop0", "The training yard"), ("stop1", "The healer"), ("stop2", "The plaza")],
+                [("stop0", "The training yard"), ("stop1", "The healer"), ("stop2", "Rook's bench")],
                 "Follow the arrow to the first stop. Walk close to each stop to read its lesson.",
                 Stops:
                 [
@@ -194,7 +195,7 @@ namespace Server.Tutorial
                         "Blue names usually mean innocent; gray names can be attacked, and red names mark murderers. Harming an innocent can make you gray for a while."),
                     (() => HavenSpots.Healer, "the healer",
                         "Karma and fame affect your title; killing innocent players can give you murder counts. Five murder counts make your name red, and some healers will refuse to help you."),
-                    (() => TutorialRecruiter.Spot, "the plaza",
+                    (() => TutorialRecruiter.Spot, "Rook's bench",
                         "In a guarded town, say 'guards' if someone attacks you unlawfully. Trammel generally prevents attacks on other players; Felucca allows them.")
                 ]),
             new("shard.systems", "the first stop", TourCentre,
@@ -218,19 +219,19 @@ namespace Server.Tutorial
         // -- Places --
 
         public static bool NearPlace(PlayerMobile pm, string key) => Trade(key) is not { } t
-            ? NearYard(pm)
+            ? NearWing(pm, key) // cc-P743: the lesson's own building (PlaceOf)
             : pm.Map == Map.Trammel && pm.InRange(new Point3D(t.Place.X, t.Place.Y, pm.Z), t.IsTour ? TourReach : 4);
 
         public static bool InReach(PlayerMobile pm, string key) => Trade(key) is not { } t
-            ? pm.InRange(new Point3D(Yard.X, Yard.Y, pm.Z), LeaveRange)
+            ? pm.InRange(new Point3D(PlaceOf(key).X, PlaceOf(key).Y, pm.Z), LeaveRange)
             : pm.InRange(new Point3D(t.Place.X, t.Place.Y, pm.Z), t.IsTour ? TourReach : LeaveRange);
 
         public static string FollowLine(string key) => Trade(key) is not { } t
-            ? "Follow the arrow to the training yard, behind the Little Shop of Magic. Your lesson begins when you arrive."
+            ? $"Follow the arrow to {PlaceName(key)}. Your lesson begins when you arrive."
             : $"Follow the arrow to {t.Where}. Your lesson begins when you arrive.";
 
         public static string LeftLine(string key) => Trade(key) is not { } t
-            ? "You left the training yard, so this lesson stopped and its loaned supplies disappeared. Double-click Rook to start it again."
+            ? $"You left {PlaceShort(key)}, so this lesson stopped and its loaned supplies disappeared. Double-click Rook to start it again."
             : t.IsTour
                 ? "You went too far from New Haven, so the tour stopped. Double-click Rook to start it again."
                 : $"You left {t.Where}, so this lesson stopped and its loaned supplies disappeared. Double-click Rook to start it again.";
@@ -238,14 +239,20 @@ namespace Server.Tutorial
         /// <summary>Where the arrow points: the trial's place, or a tour's next stop.</summary>
         public static (Point3D Spot, string Name) PointAt(Trial trial)
         {
-            if (Trade(trial.Key) is not { } t) { return (YardSpot, "the training yard"); }
+            if (Trade(trial.Key) is not { } t) { return (PlaceOf(trial.Key), PlaceShort(trial.Key)); }
             if (t.Stops is { } stops)
             {
                 var i = Math.Min(trial.Steps.Count, stops.Length - 1);
                 return (stops[i].Spot(), stops[i].Name);
             }
 
-            return (Ground(t.Place.X, t.Place.Y), t.Key == "animals.taming" ? "the farm's animal pen" : "the trades yard");
+            return t.Key switch
+            {
+                "animals.taming" => (HavenSpots.Stables, "the stables"),
+                "gathering.mining" => (HavenSpots.MiningCave, "the mining cave"),
+                "bard.trial" => (HavenSpots.BardicGuild, "the Bardic Guild"),
+                _ => (Ground(t.Place.X, t.Place.Y), "the trades yard")
+            };
         }
 
         public static string TradeHint(string key) => Trade(key)?.Hint ?? "This lesson has no activity yet. Ask a staff member for help.";
@@ -284,8 +291,9 @@ namespace Server.Tutorial
             var work = Ground(TradesYard.X + 2, TradesYard.Y);
             var spots = trial.Key switch
             {
-                "animals.taming" => new[] { Ground(GoatSpot.X, GoatSpot.Y) },
-                "bard.trial" => new[] { work, Ground(TradesYard.X + 2, TradesYard.Y + 2) },
+                "animals.taming" => new[] { HavenSpots.SickStall }, // cc-P743
+                "gathering.mining" => Array.Empty<Point3D>(),           // cc-P743: the cave's own floor
+                "bard.trial" => new[] { BardEchoA, BardEchoB },          // cc-P743: inside the Bardic Guild
                 "thieving.trial" => new[] { Ground(TradesYard.X + 1, TradesYard.Y), Ground(TradesYard.X - 1, TradesYard.Y) },
                 _ when t.IsTour => Array.Empty<Point3D>(),
                 // The anvil and forge stand east of the yard's centre, in reach of it (CraftItem: 2 tiles) and out of the
@@ -307,8 +315,8 @@ namespace Server.Tutorial
                 case "gathering.mining":
                     Lend(trial, new Pickaxe());
                     LendSkill(trial, SkillName.Mining, 60);
-                    Prop(trial, new Static(0x053B), work, "practice vein");
-                    FreshBank(Mining.System.OreAndStone, work);
+                    // cc-P743: the cave's own floor and walls; their ore banks start full (others' digging aside).
+                    foreach (var p in MiningTiles) { FreshBank(Mining.System.OreAndStone, p); }
                     break;
                 case "gathering.lumberjacking":
                     Wield(trial, new Hatchet());
@@ -396,13 +404,7 @@ namespace Server.Tutorial
                     LendSkill(trial, SkillName.Cartography, 60);
                     break;
                 case "animals.taming":
-                    Lend(trial, new ShepherdsCrook());
-                    Lend(trial, new Bandage(10));
-                    LendSkill(trial, SkillName.Herding, 60);
-                    LendSkill(trial, SkillName.AnimalTaming, 60);
-                    LendSkill(trial, SkillName.AnimalLore, 60);
-                    LendSkill(trial, SkillName.Veterinary, 60);
-                    Creature(trial, new TutorialFarmGoat { TrialOwner = pm.Serial }, spots[0]);
+                    ArmStable(trial); // cc-P743 item 4
                     break;
                 case "bard.trial":
                     Lend(trial, new Lute());
@@ -506,6 +508,9 @@ namespace Server.Tutorial
 
         private static void ReturnTrade(Trial trial)
         {
+            trial.BrawlTimer.Cancel(); // cc-P743
+            trial.Brawling = false;
+            ReturnStable(trial);
             foreach (var item in trial.Props) { item.Delete(); }
             trial.Props.Clear();
             foreach (var c in trial.Creatures) { c.Delete(); }
@@ -562,8 +567,9 @@ namespace Server.Tutorial
                 }
             }
 
-            // A tamed goat that has healed: it worries the fence again, so the Veterinary step has a wound to bandage.
-            if (trial.Steps.Contains(SkillName.AnimalTaming.ToString())) { WoundGoat(trial); }
+            // cc-P743: the stable horse's steps, and the thief chest's trap while Remove Trap is to do.
+            if (trial.Key == "animals.taming") { TickStable(trial); }
+            KeepChestTrapped(trial);
         }
 
         /// <summary>animals.taming: the goat scraped itself on the fence (Veterinary needs a hurt patient, Bandage.cs).</summary>
@@ -582,8 +588,11 @@ namespace Server.Tutorial
             if (success && from is PlayerMobile pm && Current(pm) is { Armed: true, Finished: false } trial &&
                 Trade(trial.Key) is { IsTour: false } t && Array.Exists(t.Steps, s => s.Id == skill.SkillName.ToString()))
             {
+                // cc-P743 item 4: the stable horse itself says when it is healed and tamed (TickStable), not any roll.
+                if (trial.Key == "animals.taming") { return; }
+                // cc-P743 item 5: a successful Provocation sets the echoes fighting before the step is counted.
+                if (trial.Key == "bard.trial" && skill.SkillName == SkillName.Provocation) { StartBrawl(trial); }
                 Step(trial, skill.SkillName.ToString());
-                if (skill.SkillName == SkillName.AnimalTaming) { WoundGoat(trial); }
             }
         }
 
@@ -594,6 +603,7 @@ namespace Server.Tutorial
             if (t == null || trial.Finished || !trial.Steps.Add(id)) { return; }
             if (trial.Steps.Count >= t.Steps.Length)
             {
+                if (trial.Brawling) { trial.FinishAfterBrawl = true; return; } // cc-P743: let the echoes fight first
                 Finish(trial);
                 return;
             }
