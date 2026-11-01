@@ -36,8 +36,9 @@ public class HavenMoveVerification
     [Fact]
     public void RookTheMoongateExitAndTheTownsOwnPiecesStandOnTheSquare()
     {
-        Assert.Equal(new Point3D(3631, 2584, 0), TutorialRecruiter.Spot);
-        Assert.Equal(new Point3D(3632, 2584, 0), HavenSpots.MoongateExit);
+        // cc-P743 item 6: Rook sits on a bench by the Albatross tavern's patio; the isle's moongate sets you down before him.
+        Assert.Equal(new Point3D(3669, 2636, 0), TutorialRecruiter.Spot);
+        Assert.Equal(new Point3D(3669, 2634, 0), HavenSpots.MoongateExit);
         Assert.Equal(new Point3D(3633, 2585, 0), NewHavenQuestBoard.HomeLocation);
         Assert.Equal(new Point3D(3632, 2587, 0), ClusterFResetStoneSeeder.Location);
         Assert.Equal(new Point3D(3646, 2596, 0), FountainOfYouthSystem.NewHavenSpot);

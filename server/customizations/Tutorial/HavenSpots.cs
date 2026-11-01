@@ -28,11 +28,41 @@ public static class HavenSpots
     /// </summary>
     public static Point3D Start { get; set; } = new(3634, 2586, 0);
 
-    /// <summary>Rook Hallowell, two tiles from the start, as on the old plaza (cc-P80; was 3500,2572,14).</summary>
-    public static readonly Point3D Rook = new(3631, 2584, 0);
+    /// <summary>
+    /// Rook Hallowell, seated on a bench by the Albatross Bar and Grill's patio, facing the square (cc-P743, Chase 10-30:
+    /// "a better spot instead of in the middle of the square"). Was the square, two tiles from the start (3631,2584,0).
+    /// </summary>
+    public static readonly Point3D Rook = new(3669, 2636, 0);
 
-    /// <summary>Where the isle's dock moongate sets a trainee down: beside Rook (the old travel gate's exit, cc-P289).</summary>
-    public static readonly Point3D MoongateExit = new(3632, 2584, 0);
+    /// <summary>Rook's old spot on the square, where an older world's Rook is moved from (cc-P743).</summary>
+    public static readonly Point3D OldRook = new(3631, 2584, 0);
+
+    /// <summary>His bench: two wooden bench pieces (0x0B2C, east-west), Rook on the west one (cc-P743).</summary>
+    public static readonly Point3D[] RookBench = [new(3669, 2636, 0), new(3670, 2636, 0)];
+
+    /// <summary>Where the isle's dock moongate sets a trainee down: in front of Rook's bench (cc-P743; was 3632,2584,0).</summary>
+    public static readonly Point3D MoongateExit = new(3669, 2634, 0);
+
+    /// <summary>cc-P743: Rook's place in words, for every line that sends a trainee to him.</summary>
+    public const string RookPlace = "on his bench by the Albatross tavern, south of the square";
+
+    /// <summary>cc-P743: New Haven's warrior training area, the Proving Grounds' palisade yard (floor Z 40, gate east).</summary>
+    public static readonly Point3D ProvingGrounds = new(3731, 2583, 40);
+
+    /// <summary>cc-P743: the Haven Magery School's south room (P678's magery hall, floor Z 0).</summary>
+    public static readonly Point3D MageryHall = new(3651, 2477, 0);
+
+    /// <summary>cc-P743: the Bardic Guild's long hall (floor Z 0).</summary>
+    public static readonly Point3D BardicGuild = new(3663, 2531, 0);
+
+    /// <summary>cc-P743: the cave mouth on the mountain path south of town (cave floor, Z 9).</summary>
+    public static readonly Point3D MiningCave = new(3612, 2744, 9);
+
+    /// <summary>cc-P743: the stables (Uzeraan's mansion's barn), the aisle in front of the sick-bay stall.</summary>
+    public static readonly Point3D Stables = new(3605, 2617, 0);
+
+    /// <summary>cc-P743: the sick-bay stall, where the injured horse waits.</summary>
+    public static readonly Point3D SickStall = new(3606, 2620, 0);
 
     /// <summary>The quest board, one tile from the start as on the old plaza (NewHavenQuestBoard; was 3502,2573,14).</summary>
     public static readonly Point3D QuestBoard = new(3633, 2585, 0);

@@ -97,8 +97,10 @@ public class TutorialLoanLifecycleVerification : IDisposable
     }
 
     // Where each lesson arms: the training yard for combat and magic, the trades yard for crafting and thieving.
+    // cc-P743: the sparring and magery lessons have their own buildings (TutorialWingTrials.PlaceOf).
     private static Point2D PlaceOf(string key) =>
-        key.StartsWith("crafting.", StringComparison.Ordinal) || key == "thieving.trial" ? TutorialWingTrials.TradesYard : TutorialWingTrials.Yard;
+        key.StartsWith("crafting.", StringComparison.Ordinal) || key == "thieving.trial" ? TutorialWingTrials.TradesYard
+        : new Point2D(TutorialWingTrials.PlaceOf(key).X, TutorialWingTrials.PlaceOf(key).Y);
 
     private static void Run(Player p, string key)
     {

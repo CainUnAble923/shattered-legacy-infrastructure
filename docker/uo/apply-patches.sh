@@ -1023,6 +1023,9 @@ apply_patch "$PATCHES/PlayerMobile-craft-order-hurt.patch"
 # sees the attempt. Made with diff -u against the PlayerMobile.cs every patch above leaves. Alternatives argued in
 # shard-migration notes/cc-P728-isle-walkthrough-fixes-4.md.
 apply_patch "$PATCHES/PlayerMobile-tutorial-wake-move.patch"
+# cc-P743: a creature kept for one player (Tutorial.IPrivateMobile, the New Haven stable horse) shows to that player and
+# staff only. After every other PlayerMobile patch, whose lines it does not meet. Pinned by NewHavenFixesVerification.
+apply_patch "$PATCHES/PlayerMobile-private-mobile.patch"
 # cc-P269 (High Seas fishing, second half). FishingPole.cs gains ServUO's bait and hook (version 0 -> 1, migrated from
 # pinned's v0 by the generator): BaitType, EnhancedBait, BaitUses, HookType, HookUses, OriginalHue, OnFishedHarvest and
 # the tooltip lines; a partial class could add the members but not the saved version or the generated serializer, and
@@ -1047,7 +1050,9 @@ for skipped in "${SKIPPED_PATCHES[@]}"; do
 done
 for file in "$PATCHES"/*.patch; do
     name=$(basename "$file")
-    if ! printf '%s' "$HANDLED_PATCHES" | grep -Fxq "$name"; then
+    # cc-P714: a here-string, not a pipe. With pipefail, grep -q leaving at its first match could kill printf with
+    # SIGPIPE, and the patch read as never applied (the long-known flake; two in a row on P714's longer list).
+    if ! grep -Fxq "$name" <<< "$HANDLED_PATCHES"; then
         fail "$name - present in $PATCHES but never applied or skipped by name"
     fi
 done

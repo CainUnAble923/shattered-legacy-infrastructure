@@ -139,13 +139,13 @@ public class TutorialTradeTrialVerification : IDisposable
     // ---------------------------------------------------------------- 2
 
     [Theory]
-    [InlineData("gathering.mining", SkillName.Mining, typeof(Pickaxe), 1)]
+    [InlineData("gathering.mining", SkillName.Mining, typeof(Pickaxe), 0)] // cc-P743: the cave's own floor, no vein
     [InlineData("gathering.lumberjacking", SkillName.Lumberjacking, typeof(Hatchet), 2)]
     [InlineData("gathering.fishing", SkillName.Fishing, typeof(FishingPole), 4)]
     [InlineData("gathering.camping", SkillName.Camping, typeof(Kindling), 0)]
     public void AHarvestFinishesGatheringAndTheToolAndPropsGoBack(string key, SkillName skill, Type tool, int props)
     {
-        using var p = new Player(TutorialWingTrials.TradesYard);
+        using var p = new Player(TutorialWingTrials.Trade(key)!.Place);
         var trial = Begin(p, key);
         var loaners = trial.Loaners.ToList();
         var placed = trial.Props.ToList();
@@ -230,43 +230,19 @@ public class TutorialTradeTrialVerification : IDisposable
 
     // ---------------------------------------------------------------- 4
 
+    // cc-P743 item 4: the goat in the old farm pen became the injured stable horse (NewHavenFixesVerification covers it).
     [Fact]
-    public void HerdingTamingLoreAndVeterinaryOnTheFarmGoatFinishAnimals()
+    public void TheAnimalsLessonIsInTheStablesWithTheInjuredHorse()
     {
-        using var p = new Player(TutorialWingTrials.FarmField);
+        using var p = new Player(new Point2D(HavenSpots.Stables.X, HavenSpots.Stables.Y));
         var trial = Begin(p, "animals.taming");
-        var loaners = trial.Loaners.ToList();
-        Assert.Single(loaners.OfType<ShepherdsCrook>());
-        Assert.Single(loaners.OfType<Bandage>());
-        var goat = Assert.IsType<TutorialFarmGoat>(trial.Creatures.Single());
-        Assert.True(goat.InRange(new Point3D(TutorialWingTrials.GoatSpot.X, TutorialWingTrials.GoatSpot.Y, goat.Z), 0));
-        Assert.True(goat.Tamable);
-
-        Roll(p, SkillName.Herding);
-        Roll(p, SkillName.AnimalTaming);
-        Assert.True(goat.Hits < goat.HitsMax, $"the tamed goat has {goat.Hits} of {goat.HitsMax}"); // a wound for the bandage
-        goat.Controlled = true;
-        goat.ControlMaster = p.Pm;
-        goat.Hits = goat.HitsMax; // it healed before the bandage
-        // The test host has no regeneration rates (pinned Mobile.DefaultHitsRate is zero, RegenRates never configures),
-        // so a wounded creature would refill on the next wheel tick. Two seconds, as RegenRates gives a creature.
-        var rate = Mobile.DefaultHitsRate;
-        Mobile.DefaultHitsRate = TimeSpan.FromSeconds(2);
-        try
-        {
-            Tick();
-        }
-        finally
-        {
-            Mobile.DefaultHitsRate = rate;
-        }
-
-        Assert.True(goat.Hits < goat.HitsMax, $"after a tick the goat has {goat.Hits} of {goat.HitsMax}");
-        Roll(p, SkillName.AnimalLore);
-        Assert.DoesNotContain("animals.taming", p.Record.StationsDone);
-        Roll(p, SkillName.Veterinary);
-        Assert.Contains("animals.taming", p.Record.StationsDone);
-        AssertAllReturned(p, trial, loaners, trial.Props.ToList(), new List<BaseCreature> { goat });
+        Assert.NotNull(trial.Horse);
+        Assert.Equal(HavenSpots.SickStall, trial.Horse!.Location);
+        Roll(p, SkillName.Veterinary);   // a roll alone is not the horse healed
+        Roll(p, SkillName.AnimalTaming); // nor tamed
+        Assert.Empty(trial.Steps);
+        TutorialWingTrials.Cancel(p.Pm);
+        Assert.True(trial.Horse == null || trial.Horse.Deleted);
     }
 
     // ---------------------------------------------------------------- 5
@@ -274,7 +250,7 @@ public class TutorialTradeTrialVerification : IDisposable
     [Fact]
     public void PeaceProvocationAndDiscordFinishTheBard()
     {
-        using var p = new Player(TutorialWingTrials.TradesYard);
+        using var p = new Player(new Point2D(HavenSpots.BardicGuild.X, HavenSpots.BardicGuild.Y)); // cc-P743 item 7
         var trial = Begin(p, "bard.trial");
         var loaners = trial.Loaners.ToList();
         Assert.Single(loaners.OfType<Lute>());
@@ -287,6 +263,13 @@ public class TutorialTradeTrialVerification : IDisposable
         Roll(p, SkillName.Provocation);
         Assert.DoesNotContain("bard.trial", p.Record.StationsDone);
         Roll(p, SkillName.Discordance);
+        // cc-P743 item 5: the provoked echoes fight first; the lesson finishes when the brawl is over.
+        Assert.DoesNotContain("bard.trial", p.Record.StationsDone);
+        for (var i = 0; i < 40 && !p.Record.StationsDone.Contains("bard.trial"); i++)
+        {
+            Tick();
+        }
+
         Assert.Contains("bard.trial", p.Record.StationsDone);
         AssertAllReturned(p, trial, loaners, trial.Props.ToList(), echoes);
     }
@@ -380,11 +363,11 @@ public class TutorialTradeTrialVerification : IDisposable
         Tick();
         Assert.Null(TutorialWingTrials.Current(p.Pm));
 
-        p.Pm.MoveToWorld(new Point3D(TutorialWingTrials.TradesYard.X, TutorialWingTrials.TradesYard.Y, 0), Map.Trammel);
+        p.Pm.MoveToWorld(HavenSpots.MiningCave, Map.Trammel); // cc-P743: the mining lesson is at the cave
         var trial = Begin(p, "gathering.mining");
         var loaners = trial.Loaners.ToList();
         var placed = trial.Props.ToList();
-        p.Pm.MoveToWorld(new Point3D(TutorialWingTrials.TradesYard.X + 30, TutorialWingTrials.TradesYard.Y, 0), Map.Trammel);
+        p.Pm.MoveToWorld(new Point3D(HavenSpots.MiningCave.X + 30, HavenSpots.MiningCave.Y, 0), Map.Trammel);
         Tick();
         Assert.Null(TutorialWingTrials.Current(p.Pm));
         AssertAllReturned(p, trial, loaners, placed, new List<BaseCreature>());

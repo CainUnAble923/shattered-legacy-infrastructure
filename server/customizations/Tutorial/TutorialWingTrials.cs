@@ -110,6 +110,14 @@ namespace Server.Tutorial
             public readonly List<BaseCreature> Creatures = new();      // its goat, its marks
             public readonly Dictionary<Type, int> ProductsBefore = new();
             public double HidingBefore = -1;                           // the Hiding base before the Stealth loan (-1: none)
+
+            // cc-P743 (NewHavenLessons.cs): the mage echo, the bard's brawl, the stable horse, the chest's re-traps.
+            public BaseCreature? Demo;
+            public TimerExecutionToken DemoTimer;
+            public bool Brawling, FinishAfterBrawl;
+            public TimerExecutionToken BrawlTimer;
+            public TutorialStableHorse? Horse;
+            public int ChestResets;
         }
 
         private static readonly Dictionary<Serial, Trial> Active = new();
@@ -187,7 +195,7 @@ namespace Server.Tutorial
             if (!ClusterFTutorial.IsParticipant(pm) || !IsWingTrial(station.Key)) { return; }
             if (!pm.Alive)
             {
-                ClusterFTutorial.SystemLine(pm, "Visit Sera the healer at the farm gate and double-click Sera. Click Resurrect to return to life before starting a lesson.");
+                ClusterFTutorial.SystemLine(pm, "Return to life first: visit the Healers of Haven, east of the square, or any healer or ankh, then start the lesson.");
                 return;
             }
 
@@ -241,7 +249,7 @@ namespace Server.Tutorial
             if (Trade(trial.Key) != null) { return ArmTrade(trial); }
             var needsTarget = trial.Key is not ("combat.healing" or "magic.chivalry");
             var needsPatient = trial.Key is "combat.healing" or "magic.chivalry";
-            if (needsTarget && !Fits(TargetSpot) || needsPatient && !Fits(PatientSpot))
+            if (needsTarget && !Fits(TargetOf(trial.Key)) || needsPatient && !Fits(PatientSpot))
             {
                 ClusterFTutorial.SystemLine(pm, "There is no room to set up this lesson in the training yard. Ask a staff member for help.");
                 return false;
@@ -311,7 +319,8 @@ namespace Server.Tutorial
             if (needsTarget)
             {
                 trial.Target = new TutorialTrainingEcho(trial.Key == "combat.weapons", false) { TrialOwner = pm.Serial };
-                trial.Target.MoveToWorld(TargetSpot, Map.Trammel);
+                trial.Target.MoveToWorld(TargetOf(trial.Key), Map.Trammel); // cc-P743: the lesson's own building
+                StartMageDemo(trial); // cc-P743 item 7: magic.magery only
             }
 
             if (needsPatient)
@@ -514,6 +523,7 @@ namespace Server.Tutorial
                 trial.TithingLoan = 0;
             }
 
+            EndMageDemo(trial); // cc-P743
             trial.Target?.Delete();
             trial.Patient?.Delete();
             trial.Target = trial.Patient = null;
@@ -852,7 +862,31 @@ namespace Server.Mobiles
         public override void Damage(int amount, Mobile? from = null, bool informMount = true, bool ignoreEvilOmen = false)
         {
             if (!IsPatient && Hits - amount < 20) { Hits = HitsMax; }
+            // cc-P743 item 5: its provoked partner's blows land too (TutorialCreature ignores anyone outside the tutorial).
+            if (from != null && from == BrawlFoe)
+            {
+                BrawlBlowsTaken++;
+                base.Damage(amount, null, informMount, ignoreEvilOmen);
+                return;
+            }
+
             base.Damage(amount, from, informMount, ignoreEvilOmen);
+        }
+
+        /// <summary>cc-P743 item 5: the echo it was provoked against, while the lesson's brawl lasts.</summary>
+        public TutorialTrainingEcho? BrawlFoe { get; set; }
+
+        /// <summary>cc-P743 item 5: blows taken from its brawl partner (for the lesson's tests).</summary>
+        public int BrawlBlowsTaken { get; private set; }
+
+        /// <summary>One visible blow at its brawl partner: face it, swing, the hit sound and a little damage.</summary>
+        public void SwingAt(TutorialTrainingEcho foe)
+        {
+            Direction = GetDirectionTo(foe);
+            Combatant = foe;
+            Animate(Utility.RandomList(9, 10, 11), 7, 1, true, false, 0);
+            PlaySound(Utility.RandomList(0x13C, 0x13D, 0x13E));
+            foe.Damage(Utility.RandomMinMax(3, 7), this);
         }
 
         public override void OnHeal(ref int amount, Mobile from)

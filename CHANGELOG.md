@@ -29,6 +29,21 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.31.9
+
+### Changed
+- Test shard: New Haven's sparring lesson with the echo is now held in the Proving Grounds, the fenced warrior training yard on the east side of town.
+- Test shard: the mining lesson takes you along the mountain path south of town to a cave, where you dig real ore from the cave floor. A signpost marks where the path starts.
+- Test shard: the animals lesson is now in the stables beside Uzeraan's mansion: bandage an injured horse in the sick-bay stall, then tame it. The first horse you tame there is yours to keep and ride. Getting your pet on the Wakening Isle no longer marks this lesson done.
+- Test shard: in the bard lesson, after a successful Provocation the two echoes fight each other for a few seconds so you can see what it does. The lesson is held in the Bardic Guild's hall.
+- Test shard: the magery lesson is held in the Haven Magery School, where a mage echo shows you Magic Arrow a few times, words of power and all, until you cast it yourself.
+- Test shard: Rook now sits on a bench by the Albatross tavern, just south of the square, instead of standing in the middle of it. The isle's moongate sets you down in front of him.
+- Test shard: the housing lesson has three clear stops, each with a signpost and one thing to learn: a small house, where houses can be built, and keeping your deed in the bank.
+
+### Fixed
+- Test shard: in the thieving lesson, opening the practice chest no longer leaves you unable to finish Remove Trap: the lesson sets a new trap on the chest.
+- Test shard: the leftover tutorial farm west of New Haven is gone.
+
 ## 2026.10.31.8
 
 ### Staff
