@@ -197,6 +197,11 @@ namespace Server.Tutorial
                 return;
             }
 
+            if (Preview(pm, station.Key))
+            {
+                return;
+            }
+
             TutorialCoreTrials.Cancel(pm);
             Cancel(pm, null);
             var trial = new Trial(pm, station);
@@ -208,6 +213,31 @@ namespace Server.Tutorial
             if (NearPlace(pm, station.Key)) { Arm(trial); }
             Show(pm, trial);
         }
+
+        /// <summary>
+        /// cc-P714: before a character has learned a gated school (ClusterFSchoolGate), its lesson is a demonstration and a
+        /// referral only: no loan, no trial, no tithing points, no station credit. It marks the introduction as viewed. True
+        /// when it showed the preview; after initiation the lesson runs as before.
+        /// </summary>
+        public static bool Preview(PlayerMobile pm, string key)
+        {
+            var skill = key switch { "magic.chivalry" => SkillName.Chivalry, "magic.necromancy" => SkillName.Necromancy, _ => (SkillName)(-1) };
+            if ((int)skill < 0 || ClusterFSchoolGate.IsPermitted(pm, skill) || ClusterFSchoolGate.Find(skill) is not { } school)
+            {
+                return false;
+            }
+
+            ClusterFSchoolGate.ProgressOf(pm, school.Id).IntroViewed = true;
+            pm.FixedParticles(skill == SkillName.Chivalry ? 0x376A : 0x374A, 9, 32, 5005, skill == SkillName.Chivalry ? 0x47E : 0x455, 0, EffectLayer.Waist);
+            ClusterFTutorial.SystemLine(pm, PreviewLine(skill));
+            ClusterFTutorial.SystemLine(pm, $"To learn {school.Name}, speak with {school.Teacher} at {school.Place}: the quest {school.Quest} comes first. " +
+                "This casting lesson opens after you learn the school. You can graduate without it.");
+            return true;
+        }
+
+        public static string PreviewLine(SkillName skill) => skill == SkillName.Chivalry
+            ? "Rook shows you Chivalry: a soft light passes over a wounded villager. That is Close Wounds. Chivalry's abilities spend mana and tithing points, and your karma sets their strength."
+            : "Rook shows you Necromancy: a cold mist curls round a training dummy. That is Pain Spike. Necromancy's spells use reagents such as grave dust and pig iron, lower your karma, and grow stronger with Spirit Speak.";
 
         public static bool NearYard(PlayerMobile pm, int range = 4) =>
             pm.Map == Map.Trammel && pm.InRange(new Point3D(Yard.X, Yard.Y, pm.Z), range);

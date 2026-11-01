@@ -134,6 +134,12 @@ public static class ClusterFSkillGain
             return false;
         }
 
+        // cc-P714: no roll at all for a gated school the character has not earned.
+        if (!ClusterFSchoolGate.AllowGain(from, skillName))
+        {
+            return false;
+        }
+
         maxSkill = EffectiveMax(from, skill, maxSkill);
         var result = ObserveAttempt(from, skill, () => _baseLocationHandler(from, skillName, minSkill, maxSkill));
         var location = LocationKey(from);
@@ -149,6 +155,12 @@ public static class ClusterFSkillGain
         var skill = from.Skills[skillName];
 
         if (skill == null || _baseDirectLocationHandler == null)
+        {
+            return false;
+        }
+
+        // cc-P714: no roll at all for a gated school the character has not earned.
+        if (!ClusterFSchoolGate.AllowGain(from, skillName))
         {
             return false;
         }
@@ -174,6 +186,12 @@ public static class ClusterFSkillGain
             return false;
         }
 
+        // cc-P714: no roll at all for a gated school the character has not earned.
+        if (!ClusterFSchoolGate.AllowGain(from, skillName))
+        {
+            return false;
+        }
+
         // cc-P70: Minstrel's Bells III eases the owner's Peacemaking, Provocation and Discordance near the mule.
         var bardEase = Server.Mobiles.MuleModules.BardSkillEase(from, skillName);
         minSkill -= bardEase;
@@ -193,6 +211,12 @@ public static class ClusterFSkillGain
         var skill = from.Skills[skillName];
 
         if (skill == null || _baseDirectTargetHandler == null)
+        {
+            return false;
+        }
+
+        // cc-P714: no roll at all for a gated school the character has not earned.
+        if (!ClusterFSchoolGate.AllowGain(from, skillName))
         {
             return false;
         }

@@ -1037,6 +1037,12 @@ apply_patch "$PATCHES/PlayerMobile-tutorial-wake-move.patch"
 apply_patch "$PATCHES/FishingPole-high-seas-bait-hooks.patch"
 apply_patch "$PATCHES/Fishing-high-seas-bait-hooks-lava.patch"
 apply_patch "$PATCHES/AOS-fish-pies.patch"
+# cc-P714: the Chivalry and Necromancy initiation gates (ClusterFSchoolGate.cs). Spell.Cast refuses a gated school's
+# spell for a character without the permission (after Spell-urali-trance, which meets the same file), and a power scroll
+# for such a school is refused before it is used. Notes: shard-migration/notes/cc-P714-gated-skills.md; pinned by
+# SchoolGateVerification.
+apply_patch "$PATCHES/Spell-school-gate.patch"
+apply_patch "$PATCHES/PowerScroll-school-gate.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
@@ -1047,7 +1053,9 @@ for skipped in "${SKIPPED_PATCHES[@]}"; do
 done
 for file in "$PATCHES"/*.patch; do
     name=$(basename "$file")
-    if ! printf '%s' "$HANDLED_PATCHES" | grep -Fxq "$name"; then
+    # cc-P714: a here-string, not a pipe. With pipefail, grep -q leaving at its first match could kill printf with
+    # SIGPIPE, and the patch read as never applied (the long-known flake; two in a row on P714's longer list).
+    if ! grep -Fxq "$name" <<< "$HANDLED_PATCHES"; then
         fail "$name - present in $PATCHES but never applied or skipped by name"
     fi
 done

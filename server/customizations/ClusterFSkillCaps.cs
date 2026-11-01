@@ -194,5 +194,8 @@ public static class ClusterFSkillCaps
         }
 
         skills.Cap = TotalSkillCapFixedPoint;
+
+        // cc-P714: an unearned gated school (Chivalry, Necromancy) is held at the character's own base.
+        ClusterFSchoolGate.ApplyCaps(player);
     }
 }

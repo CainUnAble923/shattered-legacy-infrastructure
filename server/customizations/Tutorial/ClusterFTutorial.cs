@@ -289,6 +289,10 @@ public static class ClusterFTutorial
 
         TutorialStart.SendHome(pm); // cc-P663: a skip on the isle wakes in New Haven, pets and all
         SystemLine(pm, "You skipped the tutorial. Double-click Rook if you want to take the lessons and earn their rewards later.");
+        if (ClusterFSchoolGate.Enabled)
+        {
+            SystemLine(pm, ClusterFSchoolGate.RookLead); // cc-P714: a skip grants neither gated school
+        }
 
         if (SkipCountsAsGraduation)
         {
@@ -400,6 +404,10 @@ public static class ClusterFTutorial
 
         ClusterFLoops.Graduate(pm);
         GraduationRewards(pm);
+        if (ClusterFSchoolGate.Enabled)
+        {
+            SystemLine(pm, ClusterFSchoolGate.RookLead); // cc-P714: graduation grants neither gated school
+        }
 
         if (remedial && pm.Account is IAccount acct)
         {
