@@ -205,15 +205,21 @@ public static class ClusterFDevTools
         if (opts.Flags)
         {
             // cc-P48: registration is the "league.joined" flag; every character's League rank goes with it.
-            data.Flags.Clear(); // cc-P717: with it TutorialStart.HavenUnlockedFlag, so New Haven is locked again
+            data.Flags.Clear();
             data.FlagValues.Clear();
             data.ClearLeagueData();
+
+            // cc-P762 (P717's Codex P2): the tutorial record too, so the next character takes the lessons from the start.
+            for (var i = 0; i < account.Length; i++)
+                if (account[i] is PlayerMobile trainee)
+                    Server.Tutorial.TutorialCoreTrials.Cancel(trainee);
+            data.ResetTutorial();
 
             for (var i = 0; i < account.Length; i++)
                 if (account[i] is PlayerMobile ranked)
                     ClusterFBankLimit.Apply(ranked, false);
 
-            admin.SendMessage("League registration, every character's League rank, and every account flag cleared. New Haven is locked at character creation until a character finishes or skips the tutorial.");
+            admin.SendMessage("League registration, every character's League rank, and every account flag and the tutorial record cleared. The next new character takes the Wakening Isle's lessons from the start.");
         }
 
         if (opts.Bulletins)

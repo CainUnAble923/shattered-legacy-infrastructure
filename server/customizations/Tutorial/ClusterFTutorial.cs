@@ -52,6 +52,7 @@ public static class ClusterFTutorial
 
     public const string SkippedAchievement = "tutorial.skipped";
     public const string RemedialAchievement = "tutorial.remedial";
+    public const string GateSkipAchievement = "tutorial.gateSkip"; // cc-P762: "Didn't Read the Sign" (TutorialGateSkip)
 
     public static void Configure()
     {
@@ -271,7 +272,15 @@ public static class ClusterFTutorial
     // -- Skip and remedial --
 
     /// <summary>The skip, after both confirmations. Grants "Didn't Read the Manual" once.</summary>
-    public static bool Skip(PlayerMobile pm)
+    public static bool Skip(PlayerMobile pm) => Skip(pm, byGate: false);
+
+    /// <summary>
+    /// cc-P762: the skip by running for the dock's moongate (TutorialGateSkip), after the crossing: the record as the skip
+    /// leaves it, without the skip's achievement (the gate grants its own) or Rook's offer (no going back).
+    /// </summary>
+    public static bool SkipByGate(PlayerMobile pm) => Skip(pm, byGate: true);
+
+    private static bool Skip(PlayerMobile pm, bool byGate)
     {
         if (!IsParticipant(pm) || RecordOf(pm) is not { } record || record.State is not (TutorialState.InCore or TutorialState.InWings))
         {
@@ -282,13 +291,16 @@ public static class ClusterFTutorial
         record.State = TutorialState.Skipped;
         record.WasSkipped = true;
         record.FinishedAt = Core.Now;
-        if (pm.Account is IAccount skipper)
+        if (byGate)
         {
-            TutorialStart.Unlock(skipper); // cc-P717: New Haven is a start for the account's next characters
+            SystemLine(pm, "You left the Wakening Isle before finishing its lessons. There is no going back for this character.");
         }
-
-        TutorialStart.SendHome(pm); // cc-P663: a skip on the isle wakes in New Haven, pets and all
-        SystemLine(pm, "You skipped the tutorial. Double-click Rook if you want to take the lessons and earn their rewards later.");
+        else
+        {
+            TutorialStart.MarkIsleExit(pm, TutorialStart.ExitLeft); // cc-P762: not the gate's skip
+            TutorialStart.SendHome(pm); // cc-P663: a skip on the isle wakes in New Haven, pets and all
+            SystemLine(pm, "You skipped the tutorial. Double-click Rook if you want to take the lessons and earn their rewards later.");
+        }
 
         if (SkipCountsAsGraduation)
         {
@@ -300,7 +312,7 @@ public static class ClusterFTutorial
             SystemLine(pm, "Double-click Rook to restart the tutorial. Finish the main lessons and graduate to leave Haven Island.");
         }
 
-        if (pm.Account is IAccount acct)
+        if (!byGate && pm.Account is IAccount acct)
         {
             ClusterFAchievementSystem.TryGrant(acct, SkippedAchievement);
         }
@@ -313,6 +325,13 @@ public static class ClusterFTutorial
     {
         if (RecordOf(pm) is not { State: TutorialState.Skipped } record || !IsRecordedCharacter(pm, record))
         {
+            return false;
+        }
+
+        // cc-P762: a character that ran for the isle's moongate never goes back.
+        if (TutorialStart.GateSkipped(pm))
+        {
+            SystemLine(pm, "You ran for the moongate instead of taking the lessons. There is no going back to the Wakening Isle for this character.");
             return false;
         }
 
@@ -393,11 +412,6 @@ public static class ClusterFTutorial
         var remedial = record.State == TutorialState.Remedial;
         record.State = TutorialState.Graduated;
         record.FinishedAt = Core.Now;
-        if (pm.Account is IAccount graduate)
-        {
-            TutorialStart.Unlock(graduate); // cc-P717
-        }
-
         ClusterFLoops.Graduate(pm);
         GraduationRewards(pm);
 

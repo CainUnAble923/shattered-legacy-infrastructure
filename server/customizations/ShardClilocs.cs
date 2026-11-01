@@ -78,7 +78,7 @@ public static class ShardClilocs
     /// <summary>"Skip the tutorial: start in New Haven."</summary>
     public const int NewHavenSkipCity = 1_900_015;
 
-    /// <summary>cc-P717: "Locked: your account's first character starts on Tutorial Island. New Haven opens once a character finishes or skips the tutorial."</summary>
+    /// <summary>cc-P717, text cc-P762: "Locked for now: New Haven opens once the Wakening Isle is finished."</summary>
     public const int NewHavenLockedCity = 1_900_016;
 
     /// <summary>cc-P726: "Pet Info", an evo pet's context menu entry for its owner (EvoPetInfo).</summary>

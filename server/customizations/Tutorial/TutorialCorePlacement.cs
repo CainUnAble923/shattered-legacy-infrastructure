@@ -449,7 +449,8 @@ public partial class TutorialBlueWalkTile : Item
 /// cc-P663: the dock's moongate out to New Haven, the last core lesson. Walk into it or double-click it (P605 risk 3). It
 /// takes the trainee's pets with them (TutorialWorld.Cross) and sets them down beside Rook. It lets through a trainee on
 /// the travel lesson, one whose core is done, and anyone not in the tutorial; a trainee with earlier lessons left is told
-/// which one comes next.
+/// which one comes next. cc-P762: except a new character (TutorialStart.IsIsleStarter) on its first visit, who goes
+/// through as a skip, once and for good (TutorialGateSkip).
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class TutorialTravelGate : Item
@@ -476,8 +477,11 @@ public partial class TutorialTravelGate : Item
         if (!pm.Alive || pm.Deleted || pm.Map == null || !pm.InRange(gate, 3)) { return false; }
         var record = ClusterFTutorial.RecordOf(pm);
         var doing = TutorialCoreTrials.IsDoing(pm, "core.travel");
-        if (!doing && ClusterFTutorial.IsParticipant(pm) && record != null && !ClusterFTutorial.CoreDone(record) &&
-            ClusterFTutorial.CoreLeft(record).FirstOrDefault() is { } next && next.Key != "core.travel")
+        var early = !doing && ClusterFTutorial.IsParticipant(pm) && record != null && !ClusterFTutorial.CoreDone(record) &&
+            ClusterFTutorial.CoreLeft(record).FirstOrDefault() is { } first && first.Key != "core.travel";
+        // cc-P762: a new character on its first visit, ahead of its lessons or visiting, runs through as a skip.
+        var skip = TutorialGateSkip.Eligible(pm, early);
+        if (early && !skip && ClusterFTutorial.CoreLeft(record!).FirstOrDefault() is { } next)
         {
             ClusterFTutorial.SystemLine(pm, $"The moongate is your last lesson. Finish {next.Title} first.");
             return false;
@@ -486,6 +490,13 @@ public partial class TutorialTravelGate : Item
         { ClusterFTutorial.SystemLine(pm, "The place where this gate sends you is blocked. Ask a staff member for help."); return false; }
         if (!TutorialWorld.Cross(pm, TutorialCorePlacement.GateExit, HavenSpots.Map)) { return false; }
         pm.PlaySound(0x1FE);
+        if (skip)
+        {
+            TutorialGateSkip.Grant(pm);
+            return true;
+        }
+
+        TutorialStart.MarkIsleExit(pm, TutorialStart.ExitLeft); // cc-P762: the normal way out
         if (doing || ClusterFTutorial.IsParticipant(pm) && record != null && !ClusterFTutorial.IsDone(record, "core.travel"))
         {
             if (!doing) { ClusterFTutorial.RunStation(pm, TutorialStations.Find("core.travel")!); }
