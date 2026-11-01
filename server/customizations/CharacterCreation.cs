@@ -128,7 +128,7 @@ public static partial class CharacterCreation
         _availableStartingCities ??= ConstructAvailableStartingCities();
 
     // cc-P717: the list one account sees (AccountHandler, AccountHandler-per-account-start-cities.patch). With the tutorial
-    // on, New Haven shows locked until the account graduates or skips (TutorialStart.Cities); otherwise the shared list.
+    // on, New Haven shows locked while its switch is off (cc-P762, TutorialStart.Cities); otherwise the shared list.
     public static CityInfo[] GetStartingCities(IAccount account) =>
         Server.Tutorial.ClusterFTutorial.Enabled ? Server.Tutorial.TutorialStart.Cities(account) : GetStartingCities();
 
@@ -211,10 +211,15 @@ public static partial class CharacterCreation
         // cc-P714: while the school gates are in force, a player starts from a template or the shorter custom list
         // (ClusterFStartChoices). A refused request makes no character: no slot is used, and the client is disconnected
         // with "Character creation blocked." (pinned's handler for a null Mobile).
+        // cc-P762: only the races newCharacters.races allows (Human, for now); any other is made Human, with a line once
+        // the character is in the world. Staff are exempt (and the staff branch below makes every staff character Human).
+        var askedRace = Core.Expansion >= args.Race.RequiredExpansion ? args.Race : Race.DefaultRace;
+        var playerRace = Server.Tutorial.NewCharacterRules.RaceFor(args.Account, askedRace, out var raceRefused);
+
         StartChoice start = null;
         if (ClusterFStartChoices.Enabled && args.Account?.AccessLevel == AccessLevel.Player)
         {
-            var startRace = Core.Expansion >= args.Race.RequiredExpansion ? args.Race : Race.DefaultRace;
+            var startRace = playerRace;
             start = ClusterFStartChoices.Resolve(requestedProfession, args.Skills, args.Stats, startRace, state.NewCharacterCreation, out var why);
             if (start == null)
             {
@@ -245,8 +250,22 @@ public static partial class CharacterCreation
 
         if (newChar.AccessLevel == AccessLevel.Player)
         {
-            var race = Core.Expansion >= args.Race.RequiredExpansion ? args.Race : Race.DefaultRace;
+            var race = playerRace; // cc-P762
             newChar.Race = race;
+            newChar.Hue = race.ClipSkinHue(args.Hue & 0x3FFF) | 0x8000;
+            if (raceRefused)
+            {
+                logger.Information("Login: {NetState}: {Race} refused at creation (account={Account}); made {Made}", state, askedRace.Name,
+                    args.Account.Username, race.Name);
+                var told = newChar;
+                Timer.DelayCall(TimeSpan.FromSeconds(4), () =>
+                {
+                    if (!told.Deleted && told.NetState != null)
+                    {
+                        told.SendMessage(0x3B2, Server.Tutorial.NewCharacterRules.RaceRefusedLine);
+                    }
+                });
+            }
 
             if (newChar is PlayerMobile pm)
             {

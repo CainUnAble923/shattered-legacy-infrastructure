@@ -119,6 +119,9 @@ public enum TriggerKind
     ProcrastinatedDays,
     LoopBackedOut,
     CommissionsExpired,
+    // cc-P762: ran for the Wakening Isle's moongate before its lessons (Tutorial/TutorialGateSkip.cs). Last, so no saved
+    // value moves.
+    TutorialGateSkip,
 }
 
 public sealed class AchievementTrigger
@@ -195,6 +198,7 @@ public sealed class AchievementTrigger
             TriggerKind.Logins             => $"logged in {n:N0} times",
             TriggerKind.TutorialSkipped    => "skipped the New Haven tutorial",
             TriggerKind.TutorialRemedial   => "completed the tutorial after skipping it",
+            TriggerKind.TutorialGateSkip   => "ran for the Wakening Isle's moongate before its lessons",
             TriggerKind.FountainOfYouth    => "drank from the Fountain of Youth",
             TriggerKind.ScissorsRunning    => n == 1
                 ? "tried to use scissors while running"
@@ -1183,6 +1187,16 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             flavor:          "Better late. Noted, with only a little smugness.",
             itemGumpId:      0x0FF4,
             prerequisiteKey: "tutorial.skipped");
+
+        // cc-P762 (Chase 2026-11-01: "a snarky achievement"): granted by TutorialGateSkip, once per account, to a new
+        // character that runs straight for the Wakening Isle's moongate.
+        Reg("tutorial.gateSkip",
+            "Didn't Read the Sign",
+            "Ran past every lesson on the Wakening Isle and straight through the moongate.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialGateSkip),
+            flavor:     "The sign said \"Lessons this way.\" You read \"Exit.\"",
+            itemGumpId: 0x0FF4);
 
         // cc-P192 (Chase 2026-10-19 15:03: "a silly easter egg"): SECRET. Hidden until earned; granted by
         // FountainOfYouthSystem.Drink the first time an account drinks from the roaming (live) fountain. No text names a

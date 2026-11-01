@@ -19,15 +19,27 @@
 //   | Tutorial character deleted mid-way| isle, re-bound to this one, done keys kept    | skip (an orphaned core or wings)     |
 //   | Created before go-live (no choice)| never entered or moved (P80 item 1)           | -                                    |
 //
-// cc-P717 (Chase, 2026-10-28): the account's first character must take the isle. Until a character of the account
-// graduates or skips (the account flag HavenUnlockedFlag, set by ClusterFTutorial.Graduate and Skip and kept when that
-// character is deleted), the list's second entry is "New Haven (locked)" with a one-line reason, and any New Haven pick
-// counts as the isle (Decide), so a client that sends New Haven anyway starts on the isle. Staff accounts always see
-// both. The list is built per account at login (CharacterCreation.GetStartingCities(account), from AccountHandler by
-// AccountHandler-per-account-start-cities.patch). The reset's account flags ([ResetMyAccount, [ClusterFReset) clear the
-// flag, which locks it again. An account that graduated or skipped before cc-P717 has no flag: its list shows New Haven
-// locked, and either pick starts in New Haven as before (Decide's "finished" row), until the flag is earned again.
-// (Counting a finished record as unlocked instead would survive the reset, which clears flags but not the record.)
+// cc-P717 (Chase, 2026-10-28) made the account's first character take the isle, with New Haven unlocked per account.
+// cc-P762 (Chase, 2026-11-01) replaced that with a shard-wide lock, one switch (NewCharacterRules, newCharacters.newHavenStart,
+// false): while it is off, every new player character starts on the Wakening Isle, on every account, whatever the screen
+// sends. The list's second entry is "New Haven (locked)" with its one line ("New Haven opens once the Wakening Isle is
+// finished"), and Decide turns any pick into the isle. The account's tutorial record still runs once per account, so the
+// isle start has two kinds:
+//
+//   | Account state (switch off)                         | Outcome                                                        |
+//   | Fresh (NotStarted), or its tutorial character gone | Isle: entered (or re-bound) on this character, in the lessons  |
+//   | InCore, InWings or Remedial on a living character  | Visit: wakes on its own copy of the isle, not in the lessons,  |
+//   | Graduated or Skipped                               |   and leaves by the dock's moongate (P717's Codex P1 closed)   |
+//
+// With the switch on, the table above (the file's first) applies again, New Haven open to everyone. Staff accounts
+// (GameMaster and up) always see both and are never entered or moved. The reset's account flags ([ResetMyAccount,
+// [ClusterFReset) clear the tutorial record too, so the next character after a reset takes the lessons from the start
+// (P717's Codex P2 closed).
+//
+// cc-P762 part 5 (Chase: "if they want to skip they could run straight for moon gate"): a character that started on the
+// isle (IsleStartKey) and walks into the dock's moongate before its lessons are done leaves the normal way, once and for
+// good (IsleExitKey "skipped"; Rook will not send it back), with the "Didn't Read the Sign" achievement and a loot box
+// holding a pet choice scroll (TutorialGateSkip). A character that finishes the lessons leaves with its normal rewards.
 //
 // Creation already places an isle pick on the isle when Decide says so then; the login decides again, since another
 // character of the account may have entered in between, and moves the character if the answer changed. Staff are
@@ -45,12 +57,6 @@ public static class TutorialStart
     public const string IsleCity = "Tutorial Island";
     public const string HavenCity = "New Haven";
     public const string LockedHavenCity = "New Haven (locked)";
-
-    /// <summary>
-    /// cc-P717: an account flag, set once a character of the account graduates or skips; New Haven is a start from then
-    /// on. The reset's account flags clear it.
-    /// </summary>
-    public const string HavenUnlockedFlag = "tutorial.havenUnlocked";
 
     /// <summary>The isle entry's button on TazUO's Trammel picture: sea south of the new New Haven. Display only.</summary>
     public static readonly Point3D IsleDisplay = new(3650, 2932, -5);
@@ -72,7 +78,12 @@ public static class TutorialStart
         /// <summary>New Haven, nothing else.</summary>
         Haven,
         /// <summary>cc-P705: chose the isle, but the isle's land is not on this server's map yet; New Haven, tutorial unused.</summary>
-        IsleMissing
+        IsleMissing,
+        /// <summary>
+        /// cc-P762: the isle, not in the lessons (the account's tutorial is with another living character, or finished); the
+        /// character wakes on its own copy and leaves by the moongate.
+        /// </summary>
+        Visit
     }
 
     /// <summary>The two entries, in order: the isle (index 0, the default) and New Haven.</summary>
@@ -83,13 +94,13 @@ public static class TutorialStart
     ];
 
     /// <summary>
-    /// cc-P717: the list for this account: both entries for staff and for an account that has unlocked New Haven,
-    /// otherwise the isle and New Haven shown locked.
+    /// cc-P762: the list for this account: both entries while New Haven's switch is on and for staff, otherwise the isle
+    /// and New Haven shown locked with its one line.
     /// </summary>
     public static CityInfo[] Cities(IAccount? account)
     {
         var cities = Cities();
-        if (account == null || account.AccessLevel >= AccessLevel.GameMaster || IsHavenUnlocked(account))
+        if (NewCharacterRules.HavenStartOpenFor(account))
         {
             return cities;
         }
@@ -99,13 +110,6 @@ public static class TutorialStart
         return cities;
     }
 
-    /// <summary>cc-P717: a character of this account has graduated or skipped since the account's last flag reset.</summary>
-    public static bool IsHavenUnlocked(IAccount account) =>
-        ClusterFAccountPersistence.Get(account)?.HasFlag(HavenUnlockedFlag) == true;
-
-    /// <summary>cc-P717: graduation and the skip (ClusterFTutorial) open New Haven for the whole account.</summary>
-    public static void Unlock(IAccount account) => ClusterFAccountPersistence.GetOrCreate(account).SetFlag(HavenUnlockedFlag);
-
     public static Choice ChoiceOf(CityInfo? city) => city?.City switch
     {
         IsleCity or LockedHavenCity => Choice.Isle,
@@ -114,6 +118,47 @@ public static class TutorialStart
     };
 
     private static string Key(Mobile m) => $"character:{(uint)m.Serial}:start";
+
+    /// <summary>cc-P762: set when a character's first login put it on the isle (in the lessons or visiting).</summary>
+    private static string IsleStartKey(Mobile m) => $"character:{(uint)m.Serial}:isleStart";
+
+    /// <summary>cc-P762: how a character that started on the isle left it: "skipped" (ran for the moongate) or "left".</summary>
+    private static string IsleExitKey(Mobile m) => $"character:{(uint)m.Serial}:isleExit";
+
+    public const string ExitSkipped = "skipped";
+    public const string ExitLeft = "left";
+
+    private static string? FlagValue(Mobile m, string key) =>
+        m.Account is IAccount acct && ClusterFAccountPersistence.Get(acct) is { } data && data.FlagValues.TryGetValue(key, out var v) ? v : null;
+
+    /// <summary>cc-P762: this character's first login put it on the Wakening Isle.</summary>
+    public static bool IsIsleStarter(Mobile m) => FlagValue(m, IsleStartKey(m)) != null;
+
+    /// <summary>cc-P762: how this character left the isle it started on (ExitSkipped, ExitLeft), or null while it has not.</summary>
+    public static string? IsleExit(Mobile m) => FlagValue(m, IsleExitKey(m));
+
+    /// <summary>cc-P762: this character ran for the moongate before its lessons were done; it never goes back.</summary>
+    public static bool GateSkipped(Mobile m) => IsleExit(m) == ExitSkipped;
+
+    /// <summary>cc-P762: started on the isle and has not left it yet.</summary>
+    public static bool StillOnFirstVisit(Mobile m) => IsIsleStarter(m) && IsleExit(m) == null;
+
+    public static void MarkIsleStart(Mobile m)
+    {
+        if (m.Account is IAccount acct)
+        {
+            ClusterFAccountPersistence.GetOrCreate(acct).FlagValues[IsleStartKey(m)] = "1";
+        }
+    }
+
+    /// <summary>cc-P762: records how a character that started on the isle left it; the first way out counts.</summary>
+    public static void MarkIsleExit(Mobile m, string how)
+    {
+        if (m.Account is IAccount acct && IsIsleStarter(m) && IsleExit(m) == null)
+        {
+            ClusterFAccountPersistence.GetOrCreate(acct).FlagValues[IsleExitKey(m)] = how;
+        }
+    }
 
     private static string Text(Choice c) => c == Choice.Isle ? "isle" : "haven";
 
@@ -140,13 +185,15 @@ public static class TutorialStart
             return Outcome.None;
         }
 
-        // cc-P717: New Haven is not a start until the account has unlocked it; the pick is the isle's.
-        if (c == Choice.Haven && pm.Account is IAccount acct && !IsHavenUnlocked(acct))
+        var orphaned = record.IsActive && ClusterFTutorial.IsRecordedCharacter(pm, record);
+
+        // cc-P762: while New Haven's switch is off, every pick is the isle's, and every new character wakes there: in the
+        // lessons when the account's tutorial is free for it, visiting otherwise.
+        if (!NewCharacterRules.HavenStartOpenFor(pm.Account))
         {
-            c = Choice.Isle;
+            return record.State == TutorialState.NotStarted || orphaned ? Outcome.Isle : Outcome.Visit;
         }
 
-        var orphaned = record.IsActive && ClusterFTutorial.IsRecordedCharacter(pm, record);
         return (record.State, c) switch
         {
             (TutorialState.NotStarted, Choice.Isle) => Outcome.Isle,
@@ -175,7 +222,7 @@ public static class TutorialStart
         }
 
         Record(pm, choice);
-        return Decide(pm, choice) == Outcome.Isle && TutorialWorld.Isle != null && TutorialWorld.IsleReady()
+        return Decide(pm, choice) is Outcome.Isle or Outcome.Visit && TutorialWorld.Isle != null && TutorialWorld.IsleReady()
             ? (TutorialWorld.Arrival, TutorialWorld.Isle)
             : (HavenSpots.Start, HavenSpots.Map);
     }
@@ -186,7 +233,7 @@ public static class TutorialStart
     /// </summary>
     public static bool WillWake(PlayerMobile pm) =>
         ClusterFTutorial.Enabled && Pending(pm) is var choice && choice != Choice.None &&
-        Decide(pm, choice) == Outcome.Isle && TutorialWorld.IsleReady();
+        Decide(pm, choice) is Outcome.Isle or Outcome.Visit && TutorialWorld.IsleReady();
 
     /// <summary>
     /// The first login: consumes this character's choice (only its own) and carries out the table. None when it had none.
@@ -202,7 +249,7 @@ public static class TutorialStart
         ClusterFAccountPersistence.GetOrCreate(acct).FlagValues.Remove(Key(pm));
         var outcome = Decide(pm, choice);
         // cc-P705: a release with the start choice but without the isle's map patch never strands anyone in the void.
-        if (outcome == Outcome.Isle && !TutorialWorld.IsleReady())
+        if (outcome is Outcome.Isle or Outcome.Visit && !TutorialWorld.IsleReady())
         {
             outcome = Outcome.IsleMissing;
         }
@@ -215,7 +262,13 @@ public static class TutorialStart
                     ClusterFTutorial.AdoptOrphanedRecord(pm);
                 }
 
+                MarkIsleStart(pm); // cc-P762
                 SendToIsle(pm, atNextLesson: false, wake: true); // cc-P721: the first arrival wakes on the sand
+                break;
+            case Outcome.Visit:
+                // cc-P762: on the isle, not in the lessons; the moongate is the way out.
+                MarkIsleStart(pm);
+                SendToIsle(pm, atNextLesson: false, wake: true, visitor: true);
                 break;
             case Outcome.Skip:
                 ClusterFTutorial.AdoptOrphanedRecord(pm);
@@ -263,7 +316,10 @@ public static class TutorialStart
     public static void SendToIsle(PlayerMobile pm, bool atNextLesson) => SendToIsle(pm, atNextLesson, wake: false);
 
     /// <summary>cc-P721: <paramref name="wake"/> plays the washed-ashore wake-up (TutorialWake) before the first lines.</summary>
-    public static void SendToIsle(PlayerMobile pm, bool atNextLesson, bool wake)
+    public static void SendToIsle(PlayerMobile pm, bool atNextLesson, bool wake) => SendToIsle(pm, atNextLesson, wake, visitor: false);
+
+    /// <summary>cc-P762: <paramref name="visitor"/> says the visitor's first lines (not in the lessons; the moongate out).</summary>
+    public static void SendToIsle(PlayerMobile pm, bool atNextLesson, bool wake, bool visitor)
     {
         if (TutorialCopies.Claim(pm) is not { } copy)
         {
@@ -286,6 +342,14 @@ public static class TutorialStart
         void FirstLines()
         {
             ClusterFTutorial.SystemLine(pm, "You wake on a quiet shore: the Wakening Isle.");
+            if (visitor)
+            {
+                ClusterFTutorial.SystemLine(pm, VisitorLine(pm));
+                ClusterFTutorial.SystemLine(pm, "Follow the road east to the moongate at the end of the dock; it takes you to New Haven.");
+                TutorialGuide.PointTo(pm);
+                return;
+            }
+
             ClusterFTutorial.SystemLine(pm, "Follow the arrow and double-click Tamsin, your guide, with two quick left clicks. Tamsin's window starts each lesson.");
             TutorialGuide.PointTo(pm);
         }
@@ -298,6 +362,21 @@ public static class TutorialStart
         {
             FirstLines();
         }
+    }
+
+    /// <summary>cc-P762: why a visitor is not in the lessons.</summary>
+    public static string VisitorLine(PlayerMobile pm)
+    {
+        var record = ClusterFTutorial.RecordOf(pm);
+        if (record is { IsActive: true })
+        {
+            var name = World.FindMobile((Serial)record.CharacterSerial)?.Name;
+            return $"Your account's lessons are with {name ?? "another character"}; log in as that character to take them. This character is visiting.";
+        }
+
+        return record?.State == TutorialState.Skipped
+            ? "Your account skipped the lessons, so this character is visiting."
+            : "Your account has finished the lessons, so this character is visiting.";
     }
 
     /// <summary>Sets a character down at the New Haven start if they are on the Fold.</summary>
