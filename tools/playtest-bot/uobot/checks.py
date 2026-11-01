@@ -156,7 +156,8 @@ def p64_1(ctx):
     if not unused:
         raise RuntimeError("no pool account left for a first login")
     # cc-P735: New Haven's start (creation's city 1). On an isle-ready world city 0 wakes on the isle, where the bulletin
-    # waits until the trainee stands up (cc-P728), so this checks a character whose account skipped the tutorial.
+    # waits until the trainee stands up (cc-P728). cc-P762: only staff accounts start in New Haven now, so this is a staff
+    # pool account's first login.
     c = ctx.fresh(race="human", female=False, label="fresh", city=HAVEN_CITY, first_login=True)
     try:
         seen = ctx.first_logins.get(c.account)
@@ -353,6 +354,8 @@ def p62_7(ctx):
 # -- new characters ---------------------------------------------------------------------------------------------------
 
 RACES = [("human", True), ("elf", False), ("gargoyle", True), ("human", False), ("elf", True), ("gargoyle", False)]
+# cc-P762: the races a player account can make (the shard's newCharacters.races); any other is made Human.
+PLAYER_RACES = ("human",)
 
 
 @check("T-039", "A new character is pointed at the board", kind="BOT-PARTIAL", left="T-039: a new player can find the board by eye")
@@ -362,8 +365,8 @@ def t_039(ctx):
     # 3633, 2585, 0; cc-P678).
     race, female = RACES[SHARED.setdefault("t039", 0) % len(RACES)]
     SHARED["t039"] += 1
-    # cc-P735: New Haven's start (creation's city 1), a character whose account skipped the tutorial; city 0 wakes on the
-    # isle once the isle is ready (cc-P688 found it on the bot's world).
+    # cc-P735: New Haven's start (creation's city 1); city 0 wakes on the isle once the isle is ready (cc-P688 found it on
+    # the bot's world). cc-P762: a staff pool account's character (staff are exempt from the new-character lock).
     c = ctx.fresh(race=race, female=female, city=HAVEN_CITY)
     try:
         m = c.find_text(r"Guild Board", timeout=12)
@@ -387,11 +390,16 @@ def create_all(ctx):
     c = ctx.fresh(race=race, female=female)
     try:
         st = c.status
-        # The body the server gave it: human 400/401, elf 605/606, gargoyle 666/667 (Server/Race.cs bodies).
-        want = {"human": (400, 401), "elf": (605, 606), "gargoyle": (666, 667)}[race][1 if female else 0]
-        ok = c.body == want and st.get("name") == c.name
-        return ok, "%s %s: body %s (want %d), status name %r (asked for %r), at %s" % (
-            race, "female" if female else "male", c.body, want, st.get("name"), c.name, (c.pos or ())[:3])
+        # The body the server gave it: human 400/401, elf 605/606, gargoyle 666/667 (Server/Race.cs bodies). cc-P762: a
+        # player account makes Humans only for now (newCharacters.races), so an Elf or Gargoyle asked for comes out Human,
+        # told why.
+        made = race if race in PLAYER_RACES else "human"
+        want = {"human": (400, 401), "elf": (605, 606), "gargoyle": (666, 667)}[made][1 if female else 0]
+        told = made == race or c.find_text(r"Only Humans can be made for now", timeout=8) is not None
+        ok = c.body == want and st.get("name") == c.name and told
+        return ok, "%s %s asked: body %s (want %d, %s), status name %r (asked for %r), told why: %s, at %s" % (
+            race, "female" if female else "male", c.body, want, made, st.get("name"), c.name,
+            "n/a" if made == race else ("yes" if told else "NO"), (c.pos or ())[:3])
     finally:
         ctx.done(c)
 

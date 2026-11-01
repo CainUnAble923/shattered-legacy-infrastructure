@@ -213,6 +213,10 @@ public static class TutorialCopies
                 ClusterFTutorial.SystemLine(pm, FreshCopyLine);
             }
         }
+        else if (TutorialStart.StillOnFirstVisit(pm))
+        {
+            TutorialStart.SendToIsle(pm); // cc-P762: a new character visiting the isle keeps visiting, to the moongate
+        }
         else
         {
             TutorialStart.SendHome(pm);

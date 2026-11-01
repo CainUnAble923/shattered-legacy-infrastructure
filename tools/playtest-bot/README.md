@@ -58,6 +58,9 @@ transcripts; the shard's logs stay out of git).
     own format (`New-WipeRequestText`, `New-WipePasswordHash`).
   - The wipe leaves one admin, `slbot-admin`.
   - Players `slbot-player`, `slbot-player2` to `4` are auto-created at first login.
+  - cc-P762: staff `slbot-staff2` to `4` are auto-created at first login too, then made GameMaster by slbot-admin's
+    `[BotStaffAccount` (test worlds only). New characters on player accounts always start on the Wakening Isle and are
+    Human, so the New Haven checks (T-039, P64-1, P64-2) make their characters on these staff accounts.
   - Their random passwords are only in `secrets.local.json` (git-ignored), and are never printed.
 - **Email:** the starting, summary and crashed mails (cc-P102), through the Golem's own mail settings (cc-autopilot's before the cutover), read only (`Send-BotReport.ps1`).
 

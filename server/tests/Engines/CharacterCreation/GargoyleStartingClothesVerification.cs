@@ -79,6 +79,9 @@ public class GargoyleStartingClothesVerification
             TileRows.GargishClothLegsType1, TileRows.GargishClothLegsType2
         );
 
+        // cc-P762: players make Humans only for now (newCharacters.races); this fact opens the switch for gargoyles.
+        var races = ServerConfiguration.GetSetting(Server.Tutorial.NewCharacterRules.RacesKey, (string)null);
+        ServerConfiguration.SetSetting(Server.Tutorial.NewCharacterRules.RacesKey, "Human, Elf, Gargoyle");
         try
         {
             // SetStats falls back to 10/10/10 on an invalid spread, and 10 Str is under the cloth pieces' AosStrReq 20,
@@ -137,6 +140,7 @@ public class GargoyleStartingClothesVerification
         }
         finally
         {
+            ServerConfiguration.SetSetting(Server.Tutorial.NewCharacterRules.RacesKey, races ?? Server.Tutorial.NewCharacterRules.DefaultRaces);
             m?.Delete();
             Accounts.Remove(account);
         }

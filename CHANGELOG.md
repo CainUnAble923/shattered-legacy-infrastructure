@@ -29,6 +29,17 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.01.4
+
+### Added
+- Test shard: a new character who runs straight past the isle's lessons and through the moongate earns "Didn't Read the Sign" and a reward box holding a pet choice scroll: a dog or a cat that follows you. There is no going back to the isle for that character.
+
+### Changed
+- New characters start on the Wakening Isle and are Human for now. New Haven shows as locked on the character screen until the isle is finished; an Elf or Gargoyle you pick is made Human, and you are told why.
+
+### Staff
+- Two switches in the shard's configuration reopen these: newCharacters.newHavenStart (false for now) and newCharacters.races ("Human" for now). Staff accounts are not locked. The account reset's flags option now also clears the tutorial record, so the next character takes the lessons from the start.
+
 ## 2026.11.01.3
 
 ### Changed
