@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.31.8
+
+### Staff
+- The Custodians' travel stop in Hammerhill moves onto the top step at the hall's south doors, where you can see yourself arrive; on the street below, the house south of the lane hid you from view.
+
 ## 2026.10.31.7
 
 ### Changed

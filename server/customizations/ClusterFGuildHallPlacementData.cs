@@ -13,7 +13,7 @@ namespace Server;
 public static class ClusterFGuildHallPlacementData
 {
     public const string DesignFile = "design/guild-halls/halls.json";
-    public const string DesignSha256 = "0f11454c8b64d36e48a69c33e03891214fd56891ea71c304e30b237d03ba797e";
+    public const string DesignSha256 = "a35b1515b09e71d16c38bf4de48181f33ea927c0f14c9a899faf9a609b24a275";
 
     /// <summary>Reuse: a free stock building (our sign stands in for its stock sign). Share: stock NPCs stay and our
     /// sign hangs beside theirs. New: OSI's Guild House multi on the survey's plot.</summary>
@@ -145,7 +145,7 @@ public static class ClusterFGuildHallPlacementData
         new("custodians", "The Custodians", Kind.Reuse, "Hammerhill, the civic works office north of the bank (ground floor) (a place on Zigholtul's Siege of Sosaria map)", "Hammerhill", 1,
             typeof(SanitationWarden), new Point3D(1560, 967, 10), Direction.South,
             SignType.BrassSign, SignFacing.West, new Point3D(1563, 973, 8), "The Custodians",
-            new Point3D(1560, 974, 5), "the south doors, on the street",
+            new Point3D(1561, 973, 7), "the top step at the south doors (P753: 1560,974 was hidden by the house south of the lane)",
             0, Point3D.Zero,
             [])
     ];
