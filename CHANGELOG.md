@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.31.6
+
+### Changed
+- Test shard: the Wakening Isle's vision now takes you into a small dungeon shrine. You watch, unseen, as the Stranger walks out of the dark to the Gem on its pedestal and strikes it, and the Gem breaks into shards in a flash of light. When the vision ends you are back exactly where you stood.
+
 ## 2026.10.31.4
 
 ### Changed
