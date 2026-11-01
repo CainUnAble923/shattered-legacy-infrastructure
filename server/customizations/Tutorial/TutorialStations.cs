@@ -89,13 +89,13 @@ public static class TutorialStations
             ["Swords", "Macing", "Fencing", "Archery", "Throwing", "Wrestling"], ["Tactics", "Anatomy", "Parrying", "Focus"],
             ["Resisting Spells"],
             ["Custom health bars", "Nameplate healthbars", "Damage hues", "Buff and cooldown bars"], "a loaned weapon you choose",
-            "the training yard, behind the Little Shop of Magic"),
+            "the Proving Grounds, the warrior training yard on the east side of town"), // cc-P743 item 1
         new("combat.healing", TutorialWing.Combat, "Bandages", ["Healing"], ["Anatomy"], None,
             ["Auto Bandage"], "loaned bandages", "the training yard, behind the Little Shop of Magic"),
 
         // -- Magic wing --
         new("magic.magery", TutorialWing.Magic, "Magery", ["Magery"], ["Meditation", "Evaluating Intelligence"], None,
-            ["SpellBar", "Quick spell cast", "Spell indicators", "Counter bar"], "a loaned spellbook and reagents (spell ingredients)", "the training yard, behind the Little Shop of Magic"),
+            ["SpellBar", "Quick spell cast", "Spell indicators", "Counter bar"], "a loaned spellbook and reagents (spell ingredients)", "the Haven Magery School, the stone hall at the north end of town"), // cc-P743 item 7
         new("magic.necromancy", TutorialWing.Magic, "Necromancy", ["Necromancy"], ["Spirit Speak"], None,
             ["SpellBar"], "a loaned necromancer spellbook", "the training yard, behind the Little Shop of Magic"),
         new("magic.chivalry", TutorialWing.Magic, "Chivalry", ["Chivalry"], None, None,
@@ -109,7 +109,7 @@ public static class TutorialStations
 
         // -- Gathering wing --
         new("gathering.mining", TutorialWing.Gathering, "Mining", ["Mining"], None, None,
-            ["Counter bar"], "a loaned pickaxe", "the trades yard, west of the training yard"),
+            ["Counter bar"], "a loaned pickaxe", "the cave on the mountain path south of town"), // cc-P743 item 3
         new("gathering.lumberjacking", TutorialWing.Gathering, "Lumberjacking", ["Lumberjacking"], None, None,
             [], "a loaned hatchet", "the trades yard, west of the training yard"),
         new("gathering.fishing", TutorialWing.Gathering, "Fishing", ["Fishing"], None, None,
@@ -138,12 +138,13 @@ public static class TutorialStations
             ["Treasure maps and SOS", "SOS locator"], "a loaned mapmaker's pen", "the trades yard, west of the training yard"),
 
         // -- Animals --
-        new("animals.taming", TutorialWing.Animals, "Animals", ["Animal Taming", "Animal Lore", "Veterinary", "Herding"], None, None,
-            ["Pet scaling", "Follow mode"], "a loaned shepherd's crook", "the farm's animal pen, through the gate"),
+        // cc-P743 item 4: heal and tame an injured horse in the stables, and keep it. Herding is explained, not practised.
+        new("animals.taming", TutorialWing.Animals, "Animals: heal and tame a horse", ["Veterinary", "Animal Taming"], ["Animal Lore"], ["Herding"],
+            ["Pet scaling", "Follow mode"], "loaned bandages if you have none", "the stables beside Uzeraan's mansion, west of the square"),
 
         // -- Bard (one trial) --
         new("bard.trial", TutorialWing.Bard, "Music and bard skills", ["Musicianship", "Peacemaking", "Provocation", "Discordance"],
-            None, None, [], "a loaned lute", "the trades yard, west of the training yard"),
+            None, None, [], "a loaned lute", "the Bardic Guild's hall, north of the square"), // cc-P743 item 7
 
         // -- Thieving and stealth (one trial) --
         new("thieving.trial", TutorialWing.Thieving, "Thieving and stealth",
@@ -152,11 +153,11 @@ public static class TutorialStations
 
         // -- Non-skill wings --
         new("housing.basics", TutorialWing.Housing, "Houses", None, None, None,
-            ["Transparent houses", "Circle of transparency"], null, "the farmhouse porch, then the bank"),
+            ["Transparent houses", "Circle of transparency"], null, "the small cottage east of the square, the field south of it, then the bank"), // cc-P743 item 9
         new("travel.wing", TutorialWing.Travel, "Runes, gates and boats", None, None, None,
-            ["World Map"], "a loaned blank recall rune", "the farm gate, then the New Haven plaza"),
+            ["World Map"], "a loaned blank recall rune", "the public moongate, then Rook's bench by the Albatross tavern"),
         new("reputation.wing", TutorialWing.Reputation, "Name colors, reputation, and guards", None, None, None,
-            [], null, "the training yard, Sera the healer, then the plaza"),
+            [], null, "the training yard, the town healer, then Rook's bench"),
         new("shard.systems", TutorialWing.ShardSystems, "Rewards and extra jewelry slots", None, None, None,
             ["Skill progress bar", "Autoloot", "Scavenger", "Nearby loot", "Vendors: advanced shop, trade, auto buy and sell",
              "Legion scripting (advanced)", "Script library browser (advanced)"], null, "Elara Voss's house, the bank, then Rook"),
