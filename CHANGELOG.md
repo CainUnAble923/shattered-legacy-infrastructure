@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.01.3
+
+### Changed
+- Test shard: in the Wakening Isle's vision, the Stranger who breaks the Gem is now a hooded, faceless figure: a deep cowl over the head, a dark robe and cloak, and the sword, with no name shown.
+
 ## 2026.10.31.7
 
 ### Changed

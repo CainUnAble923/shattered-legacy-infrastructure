@@ -166,7 +166,7 @@ public class TutorialVisionSceneVerification
 
         ShardTestClock.Advance(TimeSpan.FromSeconds(4)); // the Gem and the Stranger, lit (cc-P721)
         Assert.Equal(TutorialVisionScene.Lit, GlobalLight(p.Pm));
-        Assert.Contains(FiguresNear(p), f => f.Name == "the Stranger");
+        Assert.Contains(FiguresNear(p), f => f == TutorialVisionScene.Current(p.Pm)!.Stranger); // cc-P761: nameless now
         Assert.Contains(PropsNear(p), i => i.ItemID == TutorialVisionScene.GemId);
         Assert.False(Done(p));
 
