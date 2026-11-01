@@ -26,6 +26,12 @@ CACHE = r"D:\UO\bot-shard\cache"
 # (ACC:160-170). So fresh characters rotate over these accounts, each rested before reuse.
 POOL = ["slbot-player2", "slbot-player3", "slbot-player4"]
 REST_SECONDS = 330
+LOOK_PAUSE = 3.0   # cc-P735: between quick logins that only read an account's start list (run1: 10 ms apart, refused)
+# cc-P735: creation's start list (TutorialStart.Cities): 0 the isle, 1 New Haven ("The Bountiful Harvest Inn"). An account
+# sees index 1 as "New Haven (locked)" until a character of it graduates or skips (cc-P717), and a locked pick wakes on
+# the isle.
+ISLE_CITY, HAVEN_CITY = 0, 1
+LOCKED_HAVEN = "New Haven (locked)"
 
 
 class Ctx(object):
@@ -43,6 +49,8 @@ class Ctx(object):
         # never cross.
         self.admin_lock = threading.RLock()
         self.first_logins = {}      # account -> what the first login saw (P64-1)
+        self.haven_open = set()     # cc-P735: pool accounts whose start list shows New Haven unlocked
+        self.haven_shut = set()     # cc-P735: pool accounts seen locked since the last unlock
         self.fresh_count = 0
         self.serials = {}
 
@@ -94,31 +102,67 @@ class Ctx(object):
         c.sleep(0.5)
         return back
 
-    def fresh(self, race="human", female=False, label="fresh"):
+    def fresh(self, race="human", female=False, label="fresh", city=ISLE_CITY, first_login=False):
         """A brand-new character on a rested pool account, through the real creation packet. Disconnect it with
-        done() so the account can rest."""
+        done() so the account can rest.
+
+        cc-P735: city=HAVEN_CITY asks for creation's New Haven start: a character whose account has finished or skipped
+        the tutorial (on an isle-ready world city 0 wakes on the isle). first_login=True prefers an account this run has
+        not made a character on yet (P64-1)."""
         # Thread-safe: the soak asks for three at once. An account is marked busy (rest = forever) the moment it is
         # picked, and done() starts its rest.
         while True:
             with self.pool_lock:
                 now = time.time()
                 ready = [a for a in POOL if self.pool_rest[a] <= now]
+                if first_login:
+                    ready.sort(key=lambda a: a in self.first_logins)
+                if city == HAVEN_CITY:
+                    usable = [a for a in self.haven_open if not (first_login and a in self.first_logins)
+                              and self.pool_rest[a] != float("inf")]
+                    if usable:
+                        # an open account exists and will come back: wait for it, and log in to no locked one
+                        ready = [a for a in ready if a in usable]
+                    else:
+                        # not yet looked at first, then seen locked (stable: keeps first_login's order within)
+                        ready.sort(key=lambda a: 2 if a in self.haven_shut else 1)
                 if ready:
                     acct = ready[0]
                     self.pool_rest[acct] = float("inf")
-                    break
-                wait = min(self.pool_rest.values()) - now
-            self.tr.write("harness", "all pool accounts busy or resting; waiting %.0f s" % min(wait, 30))
-            time.sleep(max(1.0, min(wait, 30)))
+                else:
+                    acct = None
+                    pending = [t for a, t in self.pool_rest.items() if t > now and (city != HAVEN_CITY or not usable
+                               or a in usable)]
+                    wait = (min(pending) - now) if pending else 1.0
+            if acct is None:
+                self.tr.write("harness", "all pool accounts busy or resting; waiting %.0f s" % min(wait, 30))
+                time.sleep(max(1.0, min(wait, 30)))
+                continue
+            c = Client(acct, self.secrets.get("poolPassword", self.secrets["playerPassword"]), self.tr, self.cliloc, label)
+            c.account = acct
+            try:
+                chars = c.login()
+            except Exception:
+                self.done(c)
+                raise
+            if city == HAVEN_CITY and self.haven_locked(c):
+                with self.pool_lock:
+                    self.haven_shut.add(acct)
+                    unseen = [a for a in POOL if self.pool_rest[a] <= time.time() and a not in self.haven_shut]
+                if unseen:
+                    # nothing was made on this login, so nothing stays in the world: the account is free again at once
+                    c.close()
+                    with self.pool_lock:
+                        self.pool_rest[acct] = 0.0
+                    time.sleep(LOOK_PAUSE)
+                    continue
+                self.unlock_haven(c)   # rests this account; take the next ready one
+                continue
+            if city == HAVEN_CITY:
+                self.haven_open.add(acct)
+            break
         self.fresh_count += 1
-        c = Client(acct, self.secrets.get("poolPassword", self.secrets["playerPassword"]), self.tr, self.cliloc, label)
-        c.account = acct
         first = acct not in self.first_logins
-        try:
-            chars = c.login()
-        except Exception:
-            self.done(c)
-            raise
         slot = next((i for i, n in enumerate(chars) if not n), None)
         if slot is None:
             # cc-P224: the pool's 3 accounts give 21 character slots, and done() never deleted the throwaway it made,
@@ -139,7 +183,7 @@ class Ctx(object):
         tag = chr(65 + (n // 26) % 26) + chr(97 + n % 26)
         name = "Bot %s %s %s" % (race.capitalize(), "F" if female else "M", tag)
         try:
-            c.create(name[:16], race=race, female=female)
+            c.create(name[:16], race=race, female=female, city=city)
         except Exception:
             self.done(c)
             raise
@@ -149,6 +193,44 @@ class Ctx(object):
             c.sleep(2.0)
             self.first_logins[acct] = {"gumps": list(c.gumps), "messages": list(c.messages)}
         return c
+
+    @staticmethod
+    def haven_locked(c):
+        """cc-P735: the start list this login was sent shows New Haven locked (cc-P717), or has no New Haven entry."""
+        cities = [n for _, n, _ in (c.cities or [])]
+        return len(cities) <= HAVEN_CITY or cities[HAVEN_CITY] == LOCKED_HAVEN
+
+    def unlock_haven(self, c):
+        """cc-P735: open New Haven for c's pool account the way a player does (cc-P717: a character of the account skips
+        the tutorial; graduating does the same): a throwaway made with the isle's city wakes on the isle, and the bot's
+        Admin skips its tutorial ([Tutorial skip, ClusterFTutorial.Skip -> TutorialStart.Unlock). The account then rests
+        like any other; the throwaway is never answered a window, so the patch-notes bulletin stays unseen for P64-1
+        (ClusterFBulletin marks it seen only on a reply). The throwaway is left in its slot (fresh() reuses full slots)."""
+        acct = c.account
+        try:
+            slot = next((i for i, n in enumerate(c.chars) if not n), None)
+            if slot is None:
+                c.delete_character(0)
+                c.wait(lambda: len(c.chars) > 0 and not c.chars[0], 10)
+            self.fresh_count += 1
+            n = self.fresh_count
+            name = "Bot Unlock %s%s" % (chr(65 + (n // 26) % 26), chr(97 + n % 26))
+            c.create(name[:16], race="human", female=False, city=ISLE_CITY)
+            with self.admin_lock:
+                a = self.ensure_admin()
+                a.command("[go 0x%X" % c.serial, 1.0)
+                a.command("[Tutorial skip", 0.2)
+                if a.wait_target(6):
+                    a.target_obj(c.serial)
+            skipped = c.find_text(r"You skipped the tutorial", timeout=10) is not None
+            self.tr.write("harness", "%s: New Haven locked; %s made with the isle's city, the Admin skipped its tutorial: %s"
+                          " (now at %s)" % (acct, name, "yes" if skipped else "NO", (c.pos or ())[:3]))
+            if not skipped:
+                raise LoginFailed("could not open New Haven for %s: the skip of %s was not seen" % (acct, name))
+            self.haven_open.add(acct)
+            self.haven_shut.discard(acct)
+        finally:
+            self.done(c)
 
     def done(self, c):
         acct = getattr(c, "account", None)

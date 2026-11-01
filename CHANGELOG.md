@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.31.5
+
+### Staff
+- The overnight play-test bot's New Haven checks (a new character pointed at the Guild Board, and the patch notes on an account's first login) make their character with the New Haven start again, on an account that has skipped the tutorial, now that new characters wake on the Wakening Isle. When an account still has New Haven locked, the bot first has a throwaway character wake on the isle and its Admin skips that tutorial.
+
 ## 2026.10.31.4
 
 ### Changed
