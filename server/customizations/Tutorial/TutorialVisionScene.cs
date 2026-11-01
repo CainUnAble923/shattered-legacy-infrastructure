@@ -3,7 +3,10 @@
 // notes/cc-P665-vision-scene.md. Storyboard: P481 section 6; corrections: P481 12.3 and P605 risks 6 and 7.
 //
 // It plays in place at the stones (P673 1.4 keeps a chamber optional, and a private copy is already private), so no
-// chamber pool. What it does, and to whom:
+// chamber pool. cc-P742 (Chase 10-30): it now plays in a chamber after all, a dungeon shrine with the Gem on a pedestal
+// (TutorialVisionChamber), built per scene in a slot of the empty strip of site A on the player's own lesson map: the
+// first beat hides the player and moves them in, the last puts them back exactly where they stood. What it does, and to
+// whom:
 //   - Frozen for the length of the scene, released at the end (Frozen is not saved: Mobile.cs keeps it in memory only).
 //   - Light per player: FoldRegion.AlterLightLevel asks LightOf, and each change is pushed with CheckLightLevels(true).
 //     A client's own light setting can override this (P605 risk 7), so the subtitles carry the story on their own.
@@ -126,6 +129,10 @@ public static class TutorialVisionScene
         public Action<PlayerMobile>? Finished { get; } = finished;
         public Action<PlayerMobile>? Ended { get; } = ended;
         public Point3D Origin;
+        public bool WasHidden;       // cc-P742: restored at the end
+        public int Slot = -1;        // cc-P742: the chamber slot on Map
+        public readonly List<Item> Chamber = []; // cc-P742: the room's pieces, taken away at the end
+        public Item? Pedestal;
         public int Second;
         public int? Light;
         public string? Subtitle;
@@ -180,7 +187,14 @@ public static class TutorialVisionScene
         pm.CloseGump<TutorialTrialGump>();
         pm.CloseGump<TutorialRecruiterGump>();
         pm.CloseGump<Server.BulletinGump>();
-        var scene = new Scene(pm, pm.Map, finished, ended) { Origin = pm.Location };
+        // cc-P742: a chamber slot of its own on this map (a private copy always has slot 0 free)
+        var slot = TutorialVisionChamber.FreeSlot(pm.Map, Active.Values.Where(a => a.Map == pm.Map).Select(a => a.Slot));
+        if (slot < 0)
+        {
+            return false;
+        }
+
+        var scene = new Scene(pm, pm.Map, finished, ended) { Origin = pm.Location, WasHidden = pm.Hidden, Slot = slot };
         Active[pm.Serial] = scene;
         pm.Frozen = true;
         Beat(scene);
@@ -226,7 +240,8 @@ public static class TutorialVisionScene
         }
 
         scene.Placed.Clear();
-        Restore(pm, scene.Map);
+        LeaveChamber(scene);
+        Restore(pm, scene.Map, scene.Origin, scene.WasHidden);
         if (completed) { scene.Finished?.Invoke(pm); }
         else
         {
@@ -235,20 +250,36 @@ public static class TutorialVisionScene
         }
     }
 
-    /// <summary>Unfrozen, light recomputed, subtitles closed, and back at the stones if they are on that map.</summary>
-    public static void Restore(PlayerMobile pm, Map? map)
+    /// <summary>
+    /// Unfrozen, light recomputed, subtitles closed, and back where they stood (<paramref name="origin"/>, cc-P742) or, with
+    /// no spot known (a save from before cc-P742), at the stones if they are on that map. A player logged out meanwhile gets
+    /// the spot as their logout location.
+    /// </summary>
+    public static void Restore(PlayerMobile pm, Map? map, Point3D? origin = null, bool hidden = false)
     {
         pm.Frozen = false;
+        if (origin != null)
+        {
+            pm.Hidden = hidden; // cc-P742: as they were before the chamber hid them
+        }
+
         pm.CloseGump<TutorialVisionSubtitleGump>();
         pm.CloseGump<TutorialVisionPanelGump>();
         if (map != null && map != Map.Internal && pm.Map == map && !pm.Deleted)
         {
-            var stones = Stones(map);
-            if (!pm.InRange(stones, 4)) { pm.MoveToWorld(stones, map); }
+            if (origin is { } spot)
+            {
+                if (pm.Location != spot) { pm.MoveToWorld(spot, map); }
+            }
+            else
+            {
+                var stones = Stones(map);
+                if (!pm.InRange(stones, 4)) { pm.MoveToWorld(stones, map); }
+            }
         }
         else if (map != null && pm.LogoutMap == map)
         {
-            pm.LogoutLocation = Stones(map);
+            pm.LogoutLocation = origin ?? Stones(map);
         }
 
         pm.NetState?.SendScreenEffect(ScreenEffectType.FadeIn);
@@ -264,9 +295,42 @@ public static class TutorialVisionScene
         if (Active.Remove(pm.Serial, out var scene)) { scene.Timer.Cancel(); }
     }
 
-    /// <summary>Every serial the scenes have in the world now (figures and props), for the save.</summary>
-    public static IEnumerable<(Serial Player, int MapIndex, Serial[] Placed)> Snapshot() =>
-        Active.Values.Select(s => (s.Player.Serial, s.Map.MapIndex, s.Placed.Select(e => e.Serial).ToArray()));
+    /// <summary>
+    /// Every serial the scenes have in the world now (figures, props and the chamber's pieces), with where each player
+    /// stood and whether they were hidden (cc-P742), for the save.
+    /// </summary>
+    public static IEnumerable<(Serial Player, int MapIndex, Serial[] Placed, Point3D Origin, bool Hidden)> Snapshot() =>
+        Active.Values.Select(s => (s.Player.Serial, s.Map.MapIndex,
+            s.Placed.Select(e => e.Serial).Concat(s.Chamber.Select(i => i.Serial)).ToArray(), s.Origin, s.WasHidden));
+
+    // ---------------------------------------------------------------- the chamber (cc-P742)
+
+    /// <summary>The room in the scene's slot, the player hidden and moved in, frozen, facing the pedestal.</summary>
+    private static void EnterChamber(Scene s)
+    {
+        var pm = s.Player;
+        s.Chamber.AddRange(TutorialVisionChamber.Build(s.Map, s.Slot));
+        s.Pedestal = s.Chamber[^1];
+        pm.Hidden = true;
+        pm.MoveToWorld(C(s, TutorialVisionChamber.Onlooker), s.Map);
+        pm.Direction = Direction.Up;
+        pm.CheckLightLevels(true);
+    }
+
+    /// <summary>The room's pieces taken away.</summary>
+    private static void LeaveChamber(Scene s)
+    {
+        foreach (var item in s.Chamber)
+        {
+            if (!item.Deleted) { item.Delete(); }
+        }
+
+        s.Chamber.Clear();
+        s.Pedestal = null;
+    }
+
+    /// <summary>A spot in the scene's chamber.</summary>
+    private static Point3D C(Scene s, Point2D p) => TutorialVisionChamber.At(s.Slot, p);
 
     // ---------------------------------------------------------------- the beats (P481 section 6)
 
@@ -275,45 +339,45 @@ public static class TutorialVisionScene
         var pm = s.Player;
         switch (s.Second)
         {
-            case Beats.Start: // Touch the stones: frozen, fade to black.
+            case Beats.Start: // Touch the stones: frozen, fade to black; cc-P742: and into the shrine, hidden, in the dark.
                 Screen(s, ScreenEffectType.FadeOut);
                 SetLight(s, Black);
                 TargetSparkle(s, pm, 0x376A);
                 Sound(s, 0x1FE);
+                EnterChamber(s);
                 Subtitle(s, 0);
                 break;
-            case Beats.Lights: // Lit: the Gem on a plinth between two braziers, the Stranger at a distance with a longsword.
+            case Beats.Lights: // Lit: the shrine, the Gem on its pedestal between the braziers, the Stranger in the dark corner.
                 Screen(s, ScreenEffectType.FadeIn);
                 SetLight(s, Lit);
-                var pedestal = Place(s, new TutorialVisionProp(PedestalId), At(s, 2, -2));
-                s.Gem = Place(s, new TutorialVisionProp(GemId) { Hue = GemHue, Name = "the Gem of Immortality" },
-                    new Point3D(pedestal.X, pedestal.Y, pedestal.Z + TileData.ItemTable[PedestalId].CalcHeight));
-                Place(s, new TutorialVisionProp(BrazierId) { Name = "a brazier", Light = LightType.Circle300 }, At(s, 1, -3));
-                Place(s, new TutorialVisionProp(BrazierId) { Name = "a brazier", Light = LightType.Circle300 }, At(s, 3, -3));
-                s.Stranger = Figure(s, TutorialVisionFigure.Stranger(), At(s, 6, -1), Direction.West);
+                var height = TileData.ItemTable[PedestalId].CalcHeight;
+                var top = s.Pedestal is { } pedestal
+                    ? new Point3D(pedestal.X, pedestal.Y, pedestal.Z + (height > 0 ? height : TutorialVisionChamber.PedestalHeight))
+                    : C(s, TutorialVisionChamber.Pedestal);
+                s.Gem = Place(s, new TutorialVisionProp(GemId) { Hue = GemHue, Name = "the Gem of Immortality" }, top);
+                s.Stranger = Figure(s, TutorialVisionFigure.Stranger(), C(s, TutorialVisionChamber.StrangerWalk[0]), Direction.Down);
                 Sparkle(s, s.Gem, 0x376A, GemHue);
                 Sound(s, 0x20F);
                 Subtitle(s, 1);
                 break;
             case Beats.Walk:
-            case Beats.Walk + 1:
-            case Beats.Walk + 2: // the Stranger walks up to the Gem, a tile a second
+            case Beats.Walk + 2: // cc-P742: the Stranger walks out of the corner to the Gem, a step every two seconds
                 if (s.Stranger is { Deleted: false } walker)
                 {
-                    var to = At(s, 6 - (s.Second - Beats.Walk + 1), -1);
-                    walker.Direction = Direction.West | Direction.Running;
-                    walker.MoveToWorld(to, s.Map);
+                    var step = s.Second == Beats.Walk ? 1 : 2;
+                    walker.Direction = Direction.Down;
+                    walker.MoveToWorld(C(s, TutorialVisionChamber.StrangerWalk[step]), s.Map);
                 }
 
-                if (s.Gem != null && s.Second != Beats.Walk + 1) { Sparkle(s, s.Gem, 0x376A, GemHue); }
+                if (s.Gem != null) { Sparkle(s, s.Gem, 0x376A, GemHue); }
                 break;
-            case Beats.Face: // facing the Gem (up and to the left of it), the sword raised
-                if (s.Stranger is { Deleted: false } facer) { facer.Direction = Direction.Up; }
+            case Beats.Face: // facing the Gem (south-east of him, toward the onlooker), the sword raised
+                if (s.Stranger is { Deleted: false } facer) { facer.Direction = Direction.Down; }
                 break;
             case Beats.Strike: // The strike: a real swing at the Gem, the hit, the bolt.
                 if (s.Stranger is { Deleted: false } striker)
                 {
-                    striker.Direction = Direction.Up;
+                    striker.Direction = Direction.Down;
                     striker.Animate(SlashAnimation, 7, 1, true, false, 0);
                 }
 
@@ -331,12 +395,16 @@ public static class TutorialVisionScene
                 Sound(s, SwordHitSound);
                 if (s.Gem != null) { Sparkle(s, s.Gem, 0x3709, GemHue, 20); }
                 break;
-            case Beats.Shards: // The shards and the broken sword.
+            case Beats.Shards: // The Gem shatters: a flash, shards on the pedestal and across the floor, the broken sword.
                 if (s.Gem is { } gem)
                 {
-                    foreach (var (dx, dy) in ShardOffsets)
+                    Screen(s, ScreenEffectType.LightFlash); // cc-P742: the light of the breaking Gem
+                    SetLight(s, Flash);
+                    Sparkle(s, gem, 0x36BD, GemHue, 20);
+                    Place(s, new TutorialVisionProp(ShardsId) { Name = "a shard of the Gem", Hue = GemHue }, gem.Location);
+                    foreach (var spot in TutorialVisionChamber.Shards)
                     {
-                        var to = Place(s, new TutorialVisionProp(ShardsId) { Name = "a shard of the Gem" }, At(s, 2 + dx, -2 + dy));
+                        var to = Place(s, new TutorialVisionProp(ShardsId) { Name = "a shard of the Gem", Hue = GemHue }, C(s, spot));
                         Moving(s, gem, to, 0x3779, GemHue);
                     }
 
@@ -345,10 +413,14 @@ public static class TutorialVisionScene
                 }
 
                 if (s.Stranger?.FindItemOnLayer(Layer.OneHanded) is { } blade) { blade.Delete(); }
-                s.Sword = Place(s, new TutorialVisionProp(SwordId) { Name = "the broken sword", Hue = DarkHue }, At(s, 3, 0));
-                Place(s, new TutorialVisionProp(SwordTipId) { Name = "the sword's broken point", Hue = DarkHue }, At(s, 4, 1));
+                s.Sword = Place(s, new TutorialVisionProp(SwordId) { Name = "the broken sword", Hue = DarkHue }, C(s, TutorialVisionChamber.BrokenSword));
+                Place(s, new TutorialVisionProp(SwordTipId) { Name = "the sword's broken point", Hue = DarkHue }, C(s, TutorialVisionChamber.SwordTip));
                 Sound(s, 0x211);
+                Sound(s, 0x307);
                 Subtitle(s, 3);
+                break;
+            case Beats.Shards + 1: // cc-P742: the flash fades back to the braziers' light
+                SetLight(s, Lit);
                 break;
             case Beats.Flash: // White flash, then black: the world folds.
                 Screen(s, ScreenEffectType.LightFlash);
@@ -366,7 +438,7 @@ public static class TutorialVisionScene
                 Screen(s, ScreenEffectType.FadeIn);
                 ClosePanel(s);
                 SetLight(s, Dim);
-                s.Echo = Figure(s, TutorialVisionFigure.EchoOf(pm), At(s, 1, 1), Direction.North);
+                s.Echo = Figure(s, TutorialVisionFigure.EchoOf(pm), C(s, TutorialVisionChamber.Echo), Direction.Down);
                 Sparkle(s, s.Echo, 0x376A);
                 Sound(s, 0x44D);
                 break;
@@ -380,8 +452,8 @@ public static class TutorialVisionScene
                 break;
             case Beats.Hooded: // A hooded figure at the edge of the light, and the broken sword in a ring of stones (the crest).
                 RemoveAllPlaced(s);
-                s.Hooded = Figure(s, TutorialVisionFigure.Hooded(), At(s, -3, -3), Direction.Down);
-                s.Sword = Place(s, new TutorialVisionProp(SwordId) { Name = "the broken sword", Hue = DarkHue }, At(s, -2, -1));
+                s.Hooded = Figure(s, TutorialVisionFigure.Hooded(), C(s, TutorialVisionChamber.Hooded), Direction.Down);
+                s.Sword = Place(s, new TutorialVisionProp(SwordId) { Name = "the broken sword", Hue = DarkHue }, C(s, TutorialVisionChamber.BrokenSword));
                 Sound(s, 0x212);
                 Panel(s, PanelCrest);
                 break;
@@ -409,11 +481,6 @@ public static class TutorialVisionScene
                 break;
         }
     }
-
-    private static readonly (int Dx, int Dy)[] ShardOffsets = [(-2, -1), (2, -1), (-1, 2), (2, 2), (0, -3)];
-
-    private static Point3D At(Scene s, int dx, int dy) =>
-        TutorialWorld.Ground(s.Map, new Point2D(s.Origin.X + dx, s.Origin.Y + dy));
 
     private static T Place<T>(Scene s, T item, Point3D at) where T : Item
     {
@@ -555,6 +622,25 @@ public static class TutorialVisionScene
     {
         End(pm, false);
         TutorialVisionStore.Recover(pm);
+        SendOutOfChamber(pm);
+    }
+
+    /// <summary>
+    /// cc-P742: a player in the chamber strip with no scene playing (a crash between saves, a lost record) goes to the
+    /// stones of that map, unfrozen and seen. Never staff, who may look at the room.
+    /// </summary>
+    public static bool SendOutOfChamber(PlayerMobile pm)
+    {
+        if (IsPlaying(pm) || pm.AccessLevel > AccessLevel.Player || pm.Map is not { } map || !TutorialVisionChamber.Contains(pm.Location, map))
+        {
+            return false;
+        }
+
+        pm.Frozen = false;
+        pm.Hidden = false;
+        pm.MoveToWorld(Stones(map), map);
+        pm.CheckLightLevels(true);
+        return true;
     }
 }
 
@@ -598,12 +684,12 @@ public sealed class TutorialVisionPanelGump : Gump
 /// </summary>
 public class TutorialVisionStore : GenericPersistence
 {
-    public const int CurrentVersion = 0;
+    public const int CurrentVersion = 1; // cc-P742: 1 adds each player's spot and hidden flag
 
     private static TutorialVisionStore? _instance;
 
-    /// <summary>Scenes read from the save and not yet recovered: player, map index, placed serials.</summary>
-    private static readonly Dictionary<Serial, (int MapIndex, Serial[] Placed)> Pending = new();
+    /// <summary>Scenes read from the save and not yet recovered: player, map index, placed serials, their spot (version 1).</summary>
+    private static readonly Dictionary<Serial, (int MapIndex, Serial[] Placed, Point3D? Origin, bool Hidden)> Pending = new();
 
     public TutorialVisionStore() : base("TutorialVision", 10)
     {
@@ -623,14 +709,14 @@ public class TutorialVisionStore : GenericPersistence
     public static void WriteTo(IGenericWriter writer)
     {
         writer.WriteEncodedInt(CurrentVersion);
-        var all = new Dictionary<Serial, (int MapIndex, Serial[] Placed)>(Pending);
-        foreach (var (player, mapIndex, placed) in TutorialVisionScene.Snapshot())
+        var all = new Dictionary<Serial, (int MapIndex, Serial[] Placed, Point3D? Origin, bool Hidden)>(Pending);
+        foreach (var (player, mapIndex, placed, origin, hidden) in TutorialVisionScene.Snapshot())
         {
-            all[player] = (mapIndex, placed);
+            all[player] = (mapIndex, placed, origin, hidden);
         }
 
         writer.WriteEncodedInt(all.Count);
-        foreach (var (player, (mapIndex, placed)) in all)
+        foreach (var (player, (mapIndex, placed, origin, hidden)) in all)
         {
             writer.Write(player);
             writer.WriteEncodedInt(mapIndex);
@@ -639,6 +725,10 @@ public class TutorialVisionStore : GenericPersistence
             {
                 writer.Write(serial);
             }
+
+            writer.Write(origin != null); // version 1
+            writer.Write(origin ?? Point3D.Zero);
+            writer.Write(hidden);
         }
     }
 
@@ -662,7 +752,17 @@ public class TutorialVisionStore : GenericPersistence
                 placed[k] = reader.ReadSerial();
             }
 
-            Pending[player] = (mapIndex, placed);
+            Point3D? origin = null;
+            var hidden = false;
+            if (version >= 1)
+            {
+                var known = reader.ReadBool();
+                var spot = reader.ReadPoint3D();
+                hidden = reader.ReadBool();
+                origin = known ? spot : null;
+            }
+
+            Pending[player] = (mapIndex, placed, origin, hidden);
         }
     }
 
@@ -676,13 +776,16 @@ public class TutorialVisionStore : GenericPersistence
         }
     }
 
-    /// <summary>Puts <paramref name="pm"/> back at the stones, unfrozen, light restored, and removes what the scene placed.</summary>
+    /// <summary>
+    /// Puts <paramref name="pm"/> back where they stood before the vision (cc-P742; a version 0 save: at the stones),
+    /// unfrozen, light restored, and removes what the scene placed, the chamber included.
+    /// </summary>
     public static void Recover(PlayerMobile pm)
     {
-        if (!Pending.ContainsKey(pm.Serial)) { return; }
-        var map = Map.Maps[Pending[pm.Serial].MapIndex];
+        if (!Pending.TryGetValue(pm.Serial, out var scene)) { return; }
+        var map = Map.Maps[scene.MapIndex];
         Clean(pm.Serial);
-        TutorialVisionScene.Restore(pm, map);
+        TutorialVisionScene.Restore(pm, map, scene.Origin, scene.Hidden);
     }
 
     private static void Clean(Serial player)

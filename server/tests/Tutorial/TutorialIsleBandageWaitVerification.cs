@@ -334,18 +334,18 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         TutorialCoreTrials.WatchVision(p.Pm);
         Assert.True(TutorialVisionScene.IsPlaying(p.Pm));
         Assert.False(p.Pm.HasGump<TutorialTrialGump>()); // the lesson page no longer hides the scene
-        var origin = TutorialVisionScene.Current(p.Pm)!.Origin;
-
         ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Beats.Lights + 0.5));
         Assert.Equal(TutorialVisionScene.Lit, TutorialVisionScene.LightOf(p.Pm));
         var scene = TutorialVisionScene.Current(p.Pm)!;
-        Assert.Equal(2, scene.Placed.OfType<Item>().Count(i => i.ItemID == TutorialVisionScene.BrazierId));
+        // cc-P742: the braziers are the chamber's, and the Stranger walks from its corner
+        Assert.Equal(2, scene.Chamber.Count(i => i.ItemID == TutorialVisionScene.BrazierId));
         var stranger = scene.Stranger!;
-        Assert.Equal(origin.X + 6, stranger.X); // at a distance
+        var pedestal = scene.Pedestal!;
+        Assert.True(stranger.GetDistanceToSqrt(pedestal) > 4); // at a distance
 
         ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Beats.Face - TutorialVisionScene.Beats.Lights));
-        Assert.Equal(origin.X + 3, stranger.X); // walked up beside the Gem
-        Assert.Equal(Direction.Up, stranger.Direction & Direction.Mask); // facing it
+        Assert.True(stranger.InRange(pedestal.Location, 1)); // walked up beside the Gem
+        Assert.Equal(Direction.Down, stranger.Direction & Direction.Mask); // facing it (south-east of him)
 
         ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Beats.Strike - TutorialVisionScene.Beats.Face));
         Assert.Equal("The sword strikes the Gem. The shards fly.", scene.Subtitle);
