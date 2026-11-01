@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.31.10
+
+### Staff
+- Build reviews no longer wait forever for a volunteer: a building or decoration review nobody has taken after two hours goes to the Iron Golem, in a fresh session that did not build the work. Building work never reaches the shard unreviewed on a time-out any more; only a review or the overseer's skip lets it through. A prompt resuming after Chase answers its question keeps its place ahead of a Run next picked meanwhile.
+
 ## 2026.10.31.9
 
 ### Changed
