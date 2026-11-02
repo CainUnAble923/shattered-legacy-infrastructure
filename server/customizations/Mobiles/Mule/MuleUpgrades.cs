@@ -41,7 +41,18 @@ namespace Server
             ["rangers"] = "Trail Marks",
             ["foresters"] = "Timber Tokens",
             ["artificers"] = "Essence Shards",
-            [ClusterFAlembicGuild.Key] = ClusterFAlembicGuild.CurrencyName // cc-P77, a placeholder name
+            [ClusterFAlembicGuild.Key] = ClusterFAlembicGuild.CurrencyName, // cc-P77; cc-P760 named it Alembic Drops
+            // cc-P760 (the reward stores plan, approved 2026-11-01): the guilds that showed "<guild> scrip" get real names.
+            ["arcane"] = "Arcane Sigils",
+            ["tailoring"] = "Tailors' Thimbles",
+            ["tinkers"] = "Tinkers' Cogs",
+            ["healers"] = "Healers' Tokens",
+            ["bards"] = "Bards' Notes",
+            ["warriors"] = "Warriors' Marks",
+            ["maritime"] = "Maritime Charts",
+            ["merchants"] = "Merchants' Bills",
+            ["dojo"] = "Dojo Seals",
+            ["keepers"] = "Keepers' Candles"
         };
 
         public static string CurrencyName(string key)

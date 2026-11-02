@@ -133,11 +133,17 @@ public static class BulkOrderGuildPay
         return (pay, setting);
     }
 
-    /// <summary>Another deed-giving guild's line: the stock turn-in's bank gold.</summary>
+    /// <summary>
+    /// Another deed-giving guild's line: the stock turn-in's bank gold, and (cc-P760) the guild points it pays a member,
+    /// 1 per 50 of the deed's bulk order points (GuildPointEarning.ForBodPoints).
+    /// </summary>
     public static string OtherGuildLine(BaseBOD deed)
     {
-        var name = ClusterFGuildSystem.GetDef(GuildKeyFor(deed))?.Name ?? "Your guild";
-        return $"{name} pays you: {Quote(deed).StockGold:N0} gold to the bank (no guild currency or standing yet)";
+        var key = GuildKeyFor(deed);
+        var name = ClusterFGuildSystem.GetDef(key)?.Name ?? "Your guild";
+        BulkOrderSystem.ComputePoints(deed, out var points, out _);
+        var guildPoints = Server.Engines.RewardStores.GuildPointEarning.ForBodPoints(points);
+        return $"{name} pays you: {Quote(deed).StockGold:N0} gold to the bank and {guildPoints:N0} {MuleUpgrades.CurrencyName(key)}";
     }
 
     /// <summary>The tooltip lines for the holder: none for a non-member.</summary>

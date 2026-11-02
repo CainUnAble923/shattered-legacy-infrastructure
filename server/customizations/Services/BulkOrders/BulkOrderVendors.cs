@@ -356,6 +356,9 @@ public static class BulkOrderVendors
         // the gold/fame for that bod. (ServUO's note; ServUO, and this, pay at once.)
         Banker.Deposit(from, gold);
 
+        // cc-P760: a member of the deed's guild (not the Smiths, who bank Seals their own way) gets guild points.
+        Server.Engines.RewardStores.GuildPointEarning.OnBodTurnIn(pm, BulkOrderGuildPay.GuildKeyFor(bod), points);
+
         Titles.AwardFame(from, fame, true);
 
         if (Core.ML)

@@ -79,6 +79,7 @@ public partial class SorcerersDungeonResearcher : BaseTurnInMobile
     {
         EnchantedOriginArtifacts.Remove(item);
         SorcerersDungeonData.Instance.AwardPoints(pm, amount);
+        Server.Engines.RewardStores.FestivalTokens.OnSorcerersArtifact(pm); // cc-P760: 2 Festival Tokens in season
     }
 
     public override bool IsRedeemableItem(Item item) => EnchantedOriginArtifacts.IsEnchantedOrigin(item);

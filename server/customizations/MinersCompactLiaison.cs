@@ -94,6 +94,14 @@ public partial class MinersCompactLiaison : BaseCreature
             return;
 
         var s = e.Speech;
+
+        // cc-P760: the guild's store (RewardStores/GuildStores.cs), as at every other guildmaster.
+        if (s.Contains("guild store", StringComparison.OrdinalIgnoreCase))
+        {
+            Server.Engines.RewardStores.GuildStores.Open(pm, "mining", this);
+            return;
+        }
+
         if (s.Contains("compact", StringComparison.OrdinalIgnoreCase) ||
             s.Contains("orders",  StringComparison.OrdinalIgnoreCase) ||
             s.Contains("menu",    StringComparison.OrdinalIgnoreCase) ||

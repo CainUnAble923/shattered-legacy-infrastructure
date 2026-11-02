@@ -251,16 +251,22 @@ public class BulkOrderGuildPayVerification
         _out.WriteLine($"tailor member: {string.Join(" | ", lines)}");
         Assert.Equal(2, lines.Count);
         Assert.StartsWith("Worth ", lines[0]);
-        Assert.Equal($"Tailors' Circle pays you: {q.StockGold:N0} gold to the bank (no guild currency or standing yet)", lines[1]);
+        // cc-P760: and the guild's points, 1 per 50 of the deed's bulk order points.
+        BulkOrderSystem.ComputePoints(deed, out var bodPoints, out _);
+        var guildPoints = Server.Engines.RewardStores.GuildPointEarning.ForBodPoints(bodPoints);
+        Assert.True(guildPoints >= 1);
+        Assert.Equal($"Tailors' Circle pays you: {q.StockGold:N0} gold to the bank and {guildPoints:N0} Tailors' Thimbles", lines[1]);
         Assert.Equal(72, BulkOrderDeedGumpLines.Height(deed));
         Assert.Equal(new List<string> { lines[1] }, TooltipLines(deed));
 
+        var held = m.Guild.GetCurrency(TailorGuildmaster.GuildKey); // cc-P760
         var bank = m.BankGold;
         m.Pm.NextBODTurnInTime = DateTime.MinValue;
         Assert.True(master.OnDragDrop(m.Pm, deed));
         _out.WriteLine($"paid: bank +{m.BankGold - bank}");
         Assert.True(deed.Deleted);
         Assert.Equal(q.StockGold, m.BankGold - bank);
+        Assert.Equal(held + guildPoints, m.Guild.GetCurrency(TailorGuildmaster.GuildKey)); // cc-P760
     }
 
     // ---------------------------------------------------------------- 4

@@ -41,6 +41,14 @@ public abstract partial class BaseGuildmaster
     {
         var speech = e.Speech;
 
+        // cc-P760: "guild store" opens the guild's store for a member here (RewardStores/GuildStores.cs).
+        if (speech.Contains("guild store", StringComparison.OrdinalIgnoreCase) &&
+            ClusterFGuildSystem.GetDefForGuildmaster(GetType()) is { } storeDef)
+        {
+            Server.Engines.RewardStores.GuildStores.Open(pm, storeDef.Key, this);
+            return true;
+        }
+
         var isJoinTrigger  = speech.Contains("wish to join", StringComparison.OrdinalIgnoreCase);
         var isMenuTrigger  = speech.Contains("guild menu",   StringComparison.OrdinalIgnoreCase);
 
