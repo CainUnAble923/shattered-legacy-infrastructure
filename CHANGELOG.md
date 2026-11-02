@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.01.6
+
+### Added
+- A pet leash: double-click it and target your pet, and the pet shrinks into a figurine in your backpack (weight 1). Double-click the figurine to call your pet back out, with its name and loyalty as they were. Only the owner can call it out, and not in a fight; summons and pets carrying items cannot be leashed. Animal trainers sell leashes for 150 gold, and the pet choice scroll (dog or cat) now comes with one. Ported from "Pet shrink for 57.2" by Queen.
+
+### Staff
+- The leash's price, uses (unlimited by default), fight rule and blessed options are clusterf.petLeash.* in the shard's configuration.
+
 ## 2026.11.01.5
 
 ### Added
