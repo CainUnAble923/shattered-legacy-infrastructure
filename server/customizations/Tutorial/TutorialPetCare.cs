@@ -265,7 +265,10 @@ namespace Server.Mobiles
         }
     }
 
-    /// <summary>The animal trainer's elixir of rebirth (AnimalTrainer-elixir-of-rebirth.patch). Price: notes cc-P480.</summary>
+    /// <summary>
+    /// The animal trainer's extra stock (AnimalTrainer-elixir-of-rebirth.patch): the elixir of rebirth (price: notes
+    /// cc-P480) and, since cc-P764, the pet leash at its configured price (ClusterFPetLeash.Price).
+    /// </summary>
     public class SBPetRebirth : SBInfo
     {
         public const int Price = 500;
@@ -274,7 +277,8 @@ namespace Server.Mobiles
 
         public override List<GenericBuyInfo> BuyInfo { get; } = new()
         {
-            new GenericBuyInfo(typeof(ElixirOfRebirth), Price, 10, 0x24E2, 0x48E)
+            new GenericBuyInfo(typeof(ElixirOfRebirth), Price, 10, 0x24E2, 0x48E),
+            new GenericBuyInfo("a pet leash", typeof(PetLeash), ClusterFPetLeash.Price, 20, PetLeash.LeashItemID, 0)
         };
     }
 }
