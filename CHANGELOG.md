@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.02.2
+
+### Added
+- Play testers: say [tasks for your test list and [report for anything odd.
+
 ## 2026.11.02
 
 ### Added

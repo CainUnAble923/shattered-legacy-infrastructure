@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play testers</title>
+<link rel="stylesheet" href="/music.css">
+<style>
+  .tester { border: 1px solid #3a3f4b; border-radius: 6px; padding: 10px 14px; margin: 12px 0; }
+  .tester h2 { margin: 0 0 4px; font-size: 1.1em; }
+  .tester .paused { color: #f0b040; font-weight: bold; }
+  .tester table { border-collapse: collapse; width: 100%; margin: 6px 0; }
+  .tester td, .tester th { text-align: left; vertical-align: top; padding: 3px 6px; border-bottom: 1px solid #2c303a; }
+  .addform input { margin-right: 6px; }
+  .err { color: #ff7070; }
+  .muted { color: #9aa0aa; }
+  button.small { font-size: 0.85em; padding: 2px 8px; }
+</style>
+<script src="/testers.js" defer></script>
+</head>
+<body>
+<!-- cc-P773: the play testers. Who tests (account name, display name, paused), their tasks from the Play Test Goblin and
+     their reports from [tasks and [report in game. The files are the test world's playtest folder; the shard reads them.
+     Everything below is filled by testers.js. -->
+<header>
+  <div class="brand"><a href="/">Shard Console</a><span class="sep">/</span><span>Play testers</span></div>
+  <div id="state" class="state" role="status">loading...</div>
+</header>
+<main>
+  <section>
+    <form id="add" class="addform">
+      <input id="account" placeholder="Account name (as typed at login)" aria-label="Account name" required maxlength="30">
+      <input id="name" placeholder="Display name (optional)" aria-label="Display name" maxlength="40">
+      <button type="submit" class="primary">Add tester</button>
+    </form>
+    <p class="muted">A tester can type [tasks in game (or just say tasks) to see their tasks, and [report for anything odd.
+      The Play Test Goblin hands out new tasks overnight, at most three open at a time; a paused tester gets none.
+      Testers only report what they saw: you mark Pass or Fail on the play-test page.</p>
+    <p id="problems" class="err"></p>
+    <div id="list"></div>
+  </section>
+</main>
+</body>
+</html>

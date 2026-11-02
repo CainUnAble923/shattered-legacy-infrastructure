@@ -1,0 +1,237 @@
+{
+ "_about": "cc-P773: the Play Test Goblin's task cards (scripts/playtest_goblin.py). Each card is one thing a play tester can do and report on, in plain player language, with the play-test item it gives evidence for (testId: a T- row or a prompt's item on the play-test page). The Goblin hands them out in this order within the same rank, so the Wakening Isle path comes first. A card is never given twice to the same tester. Add cards at the end; never reuse a key; set retired true to stop handing one out. Coordinates are on the Wakening Isle (each new character wakes on a private copy of it) unless the card says otherwise. Testers only report what they saw: Chase marks Pass or Fail.",
+ "version": 1,
+ "cards": [
+  {
+   "key": "isle-01-new-character",
+   "testId": "P762-0",
+   "title": "Make a brand new character",
+   "why": "Every new player starts here. If creation goes wrong, nobody reaches the game.",
+   "where": "The character creation screen, then the Wakening Isle beach",
+   "coords": "about 6638, 3993",
+   "steps": [
+    "Log in and make a new character on the test shard. Pick any look, skills and starting city you like.",
+    "Try asking for a different race (for example an Elf) if the screen lets you.",
+    "Finish and enter the world."
+   ],
+   "lookFor": "You wake on a sandy beach as a Human. If you asked for another race, a line tells you why you are Human. Note anything confusing on the creation screen."
+  },
+  {
+   "key": "isle-02-wake-and-stand",
+   "testId": "P740-0",
+   "title": "Wake up on the beach and get up",
+   "why": "The very first minute of play. The hint has to tell you how to move.",
+   "where": "The Wakening Isle beach, where you wake",
+   "coords": "about 6638, 3993",
+   "steps": [
+    "Read the lines that appear while you lie on the sand.",
+    "Get up the way the hint says (an arrow key, or holding the right mouse button on the ground)."
+   ],
+   "lookFor": "You can see your character lying on the sand, the hint says how to get up, and doing that stands you up. Say if anything took you more than a minute to work out."
+  },
+  {
+   "key": "isle-03-tamsin-and-lessons",
+   "testId": "P728-0",
+   "title": "Meet Tamsin and open your lessons",
+   "why": "Tamsin is the guide for the whole island. A lost lesson window must be easy to get back.",
+   "where": "Tamsin, standing on the beach just east of where you wake",
+   "coords": "about 6640, 3992",
+   "steps": [
+    "Follow the arrow to Tamsin and double-click her.",
+    "Close the lesson window with its X.",
+    "Type [lesson and press Enter. Then close it again and just say lesson (no bracket)."
+   ],
+   "lookFor": "Both ways bring the lesson window back. The window says what to do in words you understand."
+  },
+  {
+   "key": "isle-04-walk-and-run",
+   "testId": "P718-0",
+   "title": "The walk and run lesson",
+   "why": "Moving is the first real lesson. The glowing tiles have to be easy to find.",
+   "where": "The road up from the beach: a blue floor tile, then a gold one",
+   "coords": "blue about 6646, 3992; gold about 6649, 3992",
+   "steps": [
+    "Start the Walk and run lesson.",
+    "Walk onto the blue tile, then onto the gold tile.",
+    "Try running by pointing farther from your character while holding the right mouse button."
+   ],
+   "lookFor": "The tiles are easy to see, stepping on them finishes the lesson, and the window then says what is next."
+  },
+  {
+   "key": "isle-05-backpack",
+   "testId": "P718-0",
+   "title": "The backpack lesson",
+   "why": "Opening your character window and backpack is something every player does all the time.",
+   "where": "The camp beside the road",
+   "coords": "about 6656, 3990",
+   "steps": [
+    "Start the Your backpack lesson and follow the arrow to the camp.",
+    "Click your character once and choose Open Paperdoll (or double-click yourself).",
+    "Double-click the backpack picture, then double-click the blue practice bag inside."
+   ],
+   "lookFor": "Each step in the lesson window matches what the game actually shows you, in the same order."
+  },
+  {
+   "key": "isle-06-cloak",
+   "testId": "P728-0",
+   "title": "Put on the blue cloak",
+   "why": "This teaches drag and drop, which players need for almost everything.",
+   "where": "The table by the clothes rack",
+   "coords": "about 6664, 3990",
+   "steps": [
+    "Start the cloak lesson and follow the arrow to the table.",
+    "Open the chest that appears and drag the blue cloak onto your character's picture."
+   ],
+   "lookFor": "A chest appears, the cloak is inside, and wearing it finishes the lesson. The chest goes away afterwards."
+  },
+  {
+   "key": "isle-07-say-the-phrase",
+   "testId": "P718-0",
+   "title": "The chat lesson",
+   "why": "Talking is how players use banks, shops and other players.",
+   "where": "The signpost along the road",
+   "coords": "about 6692, 3990",
+   "steps": [
+    "Start the chat lesson and follow the arrow to the signpost.",
+    "Press Enter, type I am ready to learn, and press Enter again."
+   ],
+   "lookFor": "Saying the phrase finishes the lesson. You can find what you said in your Journal."
+  },
+  {
+   "key": "isle-08-farm-and-pet",
+   "testId": "P726-0",
+   "title": "Clear the pests on Wren's farm and get your pet",
+   "why": "Your first fight and your first pet both happen here.",
+   "where": "Wren the Farmhand at the farm gate, then the cabbage rows",
+   "coords": "Wren about 6696, 3978; pests about 6684, 3978",
+   "steps": [
+    "Start the farm lesson and double-click Wren (she wears a straw hat).",
+    "Hold the pitchfork she gives you, press Tab for war mode, and clear the pests in the cabbage rows.",
+    "Go back to Wren, take your pet, and try the commands she teaches (all follow me, all guard me)."
+   ],
+   "lookFor": "The pests can be found and fought, the gate opens and closes sensibly, and your pet follows your commands."
+  },
+  {
+   "key": "isle-09-bandage-pip",
+   "testId": "P751-0",
+   "title": "Bandage Pip in the farmhouse",
+   "why": "Healing is how new players stay alive. It has to be clear that a bandage takes a few seconds.",
+   "where": "Pip, the hurt farm boy, on the bench inside the farmhouse",
+   "coords": "about 6704, 3975",
+   "steps": [
+    "Start the healing lesson and go into the farmhouse.",
+    "Double-click a bandage in your backpack, then click Pip.",
+    "Stand still until you see that you finished applying the bandages."
+   ],
+   "lookFor": "You get bandages, Pip can be healed, and the lesson finishes. Say if you were ever unsure whether it was working."
+  },
+  {
+   "key": "isle-10-death-lesson",
+   "testId": "P751-0",
+   "title": "The death lesson",
+   "why": "Dying for the first time should not be scary or confusing, and it must never disconnect you.",
+   "where": "The training yard: the pale gray rat and Sera beside it",
+   "coords": "rat about 6736, 3998; Sera about 6740, 4000",
+   "steps": [
+    "Start the death lesson and double-click the pale gray rat, then click Ready.",
+    "After you die, double-click Sera and click Resurrect."
+   ],
+   "lookFor": "You come back to life with your things. Tell us right away if the game disconnects you at any point here."
+  },
+  {
+   "key": "isle-11-bank",
+   "testId": "P749-0",
+   "title": "The bank lesson",
+   "why": "The bank keeps players' things safe. An earlier tester found the blue token missing on the first try.",
+   "where": "The practice bank in the trades square: Merrin the banker",
+   "coords": "about 6762, 3976",
+   "steps": [
+    "Go into the practice bank and say bank to Merrin.",
+    "Drag the blue practice token from your backpack into the bank box."
+   ],
+   "lookFor": "The token is in your backpack the first time, the bank box opens, and depositing the token finishes the lesson."
+  },
+  {
+   "key": "isle-12-league-lodge",
+   "testId": "P758-0",
+   "title": "Visit Elara in the League lodge",
+   "why": "The League is how players find their way after the island.",
+   "where": "The League lodge: enter by the door on its north side, Elara Voss inside",
+   "coords": "about 6782, 3999",
+   "steps": [
+    "Start the League lesson and follow the arrow to the lodge.",
+    "Double-click Elara Voss (or click her once and choose Talk).",
+    "Read her window. Join or close it, as you like."
+   ],
+   "lookFor": "Her window opens and the lesson finishes. The window makes sense even if you do not join."
+  },
+  {
+   "key": "isle-13-vision-stones",
+   "testId": "P742-0",
+   "title": "Watch the vision at the standing stones",
+   "why": "The vision is the story's first scene. It holds you still for about a minute.",
+   "where": "The standing stones on the knoll",
+   "coords": "about 6794, 3982",
+   "steps": [
+    "Start the vision lesson and double-click its signpost at the stones.",
+    "Watch until the vision ends."
+   ],
+   "lookFor": "The vision plays through (it may take you to another place for the scene) and brings you back afterwards. Say if anything looked broken or went on too long."
+  },
+  {
+   "key": "isle-14-moongate-to-new-haven",
+   "testId": "P758-0",
+   "title": "Take the dock moongate to New Haven",
+   "why": "This is the end of the island. Your pet must come with you.",
+   "where": "The blue moongate at the end of the dock",
+   "coords": "about 6832, 3991",
+   "steps": [
+    "When your lessons are done, walk into the moongate at the end of the dock.",
+    "Look around where you arrive."
+   ],
+   "lookFor": "You and your pet arrive next to Rook on the New Haven plaza, and someone tells you what to do next."
+  },
+  {
+   "key": "isle-15-skip-the-island",
+   "testId": "P762-0",
+   "title": "Skip the island on a second character",
+   "why": "Players who already know the game will run straight for the gate. That has to work and be a little funny.",
+   "where": "A second new character on the same account, from the beach to the dock moongate",
+   "coords": "beach about 6638, 3993; moongate about 6832, 3991",
+   "steps": [
+    "Make another new character on the same account.",
+    "Ignore the lessons and run straight to the moongate at the end of the dock.",
+    "Walk through it."
+   ],
+   "lookFor": "You cross to New Haven, get a line about not reading the sign, and a box with a pet choice scroll."
+  },
+  {
+   "key": "isle-16-walk-the-shore",
+   "testId": "P741-0",
+   "title": "Walk the island's coast and the wreck",
+   "why": "Odd tiles, holes or invisible walls are easiest to spot by just walking around.",
+   "where": "All around the Wakening Isle's shore, including the shipwreck",
+   "coords": "the island runs from about 6594, 3905 to 6865, 4049",
+   "steps": [
+    "Walk slowly along the whole shoreline.",
+    "Look at the shipwreck up close."
+   ],
+   "lookFor": "Anywhere you can walk where you should not (or cannot where you should), black gaps, floating or cut-off pieces."
+  },
+  {
+   "key": "haven-01-pet-leash",
+   "retired": true,
+   "retiredWhy": "Not on the test shard yet: P764 is on main, not on the isle release the testers play. Set retired to false once the test shard runs main.",
+   "testId": "P764-0",
+   "title": "Leash and shrink your starter pet",
+   "why": "New players need an easy way to carry their first pet around town.",
+   "where": "New Haven, with the pet you got on the island",
+   "coords": "New Haven plaza, about 3500, 2572 (Trammel)",
+   "steps": [
+    "Find the leash or shrink option for your starter pet (look in your backpack and the pet's menu).",
+    "Shrink the pet, carry it a short way, and bring it back out."
+   ],
+   "lookFor": "It is easy to find out how, the pet shrinks and comes back, and it still follows your commands."
+  }
+ ]
+}
