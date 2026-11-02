@@ -230,11 +230,36 @@ public class HavenTownVerification
         Assert.Equal("the Healers of Haven", Region.Find(HavenSpots.Healer, Map.Trammel).Name);
         var shops = stock.Where(s => s.Parent == HavenTownRegions.StockTownName && !HavenTownRegions.LeftOut.Contains(s.Name)).ToList();
         Assert.True(shops.Count >= 20, $"{shops.Count} shops");
-        Assert.All(shops, s => Assert.Same(tr, Region.Find(s.Name, Map.Trammel)?.Parent));
+        // cc-P769: a shop that is an escort's destination sits inside that destination's region, inside the town.
+        Assert.All(shops, s => Assert.Same(tr, Region.Find(s.Name, Map.Trammel)?.Parent is { } up && HavenTownRegions.EscortRegions.Contains(up) ? up.Parent : Region.Find(s.Name, Map.Trammel)?.Parent));
 
         var inn = Assert.IsType<NoHousingRegion>(Region.Find(new Point3D(3671, 2615, 0), Map.Trammel));
         Assert.Equal(HavenTownRegions.InnName, inn.Name);
         Assert.True(inn.NoLogoutDelay);
         Assert.Same(tr, inn.Parent);
+    }
+
+    // cc-P769 item 11 (the first outside playtester: "It says to look for a specific person for Warrior but I can not find
+    // them"): the stock New Haven escorts end in the ML plaza's regions, which the town took off the map. Each destination is
+    // over its Haven building now, and an escort standing there has arrived.
+    [Fact]
+    public void P769_TheNewHavenEscortsHaveSomewhereToArrive()
+    {
+        Assert.Equal(9, HavenTownRegions.EscortDestinations.Length);
+        foreach (var (destination, shop) in HavenTownRegions.EscortDestinations)
+        {
+            var area = new Server.Engines.MLQuests.QuestArea(destination, destination);
+            var region = Region.Find(shop, Map.Trammel);
+            Assert.NotNull(region);
+            Assert.True(region!.IsPartOf(destination), $"{shop} is not in {destination}");
+            Assert.True(area.Contains(region), destination);
+            Assert.True(region.IsPartOf(HavenTownRegions.TownName));
+        }
+
+        // The warrior's: the Proving Grounds, where the warrior trainers stand; a lookup there still finds the yard's name.
+        var yard = Region.Find(new Point3D(3731, 2580, 40), Map.Trammel);
+        Assert.Equal("the Proving Grounds in Haven", yard.Name);
+        Assert.True(yard.IsPartOf("the New Haven Warrior"));
+        Assert.Equal("the Second Bank of Haven", Region.Find(HavenSpots.Bank, Map.Trammel).Name);
     }
 }

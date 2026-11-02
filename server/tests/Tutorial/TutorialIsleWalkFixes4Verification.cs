@@ -222,7 +222,7 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         Assert.True(TutorialWake.IsLying(p.Pm));
         Assert.True(TutorialWake.LightOf(p.Pm) > 10); // cc-P732: still dark while they lie
         Assert.Equal(2, TutorialWake.PosesSent(p.Pm)); // and the pose again a second in
-        Assert.Equal("Move to get up.", TutorialWake.MoveHintLine);
+        Assert.Contains("get up", TutorialWake.MoveHintLine); // cc-P769: it says how, too (PlaytesterNotesVerification)
         TutorialWake.Advance(p.Pm, 30);
         Assert.True(TutorialWake.IsLying(p.Pm)); // still down, half a minute on
         Assert.False(p.Pm.Frozen);

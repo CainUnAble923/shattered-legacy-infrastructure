@@ -29,6 +29,25 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.02
+
+### Added
+- Tutorial tips and fixes from playtester notes: each Wakening Isle lesson now has its own achievement, and short tips in the lessons (hover over items, resize the game view, read old chat in the Journal, open doors, see inside buildings).
+- Your first finished quest beyond the tutorial earns "Gainfully Employed", and "The Tutorial Has a Checkbox" now comes as soon as you turn in your first New Haven trainer quest.
+
+### Changed
+- The isle's lessons say how to get up off the beach, how to open your character window and backpack, and what to do at Elara Voss's League window. Saying "lesson" now opens the lesson window too, as [lesson does.
+- After each New Haven lesson you are told to go back to Rook, with an arrow to him. The tinkering lesson names the Item Identification skill, and double-clicking the odd curio uses it.
+
+### Fixed
+- The bank lesson's blue token now comes the first time: saying "bank" inside the isle's bank starts the lesson if you walked in before starting it.
+- The New Haven escorts (the one asking for the weapons trainer, and the others) can be taken to their destinations again.
+- The starting city boxes on the character screen no longer look ticked when they are not.
+- On the character screen, Pants Color now shows on a woman's skirt.
+
+### Staff
+- The isle's death lesson logs each step and any disconnect during it.
+
 ## 2026.11.01.6
 
 ### Added

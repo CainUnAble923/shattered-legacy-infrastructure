@@ -104,8 +104,10 @@ namespace Server.Tutorial
                 "Double-click the loaned saw in your backpack. Choose Other, then make Barrel Staves with the loaned boards.",
                 null, [typeof(BarrelStaves)]),
             new("crafting.tinkering", AtYard, TradesYard,
-                [(Made, "Tinkering: make scissors"), S(SkillName.ItemID, "Item Identification: use on the odd blue curio")],
-                "Double-click the loaned tinker's tools, choose Tools, then make Scissors. Open Skills on your character window, use Item Identification, and click the odd blue curio in your backpack.",
+                [(Made, "Tinkering: make scissors"), S(SkillName.ItemID, "Item Identification: double-click the odd blue curio, then click it")],
+                // cc-P769 item 13 (the tester: "I could not find the skill to investigate an item"): the skill named, and the
+                // curio's own double-click starts it (TutorialCurio.OnDoubleClick), so the Skills window is not needed.
+                "Double-click the loaned tinker's tools, choose Tools, then make Scissors. Then investigate the odd blue curio in your backpack with the Item Identification skill: double-click the curio and click it when the target cursor appears. (The skill is also in the Skills window: click Skills on your character window, then the small button beside Item Identification.)",
                 null, [typeof(Scissors)]),
             new("crafting.alchemy", AtYard, TradesYard,
                 [(Made, "Alchemy: make a refresh potion"), S(SkillName.TasteID, "Taste Identification: use on the loaned apple")],
@@ -632,6 +634,24 @@ namespace Server.Items
             base.OnSingleClick(from);
             LabelTo(from, Identified ? "a brass curio with no value" : "an odd blue curio (unidentified)");
         }
+
+        /// <summary>
+        /// cc-P769 item 13: a double-click on the curio, in your backpack, uses Item Identification (its target cursor; click
+        /// the curio), so a new player need not find the skill in the Skills window.
+        /// </summary>
+        public override void OnDoubleClick(Mobile from)
+        {
+            if (Identified || !IsChildOf(from.Backpack))
+            {
+                base.OnDoubleClick(from);
+                return;
+            }
+
+            from.SendMessage(0x3B2, UseSkillLine);
+            from.UseSkill(SkillName.ItemID);
+        }
+
+        public const string UseSkillLine = "Item Identification: click the odd blue curio to investigate it.";
 
         [AfterDeserialization(false)] private void ClearAbandonedLesson() => Delete();
     }
