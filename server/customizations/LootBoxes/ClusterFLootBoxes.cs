@@ -1,15 +1,24 @@
 // cc-P79 (F-40, F-41): loot box awards, their sources, and the hooks for sources that do not exist yet. Notes:
 // shard-migration notes/cc-P79-loot-boxes-fanfare.md (and the Step 0 survey, notes/loot-boxes-fanfare-survey.md).
+// cc-P763: the rarity roll and the season at the earn, and the new sources (notes/cc-P763-cont-loot-boxes-diversified.md).
 //
 // A box is awarded the first time a character earns a source on a loop; a source earned again on a later loop gives no
 // box, a repeat line with the count instead. Records are per character (CharacterLootRecord, ClusterFAccountData v18):
 // source key to the loops it was earned on. Source keys:
 //   ach:<achievement key>   achievements (ClusterFAchievementSystem.TryGrant: the account's first earn; see below)
-//   boss:<type name>        each boss's first kill (CreatureDeathEvent; "boss" = ClusterFRareSelfRepair.IsHighEndSource
+//   boss:<type name>        each boss's first kill (CreatureDeletedEvent; "boss" = ClusterFRareSelfRepair.IsHighEndSource
 //                           without paragons), for every player with looting rights
+//   delve:<region>:<type>   cc-P763: a boss's first kill inside a dungeon region (DungeonRegion): a Delver's box
 //   league:<rank>           each League rank reached (ClusterFLeagueRanks.TryPromote)
 //   clear:<dungeon>         each dungeon or floor's first clear (OnDungeonCleared: a hook, no clear tracking exists)
 //   loop:<n>                each loop completed (tutorial graduation records loop 1, P371)
+// cc-P763, once per character ever (a later loop gives nothing again, not even the repeat line):
+//   fish:<type name>        a High Seas fish's first catch of its kind (the Fishing patch, SendSuccessTo): Fisher
+//   sos:<level>             an SOS chest's first recovery at its level (the Fishing patch, Construct): Sailor
+//   plant:<plant type>      a plant type first set to decorative (the SetToDecorativeGump patch): Herbalist
+//   guild:<key>:<rank>      each new rank in a guild of LootTable.GuildTheme (Society, Fisher/Sailor, Herbalist); ranks
+//                           a character already held when this was first checked are recorded without a box
+//   dive:<n>                every LootTable.LeagueDiveEvery-th guild work order finished (per account): League Dive
 //
 // Achievements are stored per ACCOUNT by the achievement system (ClusterFAchievements.cs:267-269), so TryGrant fires once
 // per account. The box goes to the account's online character, the one the earn popup goes to. A second character on the
@@ -25,8 +34,11 @@ using System.Collections.Generic;
 using ModernUO.CodeGeneratedEvents;
 using Server.Accounting;
 using Server.Commands;
+using Server.Engines.Craft;
+using Server.Engines.Plants;
 using Server.Items;
 using Server.Mobiles;
+using Server.Regions;
 
 namespace Server.LootBoxes;
 
@@ -69,6 +81,47 @@ public static class ClusterFLootBoxes
     public static CharacterLootRecord? RecordOf(PlayerMobile pm) =>
         pm.Account is IAccount acct ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateLootRecord(pm.Serial) : null;
 
+    // -- cc-P763: the rarity roll and the season --
+
+    /// <summary>The rarity of a box earned at a grade: LootTable.RarityOdds. Tests replace it.</summary>
+    public static Func<int, BoxRarity> RarityRoll { get; set; } =
+        grade => LootTable.Current.RarityForRoll(grade, Utility.RandomDouble() * 100);
+
+    /// <summary>The shard's local date the seasons are read on (as ClusterFSeasonalSwitch reads it). Tests replace it.</summary>
+    public static Func<DateTime> SeasonClock { get; set; } = () => Core.Now.ToLocalTime();
+
+    /// <summary>A season's switch by its name in LootTable.Seasons (touching the decor classes makes their switches).</summary>
+    public static ClusterFSeasonalSwitch? SeasonSwitch(string name) => name.ToLowerInvariant() switch
+    {
+        ClusterFHalloweenDecor.SeasonName => ClusterFHalloweenDecor.Season,
+        ClusterFWinterDecor.SeasonName => ClusterFWinterDecor.Season,
+        ClusterFSpringSeason.SeasonName => ClusterFSpringSeason.Season,
+        _ => ClusterFSeasonalSwitch.All.GetValueOrDefault(name)
+    };
+
+    /// <summary>The season on now whose pool a box earned now draws from (the first in the table), or null.</summary>
+    public static string? ActiveSeason()
+    {
+        var today = SeasonClock();
+        foreach (var name in LootTable.Current.Seasons.Keys)
+        {
+            if (SeasonSwitch(name) is { } sw && sw.IsInSeason(today))
+            {
+                return name;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>A box's fanfare: Major from grade 4 (as before cc-P763), and at least its rarity's.</summary>
+    public static FanfareLevel LevelFor(int tier, BoxRarity rarity)
+    {
+        var byGrade = tier >= 4 ? FanfareLevel.Major : FanfareLevel.Minor;
+        var byRarity = LootTable.Current.RarityOf(rarity).Level;
+        return (FanfareLevel)Math.Max((int)byGrade, (int)byRarity);
+    }
+
     // -- The award --
 
     public enum AwardResult
@@ -84,7 +137,7 @@ public static class ClusterFLootBoxes
     /// line with the count. The same loop again: nothing.
     /// </summary>
     public static AwardResult Award(PlayerMobile pm, string source, BoxTheme theme, int tier, SkillName? skill, string label,
-        out LootBox? box)
+        out LootBox? box, BoxRarity? rarity = null, string? sourceName = null)
     {
         box = null;
         var record = RecordOf(pm);
@@ -107,21 +160,63 @@ public static class ClusterFLootBoxes
             return AwardResult.Repeat;
         }
 
-        box = MakeBox(pm, theme, tier, skill, label, null);
+        box = MakeBox(pm, theme, tier, skill, label, sourceName, rarity);
         ClusterFGuildPromotion.Deliver(pm, box);
         ClusterFImbueEffects.OnLootBoxEarned(pm, source); // cc-P82: the Fortune's Favor achievements
-        var level = tier >= 4 ? FanfareLevel.Major : FanfareLevel.Minor;
-        ClusterFFanfare.Play(pm, level, FanfareLines.BoxAwarded, new FanfareVars(Tier: box.BoxName), tier,
-            voiceKey: $"box:{box.BoxName}");
+        PlayAwardFanfare(pm, box, tier);
         pm.SendMessage(0x44, $"System: You have received a {box.DefaultName}!");
         return AwardResult.Box;
     }
 
-    /// <summary>A box rolled for this character now (contents fixed at this moment).</summary>
-    public static LootBox MakeBox(PlayerMobile pm, BoxTheme theme, int tier, SkillName? skill, string label, string? sourceName)
+    /// <summary>cc-P763: a source that gives a box once per character ever: on a later loop it records nothing and says nothing.</summary>
+    public static AwardResult AwardOnce(PlayerMobile pm, string source, BoxTheme theme, int tier, SkillName? skill, string label,
+        out LootBox? box)
     {
-        var rolled = LootBoxRoller.Roll(pm, theme, tier, skill, sourceName ?? label);
-        var box = new LootBox(theme, tier, pm.Account?.Username ?? "", label);
+        box = null;
+        var record = RecordOf(pm);
+        if (record == null)
+        {
+            return AwardResult.NoRecord;
+        }
+
+        return record.CountOf(source) > 0
+            ? AwardResult.AlreadyThisLoop
+            : Award(pm, source, theme, tier, skill, label, out box);
+    }
+
+    // cc-P763: the award's fanfare by grade and rarity. Rare and up say the rare line in the rarity's colour; a Legendary
+    // box's capstone tells the shard in a plain line (the box lines are spoken to the player, not about them).
+    private static void PlayAwardFanfare(PlayerMobile pm, LootBox box, int tier)
+    {
+        var step = LootTable.Current.RarityOf(box.Rarity);
+        var level = LevelFor(tier, box.Rarity);
+        int? hue = box.Rarity > BoxRarity.Common ? step.Hue : null;
+        var personal = level == FanfareLevel.Capstone ? FanfareLevel.Major : level;
+
+        ClusterFFanfare.Play(pm, personal, FanfareLines.BoxAwarded, new FanfareVars(Tier: box.BoxName), tier,
+            voiceKey: $"box:{box.BoxName}", hue: hue);
+        if (step.RareLine)
+        {
+            ClusterFFanfare.Play(pm, personal, FanfareLines.BoxRare, tier: tier, hue: hue);
+        }
+
+        if (level == FanfareLevel.Capstone)
+        {
+            ClusterFFanfare.Play(pm, FanfareLevel.Capstone, "", tier: tier, line: $"{pm.Name} has earned a {box.DefaultName}.", hue: hue);
+        }
+    }
+
+    /// <summary>
+    /// A box rolled for this character now (contents fixed at this moment). cc-P763: the rarity is rolled here (or given),
+    /// and the season on now adds its slot.
+    /// </summary>
+    public static LootBox MakeBox(PlayerMobile pm, BoxTheme theme, int tier, SkillName? skill, string label, string? sourceName,
+        BoxRarity? rarity = null)
+    {
+        tier = Math.Clamp(tier, 1, 6);
+        var r = rarity ?? RarityRoll(tier);
+        var rolled = LootBoxRoller.Roll(pm, theme, tier, skill, sourceName ?? label, r, ActiveSeason());
+        var box = new LootBox(theme, tier, pm.Account?.Username ?? "", label) { Rarity = r };
         box.Fill(rolled.BoxName, rolled.Hue, rolled.Gold, rolled.Renown, rolled.Items);
         return box;
     }
@@ -147,13 +242,15 @@ public static class ClusterFLootBoxes
 
         var table = LootTable.Current;
 
-        // cc-P263: an achievement whose Noted reward names a joke item earns a Dented Box (its tier, the joke item inside).
+        // cc-P263: an achievement whose Noted reward names a joke item earns a Dented Box (its grade, the joke item inside).
         var noted = NotedRewards.For(def.Key) is { JokeItem: not null } r ? r : null;
         var tier = noted?.BoxTier ?? table.TierForAchievement(def.Key, def.AP);
         var level = tier >= 4 ? FanfareLevel.Major : FanfareLevel.Minor;
         ClusterFFanfare.Play(pm, level, level == FanfareLevel.Major ? FanfareLines.MajorAchievement : FanfareLines.MinorAchievement,
             tier: tier, voiceKey: "achievement");
-        Award(pm, $"ach:{def.Key}", table.ThemeForCategory(def.Category.ToString()), tier, def.Trigger.OnSkill, def.Title, out var box);
+        // cc-P763: the per-key theme first (LootTable.AchievementTheme), then the category's.
+        Award(pm, $"ach:{def.Key}", table.ThemeForAchievement(def.Key, def.Category.ToString()), tier, def.Trigger.OnSkill,
+            def.Title, out var box);
         if (noted != null && box != null)
         {
             ClusterFNotedBySystem.Dent(box, pm, noted);
@@ -191,20 +288,30 @@ public static class ClusterFLootBoxes
             killers.Add(last);
         }
 
+        var dungeon = DungeonOf(bc);
         foreach (var pm in killers)
         {
-            OnBossKilled(pm, bc.GetType(), bc.Name ?? bc.GetType().Name);
+            OnBossKilled(pm, bc.GetType(), bc.Name ?? bc.GetType().Name, dungeon);
         }
     }
 
-    public static AwardResult OnBossKilled(PlayerMobile pm, Type bossType, string bossName)
+    /// <summary>cc-P763: the dungeon region a creature stands in (its name), or null outside every dungeon.</summary>
+    public static string? DungeonOf(Mobile m) => m.Region?.GetRegion<DungeonRegion>() is { } d ? d.Name ?? "a dungeon" : null;
+
+    public static AwardResult OnBossKilled(PlayerMobile pm, Type bossType, string bossName, string? dungeon = null)
     {
-        var result = Award(pm, $"boss:{bossType.Name}", BoxTheme.Boss, LootTable.Current.TierForBoss(bossType), null,
-            $"slaying {bossName}", out _);
+        var grade = LootTable.Current.TierForBoss(bossType);
+        // cc-P763: the boss's own name for its trophy ("Trophy of a balron"), not the label ("slaying a balron").
+        var result = Award(pm, $"boss:{bossType.Name}", BoxTheme.Boss, grade, null, $"slaying {bossName}", out _, sourceName: bossName);
         if (result == AwardResult.Box)
         {
-            ClusterFFanfare.Play(pm, FanfareLevel.Major, "", tier: LootTable.Current.TierForBoss(bossType),
-                line: $"{pm.Name} has slain {bossName} for the first time.");
+            ClusterFFanfare.Play(pm, FanfareLevel.Major, "", tier: grade, line: $"{pm.Name} has slain {bossName} for the first time.");
+        }
+
+        // cc-P763: the dungeon dive. Each dungeon's boss, first killed inside it, is a Delver's box.
+        if (dungeon != null)
+        {
+            AwardOnce(pm, $"delve:{dungeon}:{bossType.Name}", BoxTheme.Delver, grade, null, $"{bossName} in {dungeon}", out _);
         }
 
         return result;
@@ -213,6 +320,127 @@ public static class ClusterFLootBoxes
     /// <summary>Called by ClusterFLeagueRanks.TryPromote when a rank is reached.</summary>
     public static AwardResult OnLeagueRank(PlayerMobile pm, int rank, string rankName) =>
         Award(pm, $"league:{rank}", BoxTheme.League, LootTable.Current.TierForLeagueRank(rank), null, $"League rank {rankName}", out _);
+
+    // -- cc-P763: the sources fishing, sailing and gardening have --
+
+    /// <summary>The Fishing patch (SendSuccessTo), every catch: a High Seas fish's first of its kind is a Fisher's box.</summary>
+    public static void OnFished(Mobile from, Item item)
+    {
+        if (from is not PlayerMobile pm || item is not BaseHighseasFish)
+        {
+            return;
+        }
+
+        var type = item.GetType();
+        var grade = FishInfo.IsRareFish(type) ? LootTable.Current.RareFishGrade : LootTable.Current.FishGrade;
+        AwardOnce(pm, $"fish:{type.Name}", BoxTheme.Fisher, grade, SkillName.Fishing, $"your first {LootBoxRoller.Describe(item)}", out _);
+    }
+
+    /// <summary>The Fishing patch (Construct), an SOS chest raised: its level's first is a Sailor's box.</summary>
+    public static void OnSosRecovered(Mobile from, int level)
+    {
+        if (from is not PlayerMobile pm)
+        {
+            return;
+        }
+
+        level = Math.Clamp(level, 1, 4);
+        AwardOnce(pm, $"sos:{level}", BoxTheme.Sailor, LootTable.Current.SosGrade[level - 1], null,
+            $"your first level {level} SOS chest", out _);
+    }
+
+    /// <summary>The SetToDecorativeGump patch: a plant type first set to decorative is a Herbalist's box.</summary>
+    public static void OnPlantDecorative(Mobile from, PlantItem plant)
+    {
+        if (from is not PlayerMobile pm)
+        {
+            return;
+        }
+
+        AwardOnce(pm, $"plant:{plant.PlantType}", BoxTheme.Herbalist, LootTable.Current.PlantGrade, null,
+            $"your first decorative {plant.PlantType}", out _);
+    }
+
+    public const string GuildSeededKey = "guild:seeded";
+
+    /// <summary>
+    /// Each new rank in a guild LootTable.GuildTheme names is a box of its theme, grade = rank. Checked at login, at each
+    /// craft guild promotion (ClusterFGuildPromotion.Update) and after each work order. The first check records the ranks
+    /// already held, without boxes: a box is for a promotion from now on. Returns how many boxes it gave.
+    /// </summary>
+    public static int CheckGuildRanks(PlayerMobile pm)
+    {
+        var record = RecordOf(pm);
+        var data = ClusterFAccountPersistence.GetGuild(pm);
+        if (record == null || data == null)
+        {
+            return 0;
+        }
+
+        var table = LootTable.Current;
+        var loop = CurrentLoop(pm);
+        var seeding = record.CountOf(GuildSeededKey) == 0;
+        var given = 0;
+
+        foreach (var key in new List<string>(data.JoinedGuilds))
+        {
+            var rank = ClusterFGuildSystem.GuildRankIndex(key, data);
+            for (var r = 1; r <= Math.Min(rank, ClusterFGuildSystem.RankTop); r++)
+            {
+                if (table.ThemeForGuildRank(key, r) is not { } theme)
+                {
+                    break;
+                }
+
+                var source = $"guild:{key}:{r}";
+                if (seeding)
+                {
+                    record.Record(source, loop);
+                    continue;
+                }
+
+                var skills = RecipeOwners.SkillsOf(key);
+                SkillName? skill = skills.Count > 0 ? skills[0] : null;
+                var name = ClusterFGuildSystem.GetDef(key)?.Name ?? key;
+                if (AwardOnce(pm, source, theme, Math.Clamp(r, 1, 6), skill,
+                        $"{ClusterFGuildPromotion.RankNameForIndex(key, r)} of the {name}", out _) == AwardResult.Box)
+                {
+                    given++;
+                }
+            }
+        }
+
+        if (seeding)
+        {
+            record.Record(GuildSeededKey, loop);
+        }
+
+        return given;
+    }
+
+    public const string WorkOrderCounter = "lootbox.workOrders";
+
+    /// <summary>A guild work order finished (GuildContractLedgerGump): every LeagueDiveEvery-th is a League Dive box.</summary>
+    public static AwardResult? OnWorkOrderCompleted(PlayerMobile pm)
+    {
+        CheckGuildRanks(pm);
+
+        if (pm.Account is not IAccount acct)
+        {
+            return null;
+        }
+
+        var n = ClusterFAchievementSystem.BumpLootBoxCounter(acct.Username, WorkOrderCounter);
+        var every = Math.Max(1, LootTable.Current.LeagueDiveEvery);
+        if (n % every != 0)
+        {
+            return null;
+        }
+
+        var rank = ClusterFLeagueRanks.GetRank(pm);
+        var grade = rank > 0 ? LootTable.Current.TierForLeagueRank(rank) : 1;
+        return AwardOnce(pm, $"dive:{n / every}", BoxTheme.LeagueDive, grade, null, $"{n} work orders finished", out _);
+    }
 
     // -- Hooks for sources that do not exist yet --
 
@@ -227,9 +455,9 @@ public static class ClusterFLootBoxes
         return Award(pm, $"loop:{loop}", BoxTheme.Loop, LootTable.Current.LoopTier, null, $"completing loop {loop}", out _);
     }
 
-    /// <summary>Hook: a dungeon or floor's first clear (no clear tracking exists). An Explorer's box.</summary>
+    /// <summary>Hook: a dungeon or floor's first clear (no clear tracking exists). cc-P763: a Delver's box (it was an Explorer's).</summary>
     public static AwardResult OnDungeonCleared(PlayerMobile pm, string dungeonKey) =>
-        Award(pm, $"clear:{dungeonKey}", BoxTheme.Explorer, LootTable.Current.DungeonClearTier, null, $"clearing {dungeonKey}", out _);
+        Award(pm, $"clear:{dungeonKey}", BoxTheme.Delver, LootTable.Current.DungeonClearTier, null, $"clearing {dungeonKey}", out _);
 
     /// <summary>Hook: a League trial chapter completed (trials are waived and nothing completes them yet). Shard-wide.</summary>
     public static void OnTrialChapter(PlayerMobile pm, int chapter) =>
@@ -240,7 +468,10 @@ public static class ClusterFLootBoxes
     public static void OnReached200(PlayerMobile pm) =>
         ClusterFFanfare.Play(pm, FanfareLevel.Capstone, FanfareLines.Reached200, tier: 6, voiceKey: "reached200");
 
-    /// <summary>F-12 hook: five fragments make one loop scroll. No loop scroll item exists, so nothing is made yet.</summary>
+    /// <summary>
+    /// F-12 hook: five fragments make one loop scroll. No loop scroll item exists, so nothing is made yet. cc-P763: boxes
+    /// no longer give fragments; saved ones and the monster-stealing ones still answer this.
+    /// </summary>
     public static void CombineLoopScroll(Mobile from, LoopScrollFragment fragments) =>
         from.SendMessage("System: The fragments hum, but the loop scroll they would make does not exist yet. Keep them.");
 
@@ -296,8 +527,8 @@ public static class ClusterFLootBoxes
 
     // -- Staff commands --
 
-    [Usage("LootBox <give <theme> <tier> | reload | cleanup>")]
-    [Description("give: rolls a box of a theme (Miner, Woodsman, Artisan, Hunter, Explorer, Tamer, Scholar, Boss, Loop, League) and tier (1-6) for you. reload: reads Configuration/loot-boxes.json and fanfare-lines.json again (a bad file is refused whole). cleanup: removes boxes opened and abandoned.")]
+    [Usage("LootBox <give <theme> <grade> [rarity] [season] | season | reload | cleanup>")]
+    [Description("give: rolls a box of a theme (Miner, Woodsman, Artisan, Hunter, Explorer, Tamer, Scholar, Boss, Loop, League, Fisher, Sailor, Herbalist, Society, Delver, LeagueDive), grade (1-6), and optionally rarity (Common, Rare, Epic, Legendary; else rolled) and season (halloween, winter, spring, none; else today's) for you. season: which season's slot boxes earned now get. reload: reads Configuration/loot-boxes.json and fanfare-lines.json again (a bad file is refused whole). cleanup: removes boxes opened and abandoned.")]
     [ShardCommand(CommandCategory.Grant, Shard = CommandShard.TestOnly)]
     private static void OnLootBoxCommand(CommandEventArgs e)
     {
@@ -323,14 +554,37 @@ public static class ClusterFLootBoxes
             return;
         }
 
-        if (verb != "give" || e.Length < 3 || !Enum.TryParse<BoxTheme>(e.GetString(1), true, out var theme) ||
-            e.Mobile is not PlayerMobile pm)
+        if (verb == "season")
         {
-            e.Mobile.SendMessage("Usage: [LootBox <give <theme> <tier> | reload | cleanup>");
+            var on = ActiveSeason();
+            e.Mobile.SendMessage(on == null ? "No season is on: boxes earned now get no season slot." : $"The {on} season is on: boxes earned now get its slot.");
             return;
         }
 
-        var box = MakeBox(pm, theme, Math.Clamp(e.GetInt32(2), 1, 6), null, "a staff test", null);
+        if (verb != "give" || e.Length < 3 || !Enum.TryParse<BoxTheme>(e.GetString(1), true, out var theme) ||
+            e.Mobile is not PlayerMobile pm)
+        {
+            e.Mobile.SendMessage("Usage: [LootBox <give <theme> <grade> [rarity] [season] | season | reload | cleanup>");
+            return;
+        }
+
+        BoxRarity? rarity = e.Length > 3 && Enum.TryParse<BoxRarity>(e.GetString(3), true, out var named) ? named : null;
+        var grade = Math.Clamp(e.GetInt32(2), 1, 6);
+        LootBox box;
+        if (e.Length > 4)
+        {
+            var season = e.GetString(4);
+            var r = rarity ?? RarityRoll(grade);
+            var rolled = LootBoxRoller.Roll(pm, theme, grade, null, "a staff test", r,
+                season.Equals("none", StringComparison.OrdinalIgnoreCase) ? null : season);
+            box = new LootBox(theme, grade, pm.Account?.Username ?? "", "a staff test") { Rarity = r };
+            box.Fill(rolled.BoxName, rolled.Hue, rolled.Gold, rolled.Renown, rolled.Items);
+        }
+        else
+        {
+            box = MakeBox(pm, theme, grade, null, "a staff test", null, rarity);
+        }
+
         ClusterFGuildPromotion.Deliver(pm, box);
     }
 

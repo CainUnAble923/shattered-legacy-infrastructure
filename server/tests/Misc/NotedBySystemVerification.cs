@@ -71,6 +71,8 @@ public class NotedBySystemVerification : IDisposable
         }
 
         LootTable.Current = LootTable.Defaults;
+        ClusterFLootBoxes.RarityRoll = _ => BoxRarity.Common; // cc-P763: these facts predate the rarity roll
+        ClusterFLootBoxes.SeasonClock = () => new DateTime(2026, 6, 15); // and the season slot: a day in no season
         ClusterFLootBoxes.LoopProvider = _ => 1;
         ClusterFStoreBought.CraftedOnly = true;
         ShardTestHost.EnsureCraftSystems(); // cc-P457: the commissions' teaching pick reads the smithing menu, which

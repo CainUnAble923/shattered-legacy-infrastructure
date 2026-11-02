@@ -618,6 +618,7 @@ public class GuildContractLedgerGump : GuildStyledGump
 
         pm.SendMessage(0x44, $"Work order complete: {def.Title}. {string.Join(", ", reward)}.");
         pm.PlaySound(0x57);
+        Server.LootBoxes.ClusterFLootBoxes.OnWorkOrderCompleted(pm); // cc-P763: League Dive boxes, and a promotion's box
         return true;
     }
 }
