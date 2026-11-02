@@ -247,12 +247,15 @@ public static class ClusterFRequisitions
 
         ClusterFAccountPersistence.GetOrCreate(acct).GrantRenown(e.Renown, RenownSource.LeagueJob);
         ClusterFAccountPersistence.GetOrCreateGuild(pm).AddReputation(e.GuildKey, e.Reputation);
+        // cc-P760: a member also gets the guild's points, 1 per 10 standing (the guild stores spend them).
+        var guildPoints = Server.Engines.RewardStores.GuildPointEarning.OnRequisition(pm, e.GuildKey, e.Reputation);
         GiveGold(pm, gold);
 
         data.Requests.Remove(e);
         item.Delete();
 
-        message = $"Requisition filled: {Describe(e)}. Paid {e.Renown} Renown, {e.Reputation} {guildName} standing and {gold} gold.";
+        message = $"Requisition filled: {Describe(e)}. Paid {e.Renown} Renown, {e.Reputation} {guildName} standing" +
+                  (guildPoints > 0 ? $", {guildPoints} {MuleUpgrades.CurrencyName(e.GuildKey)}" : "") + $" and {gold} gold.";
         return true;
     }
 

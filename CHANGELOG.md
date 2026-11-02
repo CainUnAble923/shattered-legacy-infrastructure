@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.01.5
+
+### Added
+- Every guild now has a Guild Store at its guildmaster ("Guild Store" in the guild's window, say "guild store", or type [guildstore beside the guildmaster), paid in the guild's own points: tools, materials, runic tools for the craft guilds, decor, a cloak in the guild's colours and, at the top rank, a guild title. Spending points never lowers your standing or rank.
+- Tailors, Foresters, Tinkers, Maritime, Alembic and Arcane bulk orders now also pay their guild's points (1 per 50 order points), and every requisition pays its guild's members 1 point per 10 standing. Guilds that showed "scrip" now have named points: Arcane Sigils, Tailors' Thimbles, Tinkers' Cogs, Healers' Tokens, Bards' Notes, Warriors' Marks, Maritime Charts, Merchants' Bills, Dojo Seals, Keepers' Candles and Alembic Drops.
+- Festival Tokens: while Halloween, winter or spring is on, strong creatures sometimes drop a token to whoever did the most damage, each Sorcerer's Dungeon artifact you hand in pays 2, and your first login of the day pays 1. Spend them at the Festival Peddler's stall in New Haven, which is there only during a festival and sells that season's treats, decorations, a festival title and a festival loot box.
+- The Achievement Store ("AP Store" in the achievements window, at the League Registrar, or type [apstore): spend your achievement points on titles, achiever's sashes, the robe of the Noted, an engraved plaque and twelve classic paintings. Your AP total never goes down, so nothing it has opened closes.
+- The League shop has fourteen more rows: a blessed League runebook, special hair and beard dye, an oil lantern, a bag of sending, furniture and metallic dye tubs, a crystal ball, two floating crystals, a pet bonding potion, a name change deed, the title "the League Champion" and the System's Platinum loot box.
+
+### Staff
+- Every reward store price and what opens each row are in Configuration/reward-stores.json (written with the defaults on first start); [RewardStores reload reads it again. [FestivalMarket status|place|clear|season shows or moves the Festival Peddler's stall; clusterf.festival.peddlerAt in the shard's configuration is where she stands.
+
 ## 2026.11.01.4
 
 ### Added

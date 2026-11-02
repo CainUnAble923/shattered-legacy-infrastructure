@@ -93,6 +93,14 @@ public partial class ForestersGuildmaster : BaseCreature
             return;
 
         var s = e.Speech;
+
+        // cc-P760: the guild's store (RewardStores/GuildStores.cs), as at every other guildmaster.
+        if (s.Contains("guild store", StringComparison.OrdinalIgnoreCase))
+        {
+            Server.Engines.RewardStores.GuildStores.Open(pm, "foresters", this);
+            return;
+        }
+
         if (s.Contains("forester",  StringComparison.OrdinalIgnoreCase) ||
             s.Contains("woodcut",   StringComparison.OrdinalIgnoreCase) ||
             s.Contains("lumber",    StringComparison.OrdinalIgnoreCase) ||

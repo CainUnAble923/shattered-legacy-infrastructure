@@ -33,6 +33,7 @@ public class SanitationWardenGump : GuildStyledGump
     private const int BtnStore    = 3;
     private const int BtnTrashBag = 5;
     private const int BtnSchematics = 6; // cc-P70: the Salvage Bin's mule module schematics
+    private const int BtnGuildStore = 7; // cc-P760: the Custodians' Guild Store (spends Clean Up points)
 
     // A store trader this close lets the gump open the store (ServUO's confirm range, BaseRewardGump.cs:238).
     public const int StoreRange = 5;
@@ -56,7 +57,7 @@ public class SanitationWardenGump : GuildStyledGump
         Resizable  = false;
 
         var isMember = ClusterFGuildSystem.IsJoined(pm, "custodians");
-        var H        = isMember ? 445 : 380; // cc-P70: +30 for the schematics row
+        var H        = isMember ? 475 : 380; // cc-P70: +30 for the schematics row; cc-P760: +30 for the Guild Store
 
         AddPage(0);
         AddBackground(0, 0, W, H, 9270);
@@ -152,6 +153,9 @@ public class SanitationWardenGump : GuildStyledGump
 
         AddButton(18, 406, 4005, 4007, BtnSchematics, GumpButtonType.Reply, 0);
         AddLabel(54, 408, 1154, "Mule module schematics (Salvage Bin)");
+
+        AddButton(18, 436, 4005, 4007, BtnGuildStore, GumpButtonType.Reply, 0); // cc-P760
+        AddLabel(54, 438, 1154, "Guild Store (spends Clean Up points)");
     }
 
     // -- Join view -------------------------------------------------------------
@@ -203,6 +207,19 @@ public class SanitationWardenGump : GuildStyledGump
 
             case BtnTrashBag:
                 HandleTrashBag(pm);
+                break;
+
+            case BtnGuildStore: // cc-P760
+                foreach (var m in pm.GetMobilesInRange(StoreRange))
+                {
+                    if (m is SanitationWarden)
+                    {
+                        Server.Engines.RewardStores.GuildStores.Open(pm, "custodians", m);
+                        return;
+                    }
+                }
+
+                pm.SendMessage(0x22, "You must be at a Sanitation Warden to buy.");
                 break;
 
             case BtnSchematics:

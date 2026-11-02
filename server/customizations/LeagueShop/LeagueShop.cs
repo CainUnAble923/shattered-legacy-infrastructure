@@ -38,8 +38,9 @@ public enum LeagueShopKind
 public sealed class LeagueShopEntry
 {
     public LeagueShopEntry(string key, string label, int ap, int renown, LeagueShopKind kind, int itemID, int hue,
-        Func<PlayerMobile, List<Item>>? create = null, string? titleKey = null)
+        Func<PlayerMobile, List<Item>>? create = null, string? titleKey = null, bool boxable = true)
     {
+        Boxable = boxable;
         Key = key;
         Label = label;
         ApRequired = ap;
@@ -66,6 +67,12 @@ public sealed class LeagueShopEntry
     public string? TitleKey { get; }
 
     public bool IsTitle => TitleKey != null;
+
+    /// <summary>
+    /// cc-P760: whether the System's loot boxes may draw this row. F-13's rows may; the rows cc-P760 added may not, so the
+    /// Bronze, Silver and Gold boxes hold what they held before.
+    /// </summary>
+    public bool Boxable { get; }
 }
 
 public enum LeagueShopResult
@@ -119,7 +126,38 @@ public static class LeagueShop
         new("title.favorite", "Title: the System's Favorite", 1750, 500, LeagueShopKind.Title, TitleArt, LeagueHue,
             titleKey: LeagueTitles.SystemsFavorite),
         // cc-P365: the reward mounts routed to the shop, at 1750 AP (past the Gold box's 1000, so no box draws one).
-        .. RewardMounts.ShopRows()
+        .. RewardMounts.ShopRows(),
+        // cc-P760 (the reward stores plan, section 4): fourteen more rows, Renown by AP, under the same guardrails. None
+        // goes in a loot box (boxable: false). The art: stock, or registered (registry.csv: the crystal ball and floating
+        // crystals are cc-P265's, the oil lantern cc-P237's).
+        new("runebook", "Runebook (blessed, League hue)", 100, 150, LeagueShopKind.Convenience, 0x22C5, LeagueHue,
+            One(_ => new Runebook { Hue = LeagueHue, LootType = LootType.Blessed }), boxable: false),
+        new("hairdye", "Special hair dye (one use)", 100, 75, LeagueShopKind.Cosmetic, 0xE26, 0,
+            One(_ => new SpecialHairDye()), boxable: false),
+        new("bearddye", "Special beard dye (one use)", 100, 75, LeagueShopKind.Cosmetic, 0xE26, 0,
+            One(_ => new SpecialBeardDye()), boxable: false),
+        new("lantern", "Oil lantern (decor)", 100, 100, LeagueShopKind.Decor, 0x3C8C, 0,
+            One(_ => new RewardDecor(0x3C8C, "an oil lantern")), boxable: false),
+        new("bagofsending", "Bag of sending (30 charges)", 250, 250, LeagueShopKind.Convenience, 0xE76, 0x8AD,
+            One(_ => new BagOfSending(BagOfSendingHue.Blue) { Charges = 30 }), boxable: false),
+        new("furnituretub", "Furniture dye tub", 250, 200, LeagueShopKind.Cosmetic, 0xFAB, 0,
+            One(_ => new FurnitureDyeTub()), boxable: false),
+        new("crystalball", "Crystal ball (decor)", 250, 300, LeagueShopKind.Decor, 0x6DC4, 0,
+            One(_ => new RewardDecor(0x6DC4, "a crystal ball")), boxable: false),
+        new("metallictub", "Metallic dye tub", 500, 400, LeagueShopKind.Cosmetic, 0xFAB, 0,
+            One(_ => new MetallicDyeTub()), boxable: false),
+        new("bondingpotion", "Pet bonding potion", 500, 400, LeagueShopKind.Convenience, 0xF04, 0,
+            One(_ => new PetBondingPotion()), boxable: false),
+        new("crystal.green", "Floating crystal, green (decor)", 500, 300, LeagueShopKind.Decor, 0x6DD8, 0,
+            One(_ => new RewardDecor(0x6DD8, "a floating crystal")), boxable: false),
+        new("crystal.purple", "Floating crystal, purple (decor)", 500, 300, LeagueShopKind.Decor, 0x6DE1, 0,
+            One(_ => new RewardDecor(0x6DE1, "a floating crystal")), boxable: false),
+        new("namechange", "Name change deed", 1000, 600, LeagueShopKind.Convenience, 0x14F0, 0,
+            One(_ => new NameChangeDeed()), boxable: false),
+        new("title.champion", "Title: the League Champion", 1750, 800, LeagueShopKind.Title, TitleArt, LeagueHue,
+            titleKey: Server.Engines.RewardStores.RewardStoreTitles.LeagueChampion, boxable: false),
+        new("box.platinum", "System's Loot Box, Platinum", 1750, 800, LeagueShopKind.LootBox, BoxArt, 0,
+            pm => [MakeBox(pm, BoxTier.Platinum)], boxable: false)
     ];
 
     private static Func<PlayerMobile, List<Item>> One(Func<PlayerMobile, Item> make) => pm => [make(pm)];
@@ -247,7 +285,8 @@ public static class LeagueShop
     {
         Bronze,
         Silver,
-        Gold
+        Gold,
+        Platinum // cc-P760: two draws past Gold
     }
 
     // P79's LootBox item (bound, opened in a guarded town or a house, its reveal and fanfare), filled from the shop's own
@@ -258,7 +297,8 @@ public static class LeagueShop
     {
         BoxTier.Bronze => ("System's Bronze Loot", 1, 1, 0),
         BoxTier.Silver => ("System's Silver Loot", 2, 2, 250),
-        _              => ("System's Gold Loot", 4, 3, 1000)
+        BoxTier.Gold   => ("System's Gold Loot", 4, 3, 1000),
+        _              => ("System's Platinum Loot", 5, 5, 1750)
     };
 
     /// <summary>
@@ -275,7 +315,9 @@ public static class LeagueShop
 
         foreach (var entry in Stock)
         {
-            if (entry.Create != null && entry.Kind != LeagueShopKind.LootBox && entry.ApRequired <= maxAp)
+            // cc-P760: never a mount (they open at 1750, which the Platinum box reaches) and never a row added since F-13.
+            if (entry.Create != null && entry.Kind != LeagueShopKind.LootBox && entry.Kind != LeagueShopKind.Mount &&
+                entry.Boxable && entry.ApRequired <= maxAp)
             {
                 var e = entry;
                 pool.Add(pm => e.Create!(pm)[0]);
@@ -296,8 +338,14 @@ public static class LeagueShop
     public static LootBox MakeBox(PlayerMobile pm, BoxTier tier)
     {
         var (name, p79Tier, draws, _) = BoxInfo(tier);
-        var pool = BoxPool(tier);
-        var box = new LootBox(BoxTheme.League, p79Tier, pm.Account?.Username ?? "", "the League shop");
+        return MakeBox(pm, name, p79Tier, draws, BoxPool(tier), "the League shop");
+    }
+
+    /// <summary>cc-P760: a store's box (the League shop's, the Festival store's): P79's bound box, filled from a pool.</summary>
+    public static LootBox MakeBox(PlayerMobile pm, string name, int p79Tier, int draws, List<Func<PlayerMobile, Item>> pool,
+        string source)
+    {
+        var box = new LootBox(BoxTheme.League, p79Tier, pm.Account?.Username ?? "", source);
         var contents = new List<(Item, bool)>();
 
         for (var i = 0; i < draws; i++)
@@ -345,6 +393,8 @@ public static class LeagueTitles
         new(NotedRewards.LarryTitle, "Larry", -1, HiddenUntilHeld: true),
         new(NotedRewards.SupervisorTitle, "the Supervisor", -1, HiddenUntilHeld: true),
         new(NotedRewards.BraveTitle, "the Brave (citation needed)", -1, HiddenUntilHeld: true),
+        // cc-P760: the titles the reward stores sell (guild, Festival and Achievement stores, the League Champion).
+        .. Server.Engines.RewardStores.RewardStoreTitles.All(),
     ];
 
     public static TitleDef? Find(string key) => All.FirstOrDefault(t => t.Key == key);
