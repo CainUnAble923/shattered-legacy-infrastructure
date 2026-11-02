@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.02.3
+
+### Staff
+- A Golem's question to Chase now stays open on the Golem card until it is answered, retried, cleared or the prompt moves on. Before, a stopped session that woke once more for its own background task (a watcher ending) looked like Chase answering, so the question closed before he saw it and his answer was refused.
+
 ## 2026.11.02.2
 
 ### Added
