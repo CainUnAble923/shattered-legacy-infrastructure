@@ -56,6 +56,15 @@ Two listeners, both on 127.0.0.1 only (nothing on the LAN, nothing public):
   POST /api/music/commit     commit music-notes.json alone in the docs repo (never pushed); also hourly if it changed
                              Both POSTs: either listener (each is Chase: this PC, or his tailnet login), only from the
                              page (the same header, origin and JSON checks as POST /api/action). They write only that file.
+  cc-P773, the play testers (playtesters.py): who tests, their tasks from the Play Test Goblin, their reports from [tasks
+  and [report in game. The files are the test world's playtest folder (outside git); the shard reads them.
+  GET /testers               the page (static/testers.html; testers.js beside it)
+  GET /api/testers           every tester with their open, finished and pulled-back tasks and their reports
+  POST /api/testers/add      {account, name}: a tester by account name (the name typed at the game's login screen)
+  POST /api/testers/pause    {account, paused}: the Goblin skips a paused tester; the shard still shows their open tasks
+  POST /api/testers/remove   {account}: off the list; their tasks and reports stay, so nothing is repeated if added back
+  POST /api/testers/pullback {id}: an open task off its tester's list in game, at once
+                             The POSTs: either listener, only from the page, as the Music Room's.
   GET /api/agent/ping        cc-P186, a remote agent: {golem, ack}: the game PC knows this Golem and its secret
   GET /api/agent/commands    cc-P186: this Golem's queued commands, each handed out once (the agent's poll)
   POST /api/agent/result     cc-P186: {id, code, result, lines}: a command's result, onto the Timeline with the name
@@ -102,6 +111,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import music  # noqa: E402
 import panels  # noqa: E402
+import playtesters  # noqa: E402  (cc-P773)
 
 DEFAULT_REPO = os.path.dirname(HERE)
 LOCAL_READ_ONLY = ("This PC's own page (127.0.0.1:8095) is read only: the Golem's buttons work through "
@@ -178,6 +188,7 @@ AGENT_BODY = 65536     # a readiness file with its checks is bigger than a butto
 PORTRAIT_NAME = re.compile(r"(?i)\.(png|gif|jpg|jpeg|webp)$")
 MUSIC_COMMIT_SECONDS = 3600   # cc-P367: music-notes.json is committed this often when it changed
 MUSIC_BODY = 16384            # a note is 4000 characters at most
+TESTER_POSTS = ("/api/testers/add", "/api/testers/pause", "/api/testers/remove", "/api/testers/pullback")   # cc-P773
 MUSIC_FILE = re.compile(r"^/music-file/([a-z0-9-]{1,24})/([^/]{1,124})$")
 AGENTS_COMMENT = ("cc-P186: one salted SHA-256 per remote Golem's agent secret (server.py --mint-agent <name>). Outside git. "
                   "The secret itself is shown once when minted and kept only on that Golem's PC.")
@@ -234,6 +245,8 @@ class Console:
                                      cache_file=os.path.join(data, "music-index.json"))
         if collector:
             threading.Thread(target=self._music_loop, daemon=True).start()
+        # cc-P773: the play testers' files, in the test world's playtest folder (tests point it at a scratch folder).
+        self.playtest = playtesters.PlayTestData(playtesters.default_dir(repo))
 
     # --- who may look ---------------------------------------------------------------------------------------------
     def allowed_logins(self):
@@ -1654,6 +1667,10 @@ def make_handler(console, listener, access_log=None):
                                         "notesFile": "/".join(music.NOTES_REL), "noteMax": music.NOTE_MAX})
             if p == "/api/music/summary":
                 return self._json(200, console.music.summary())
+            if p in ("/testers", "/testers.html", "/testers.js"):   # cc-P773
+                return self._static("testers.html" if p != "/testers.js" else "testers.js")
+            if p == "/api/testers":
+                return self._json(200, console.playtest.view())
             mf = MUSIC_FILE.match(p)
             if mf:
                 path = console.music.path_of(mf.group(1), unquote(mf.group(2)))
@@ -1742,6 +1759,8 @@ def make_handler(console, listener, access_log=None):
             # cc-P182: the Golem's buttons; cc-P187: the page buttons and their look first.
             if path in ("/api/music/note", "/api/music/commit"):
                 return self._music_post(path)
+            if path in TESTER_POSTS:
+                return self._testers_post(path)
             if path not in ("/api/action", "/api/preview", "/api/golem-password", "/api/answer"):
                 return self._refuse()
             if not self._allowed():
@@ -1866,6 +1885,37 @@ def make_handler(console, listener, access_log=None):
                 return self._json(code, {"error": err})
             self._note(200, "music note")
             return self._json(200, {"record": rec})
+
+        def _testers_post(self, path):
+            """cc-P773: a change to the play testers (add, pause, remove, pull back). Either listener (both are Chase),
+            only from the page, JSON only; logged as one line without the words."""
+            if not self._allowed():
+                return
+            why = self._not_this_page()
+            if why:
+                self._note(403, why)
+                return self._json(403, {"error": "not allowed: " + why})
+            body = self._read_json(4096)
+            if body is None:
+                return
+            data = console.playtest
+            try:
+                if path == "/api/testers/add":
+                    out = {"tester": data.add_tester(str(body.get("account", "")), str(body.get("name", "")))}
+                elif path == "/api/testers/pause":
+                    out = {"tester": data.set_paused(str(body.get("account", "")), bool(body.get("paused")))}
+                elif path == "/api/testers/remove":
+                    out = {"removed": data.remove_tester(str(body.get("account", "")))}
+                else:
+                    out = {"task": data.pull_back(str(body.get("id", "")))}
+            except playtesters.PlayTestError as e:
+                self._note(400, "testers " + path.rsplit("/", 1)[1] + ": refused")
+                return self._json(400, {"error": str(e)})
+            except OSError as e:
+                self._note(500, "testers " + path.rsplit("/", 1)[1] + ": not written")
+                return self._json(500, {"error": "The play test files could not be written: %s" % e})
+            self._note(200, "testers " + path.rsplit("/", 1)[1])
+            return self._json(200, out)
 
         def _stream(self, path, ctype):
             """cc-P367: a file in 256 KB pieces, with a single Range (bytes=a-b, a- or -n) answered 206 so the
