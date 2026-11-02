@@ -1052,6 +1052,14 @@ apply_patch "$PATCHES/PowerScroll-school-gate.patch"
 # meets MLQuestEntry.cs. Made with diff -u against pinned; pinned by PlaytesterNotesVerification.
 apply_patch "$PATCHES/MLQuestEntry-quest-milestones.patch"
 
+# cc-P763: the loot box sources fishing and gardening have no achievement for. Fishing.cs tells ClusterFLootBoxes of
+# each catch (SendSuccessTo: a High Seas fish's first catch of its kind is a Fisher box) and of each SOS chest raised
+# (Construct, before the SOS is deleted: its level's first recovery is a Sailor box); SetToDecorativeGump.cs of a plant
+# set to decorative (its type's first is a Herbalist box). Made against the tree every Fishing patch above leaves.
+# Notes: shard-migration/notes/cc-P763-cont-loot-boxes-diversified.md; pinned by LootBoxDiversityVerification.
+apply_patch "$PATCHES/Fishing-loot-box-firsts.patch"
+apply_patch "$PATCHES/SetToDecorativeGump-loot-box-herbalist.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

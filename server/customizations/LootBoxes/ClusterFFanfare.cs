@@ -53,6 +53,7 @@ public static class ClusterFFanfare
     {
         public FanfareLevel Level;
         public int Tier;
+        public int? Hue; // cc-P763: a box's rarity colour, over the grade's
         public readonly List<string> Lines = new();
         public readonly List<string> Broadcasts = new();
         public readonly List<string> VoiceKeys = new();
@@ -89,7 +90,7 @@ public static class ClusterFFanfare
     /// with any other queued for this player in the window.
     /// </summary>
     public static void Play(PlayerMobile pm, FanfareLevel level, string pool, FanfareVars? vars = null, int tier = 1,
-        string? line = null, string? voiceKey = null)
+        string? line = null, string? voiceKey = null, int? hue = null)
     {
         if (pm.Deleted)
         {
@@ -106,6 +107,10 @@ public static class ClusterFFanfare
 
         p.Level = (FanfareLevel)Math.Max((int)p.Level, (int)level);
         p.Tier = Math.Max(p.Tier, tier);
+        if (hue != null)
+        {
+            p.Hue = hue;
+        }
 
         if (text.Length > 0)
         {
@@ -148,7 +153,7 @@ public static class ClusterFFanfare
         var muted = IsMuted(pm);
         var lines = new List<string>(p.Lines);
         lines.AddRange(p.Broadcasts);
-        var hue = TierHue(p.Tier);
+        var hue = p.Hue ?? TierHue(p.Tier);
 
         // The chat lines always arrive (System voice).
         foreach (var l in lines)
@@ -196,8 +201,8 @@ public static class ClusterFFanfare
         return played;
     }
 
-    // The rarity colors by tier (LootTable.Rarity), so a tier 6 fanfare is Celestial.
-    public static int TierHue(int tier) => LootTable.HueOf(LootTable.Current.Rarity[Math.Clamp(tier, 1, 6) - 1]);
+    // The grade colours (LootTable.Grades, named Common to Celestial before cc-P763), so a grade 6 fanfare is Celestial.
+    public static int TierHue(int tier) => LootTable.HueOf(LootTable.Current.Grades[Math.Clamp(tier, 1, 6) - 1]);
 
     private static void PlayEffects(PlayerMobile pm, FanfareLevel level, int hue)
     {

@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Engines/Plants/SetToDecorativeGump.cs
++++ b/Projects/UOContent/Engines/Plants/SetToDecorativeGump.cs
+@@ -85,6 +85,7 @@
+             case 3: // Ok
+                 {
+                     _plant.PlantStatus = PlantStatus.DecorativePlant;
++                    Server.LootBoxes.ClusterFLootBoxes.OnPlantDecorative(from, _plant); // Shattered Legacy (cc-P763): a Herbalist box
+                     // You prune the plant.
+                     // This plant will no longer produce resources or seeds, but will require no upkeep.
+                     _plant.LabelTo(from, 1053077);

@@ -9,6 +9,9 @@
 // EpicComponent          a component no recipe uses yet (F-42), with a System line hinting at undiscovered recipes.
 // LootBoxPlaceholder     a clearly named stand-in for a reward whose real item does not exist yet (listed in the notes).
 //
+// cc-P763: the box keeps the rarity rolled at its earn (version 1; a version 0 box from before is Common), and the last
+// three are no longer rolled (the plan, notes/cc-P759-loot-plan.md section 2); their classes stay so old saves load.
+//
 // Account binding (no pinned mechanism binds to an account; pinned's Nontransferable binds to the backpack only): a
 // bound item refuses a secure trade, a drop on the ground, a drop onto anyone, a drop into or onto anything not carried
 // by a character of its account (so another player's pack, a house chest, a vendor), and a lift by anyone else.
@@ -45,7 +48,7 @@ public static class AccountBinding
     }
 }
 
-[SerializationGenerator(0, false)]
+[SerializationGenerator(1, false)]
 public partial class LootBox : Item
 {
     [SerializableField(0)]
@@ -87,6 +90,27 @@ public partial class LootBox : Item
     [SerializableField(9)]
     private List<int> _rareSlots;
 
+    // cc-P763: the rarity rolled at the earn (ClusterFLootBoxes.MakeBox).
+    [SerializableField(10)]
+    [SerializedCommandProperty(AccessLevel.GameMaster)]
+    private BoxRarity _rarity;
+
+    // cc-P763: a box saved before the rarity roll is Common.
+    private void MigrateFrom(V0Content content)
+    {
+        _theme = content.Theme;
+        _tier = content.Tier;
+        _boundAccount = content.BoundAccount;
+        _contents = content.Contents ?? new List<Item>();
+        _gold = content.Gold;
+        _renown = content.Renown;
+        _boxName = content.BoxName;
+        _earnedFor = content.EarnedFor;
+        _openedAt = content.OpenedAt;
+        _rareSlots = content.RareSlots ?? new List<int>();
+        _rarity = BoxRarity.Common;
+    }
+
     [Constructible]
     public LootBox() : this(BoxTheme.Explorer, 1, "", "staff")
     {
@@ -100,7 +124,7 @@ public partial class LootBox : Item
         _earnedFor = earnedFor;
         _contents = new List<Item>();
         _rareSlots = new List<int>();
-        var (name, hue) = LootBoxRoller.NameAndHue(theme, _tier, null);
+        var (name, hue) = LootBoxRoller.NameAndHue(theme, _tier, null, BoxRarity.Common);
         _boxName = name;
         Hue = hue;
         Weight = 2.0;
@@ -135,7 +159,7 @@ public partial class LootBox : Item
     public override void GetProperties(IPropertyList list)
     {
         base.GetProperties(list);
-        list.Add($"{LootBoxRoller.ThemeTitle(_theme)} box, tier {_tier}");
+        list.Add($"{LootBoxRoller.ThemeTitle(_theme)} box: {LootTable.Current.RarityOf(_rarity).Name}, grade {_tier}");
         list.Add($"For: {_earnedFor}");
         list.Add("Bound to your account");
         list.Add("Open in a guarded town or your house");
@@ -261,21 +285,30 @@ public partial class LootBox : Item
         pm.SendGump(new LootBoxRevealGump(DefaultName, shown));
         pm.SendMessage(0x44, $"System: You open the {DefaultName}.");
 
-        var level = _tier >= 4 ? FanfareLevel.Major : FanfareLevel.Minor;
+        // cc-P763: Major from grade 4, and at least the rarity's fanfare, in the rarity's colour above Common.
+        var level = ClusterFLootBoxes.LevelFor(_tier, _rarity);
+        int? hue = _rarity > BoxRarity.Common ? LootTable.Current.RarityOf(_rarity).Hue : null;
+        rare |= LootTable.Current.RarityOf(_rarity).RareLine;
 
         // cc-P242: the best item flies out of the box now, as it opens; the fanfare below follows when its window closes.
-        ClusterFFlyingLoot.Play(pm, handedOver, level == FanfareLevel.Major);
+        ClusterFFlyingLoot.Play(pm, handedOver, level >= FanfareLevel.Major);
         if (boxInBox)
         {
-            ClusterFFanfare.Play(pm, level, FanfareLines.BoxInBox, tier: _tier, voiceKey: $"box:{_boxName}");
+            ClusterFFanfare.Play(pm, level, FanfareLines.BoxInBox, tier: _tier, voiceKey: $"box:{_boxName}", hue: hue);
         }
         else if (rare)
         {
-            ClusterFFanfare.Play(pm, level, FanfareLines.BoxRare, tier: _tier, voiceKey: $"box:{_boxName}");
+            // A capstone's line would go to the whole shard; the rare line is the opener's, so it plays at Major.
+            ClusterFFanfare.Play(pm, level == FanfareLevel.Capstone ? FanfareLevel.Major : level, FanfareLines.BoxRare, tier: _tier,
+                voiceKey: $"box:{_boxName}", hue: hue);
+            if (level == FanfareLevel.Capstone)
+            {
+                ClusterFFanfare.Play(pm, level, "", tier: _tier, line: "", hue: hue);
+            }
         }
         else
         {
-            ClusterFFanfare.Play(pm, level, "", tier: _tier, line: "", voiceKey: $"box:{_boxName}");
+            ClusterFFanfare.Play(pm, level, "", tier: _tier, line: "", voiceKey: $"box:{_boxName}", hue: hue);
         }
 
         Delete();
