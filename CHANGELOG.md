@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.02.6
+
+### Added
+- Travelers may now run into trouble on the roads. Out in the wilds of Trammel and Felucca (never in towns, dungeons, houses or on boats, and never on the Wakening Isle or in New Haven), you may meet brigands demanding a toll, a League surveyor pinned down by local wildlife, or, on Halloween nights, a lantern procession best left alone. Young characters, the hidden, the idle and anyone already in a fight are left in peace, and each traveler meets at most one every 25 minutes.
+
+### Staff
+- [Encounters status, check, reload and force <id>: the random encounters, set in Configuration/encounters.json ("enabled": false turns them off).
+
 ## 2026.11.02.5
 
 ### Added
