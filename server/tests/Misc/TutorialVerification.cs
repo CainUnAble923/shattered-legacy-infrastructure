@@ -520,7 +520,7 @@ public class TutorialVerification : IDisposable
             boxes++;
         }
 
-        Assert.Equal(2, boxes); // the graduation Explorer box and the first real loop's box
+        Assert.Equal(13, boxes); // the graduation Explorer box and the first real loop's box; cc-P769: and one for each of the 11 isle lessons' achievements
         Assert.False(ClusterFAchievementSystem.HasEarned(p.Account, ClusterFTutorial.RemedialAchievement));
     }
 

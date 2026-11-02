@@ -122,6 +122,10 @@ public enum TriggerKind
     // cc-P762: ran for the Wakening Isle's moongate before its lessons (Tutorial/TutorialGateSkip.cs). Last, so no saved
     // value moves.
     TutorialGateSkip,
+    // cc-P769: a Wakening Isle lesson finished (Tutorial/TutorialLessonAchievements.cs), and the first quest's rewards
+    // claimed (ClusterFQuestMilestones.cs). Last, so no saved value moves.
+    TutorialLesson,
+    FirstQuest,
 }
 
 public sealed class AchievementTrigger
@@ -199,6 +203,8 @@ public sealed class AchievementTrigger
             TriggerKind.TutorialSkipped    => "skipped the New Haven tutorial",
             TriggerKind.TutorialRemedial   => "completed the tutorial after skipping it",
             TriggerKind.TutorialGateSkip   => "ran for the Wakening Isle's moongate before its lessons",
+            TriggerKind.TutorialLesson     => "finished a lesson on the Wakening Isle",
+            TriggerKind.FirstQuest         => "finished your first quest",
             TriggerKind.FountainOfYouth    => "drank from the Fountain of Youth",
             TriggerKind.ScissorsRunning    => n == 1
                 ? "tried to use scissors while running"
@@ -1198,6 +1204,107 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             flavor:     "The sign said \"Lessons this way.\" You read \"Exit.\"",
             itemGumpId: 0x0FF4);
 
+        // cc-P769 (the first outside playtester: "more for like each tutorial step"): one per Wakening Isle lesson, granted by
+        // TutorialLessonAchievements when the lesson is finished, once per account as every achievement is. 5 AP, no renown,
+        // nothing else (the earn's own loot box comes as for every achievement).
+        Reg("tutorial.lesson.movement",
+            "Upright and Mobile",
+            "Got up off the beach and walked onto both glowing tiles.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "Walking: confirmed. The System had its doubts about the beach part.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.backpack",
+            "Bag Inside a Bag",
+            "Opened your backpack, then the practice bag inside it.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "Containers within containers. You are ready for inventory management, the true endgame.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.paperdoll",
+            "Cloaked and Ready-ish",
+            "Put on the cloak of the Wakening Isle.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "It is a cloak. You wore it. The bar was on the floor, and you cleared it.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.chat",
+            "Said the Thing",
+            "Spoke the words at the signpost.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "\"I am ready to learn.\" The System has filed this as a binding statement.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.farm",
+            "Pest Control Contractor",
+            "Cleared the cabbage rows and went home with a pet.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "The cabbages thank you. The pests filed a complaint. It was denied.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.healing",
+            "Bandage Enthusiast",
+            "Bandaged Pip, the farm boy, back to health.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "Pip was always going to be fine. You did not know that. Good work anyway.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.death",
+            "Died on Purpose",
+            "Died in the training yard and came back.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "Death: survivable, it turns out. Please do not make it a habit. (You will make it a habit.)",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.banking",
+            "Fiscally Responsible",
+            "Put the practice token in your bank box.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "One token, safely deposited. Interest is not available. Ever.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.league",
+            "Read the Brochure",
+            "Opened the League's window at the lodge.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "Most people close it without reading. The System noticed you did not. Probably.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.loop",
+            "Saw Things",
+            "Watched the vision at the standing stones.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "The stones showed you something. The System is not permitted to comment.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.lesson.travel",
+            "Left the Nest",
+            "Stepped through the moongate to New Haven.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialLesson),
+            flavor:     "The isle will miss you. The isle is a rock. It will cope.",
+            itemGumpId: 0x0FF4);
+
+        // cc-P769 ("And then for completing a first quest beyond the tutorial"): granted by ClusterFQuestMilestones when a
+        // character first claims a quest's rewards (MLQuestEntry-quest-milestones.patch).
+        Reg(ClusterFQuestMilestones.FirstQuestKey,
+            "Gainfully Employed",
+            "Finished your first quest beyond the tutorial.",
+            AchievementCategory.Legacy, ap: 5, renown: 10,
+            trigger:    T.Event(TriggerKind.FirstQuest),
+            flavor:     "Someone asked. You did it. You were paid. The System calls this a career.",
+            itemGumpId: 0x0E34);
+
         // cc-P192 (Chase 2026-10-19 15:03: "a silly easter egg"): SECRET. Hidden until earned; granted by
         // FountainOfYouthSystem.Drink the first time an account drinks from the roaming (live) fountain. No text names a
         // place. Never document it on the wiki (admin notes: shard-migration notes/admin/secrets.md).
@@ -1499,15 +1606,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
         NotifyMapVisit(pm);
 
         // -- New Haven quest progress ---------------------------------------
-        var ctx = MLQuestSystem.GetContext(pm);
-        if (ctx != null)
-        {
-            var doneCount = 0;
-            foreach (var (questType, _) in AchievementsGump.NewHavenQuests)
-                if (ctx.HasDoneQuest(questType)) doneCount++;
-            SetCounter(acct.Username, "new_haven_quests", doneCount);
-            GrantCounted(acct, TriggerKind.NewHavenQuests, doneCount);
-        }
+        RefreshNewHavenQuests(pm, acct);
 
         // -- Login count ---------------------------------------------------
         GrantCounted(acct, TriggerKind.Logins, Increment(acct.Username, "login_count"));
@@ -1556,6 +1655,23 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
         dict.TryGetValue(counter, out var cur);
         dict[counter] = cur + amount;
         return cur + amount;
+    }
+
+    /// <summary>
+    /// The New Haven trainer quests done, counted and granted: at login, and (cc-P769) as each quest's rewards are claimed
+    /// (ClusterFQuestMilestones), so "The Tutorial Has a Checkbox" no longer waits for the next login.
+    /// </summary>
+    public static void RefreshNewHavenQuests(PlayerMobile pm, IAccount acct)
+    {
+        var ctx = MLQuestSystem.GetContext(pm);
+        if (ctx != null)
+        {
+            var doneCount = 0;
+            foreach (var (questType, _) in AchievementsGump.NewHavenQuests)
+                if (ctx.HasDoneQuest(questType)) doneCount++;
+            SetCounter(acct.Username, "new_haven_quests", doneCount);
+            GrantCounted(acct, TriggerKind.NewHavenQuests, doneCount);
+        }
     }
 
     private static void SetCounter(string username, string counter, int value)

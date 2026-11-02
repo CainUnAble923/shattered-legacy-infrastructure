@@ -62,6 +62,13 @@ public partial class LeagueRegistrar : BaseCreature
         AddItem(hair);
     }
 
+    // cc-P769 item 5 (the tester: "it says register today but that didn't feel like a command").
+    public const string LessonWindowLine =
+        "This is the League's window. Click Join the League to join now, or the X to close it. Your League lesson is done either way.";
+
+    /// <summary>cc-P769 item 5: on the Wakening Isle her New Haven lines ("register today") are not said; the lesson's line is.</summary>
+    public bool OnTheIsle => Tutorial.TutorialWorld.IsOnIsle(this);
+
     public override bool IsInvulnerable => true;
     public override bool ClickTitle      => true;
     public override bool ShowFameTitle   => false;
@@ -98,6 +105,8 @@ public partial class LeagueRegistrar : BaseCreature
         if (Map == pm.Map && Tutorial.TutorialCoreTrials.IsDoing(pm, "core.league"))
         {
             Tutorial.TutorialCoreTrials.Observe(pm, Tutorial.TutorialAction.TalkedToLeague);
+            // cc-P769 item 5: what the window is for, and that the lesson needs nothing more.
+            Tutorial.ClusterFTutorial.SystemLine(pm, LessonWindowLine);
         }
     }
 
@@ -185,7 +194,7 @@ public partial class LeagueRegistrar : BaseCreature
                 }
             }
 
-            if (hasPlayer)
+            if (hasPlayer && !OnTheIsle)
             {
                 Say(AmbientLines[_ambientIndex % AmbientLines.Length]);
                 _ambientIndex++;
@@ -201,7 +210,7 @@ public partial class LeagueRegistrar : BaseCreature
 
     private void CheckProximityGreetings()
     {
-        if (Deleted) return;
+        if (Deleted || OnTheIsle) return;
 
         foreach (var m in GetMobilesInRange(6))
         {

@@ -19,7 +19,7 @@ public static class TutorialGreeting
 
     public const string TamsinLine = "Welcome, traveler! Double-click me (two quick left clicks on me) to begin your lessons.";
     public const string WrenLine = "Hello there! Double-click me (two quick left clicks on me) to choose your pet.";
-    public const string ElaraLine = "Welcome to the lodge! Double-click me (two quick left clicks on me) to finish your League lesson.";
+    public const string ElaraLine = "Welcome to the lodge! Double-click me (or click me once and choose Talk) to open the League's window and finish your League lesson.";
 
     // When each NPC last greeted each player, in Core.TickCount milliseconds (in memory: a restart greets again, which is
     // harmless). The tick count, not Core.Now: a test host's NetState resets Core.Now to the wall clock as it sends (D16).

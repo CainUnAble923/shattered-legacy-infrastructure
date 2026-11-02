@@ -24,8 +24,21 @@ public static class TutorialClientTips
         ("Always run",
             "Your character can run wherever you point, not only when you point far away. To turn it on: click Options on " +
             "your character window (double-click yourself to open it), choose Gameplay, then Movement, and tick Always run. " +
-            "Close the options window when you are done.")
+            "Close the options window when you are done."),
+        // cc-P769 items 3 and 9 (the first outside playtester's notes): three more, from TazUO's own options window.
+        ("Read chat again",
+            "Lines of chat scroll away fast. Click Journal on your character window: it keeps everything said to you and " +
+            "around you, so you can read it at your own pace."),
+        ("See inside buildings",
+            "The roof lifts by itself once you walk inside. To see through walls near you as well, click Options on your " +
+            "character window, choose Video, then Misc, and tick Enable circle of transparency."),
+        ("A bigger game view",
+            "Drag the lower-right corner of the game view to make it bigger or smaller. Keep your windows in the black " +
+            "space around it, so they do not cover your character.")
     ];
+
+    /// <summary>cc-P769: the room each tip has in the window.</summary>
+    public const int TipRow = 100;
 
     public static void Start(PlayerMobile pm, TutorialStation station)
     {
@@ -47,15 +60,15 @@ public sealed class TutorialClientTipsGump : Gump
 
     public TutorialClientTipsGump(bool canOpenOptions) : base(80, 80)
     {
-        var h = 110 + TutorialClientTips.Tips.Length * 120 + (canOpenOptions ? 36 : 0);
+        var h = 110 + TutorialClientTips.Tips.Length * TutorialClientTips.TipRow + (canOpenOptions ? 36 : 0);
         TutorialStyle.Panel(this, 480, h);
         AddLabel(24, 18, TutorialStyle.HeadingHue, "Client tips (optional)");
         var y = 48;
         foreach (var (title, text) in TutorialClientTips.Tips)
         {
             AddLabel(24, y, TutorialStyle.ActionHue, title);
-            AddHtml(24, y + 22, 432, 90, TutorialStyle.Html(text), false, false);
-            y += 120;
+            AddHtml(24, y + 22, 432, TutorialClientTips.TipRow - 26, TutorialStyle.Html(text), false, false);
+            y += TutorialClientTips.TipRow;
         }
 
         if (canOpenOptions)

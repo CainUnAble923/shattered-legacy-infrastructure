@@ -11,6 +11,7 @@ using ModernUO.CodeGeneratedEvents;
 using Server.Commands;
 using Server.Gumps;
 using Server.Items;
+using Server.Logging;
 using Server.Mobiles;
 using Server.Network;
 
@@ -36,8 +37,29 @@ public static class TutorialCoreTrials
 
     // cc-P728 item 6: a finished lesson names the next and points at its signpost; a closed lesson window comes back.
     public const string NextLessonLine = "Next: {0}. Click Next lesson in the lesson window, or follow the arrow to its signpost and double-click it.";
-    public const string ReopenLine = "If you closed the lesson window, type [lesson and press Enter to open it again.";
+    // cc-P769 item 4: the tester typed "lesson" without the bracket. Saying lesson aloud now works too (OnSpeech).
+    public const string ReopenLine = "If you close the lesson window, type [lesson (with the bracket) or just lesson, and press Enter, to open it again. Double-clicking Tamsin on the beach shows your lessons too.";
+    public const string SpokenWord = "lesson";
     public const string NoLessonLine = "You have no tutorial lesson running.";
+
+    // cc-P769 item 7: the tester was disconnected at the resurrection lesson on 11-01, and that test shard's log was gone
+    // (the container was replaced by the next deploy). The death lesson's steps and a disconnect during it are logged now.
+    private static readonly ILogger logger = LogFactory.GetLogger(typeof(TutorialCoreTrials));
+
+    /// <summary>cc-P769 item 7: one log line for a step of the death lesson (who, where, alive or ghost, the step).</summary>
+    public static void DeathLessonLog(PlayerMobile pm, string what)
+    {
+        var step = Current(pm) is { Station.Key: "core.death" } t ? t.Progress.Step : -1;
+        logger.Information(
+            "[Tutorial] Death lesson: {Name} ({Account}) {What} at {Location} on {Map}, {State}, step {Step}",
+            pm.Name, pm.Account?.Username ?? "-", what, pm.Location, pm.Map?.Name ?? "-", pm.Alive ? "alive" : "ghost", step
+        );
+    }
+
+    private static void OnDisconnected(Mobile m)
+    {
+        if (m is PlayerMobile pm && IsDoing(pm, "core.death")) { DeathLessonLog(pm, "disconnected"); }
+    }
 
     public static void Initialize() => EnsureHooks();
     public static void EnsureHooks()
@@ -46,6 +68,7 @@ public static class TutorialCoreTrials
         if (_hooked) { return; }
         _hooked = true;
         EventSink.Speech += OnSpeech;
+        EventSink.Disconnected += OnDisconnected; // cc-P769 item 7
         EventSink.PaperdollRequest += OnPaperdollRequest; // cc-P718 item 4
         CommandSystem.Register("Lesson", AccessLevel.Player, OnLessonCommand); // cc-P728 item 6
     }
@@ -143,17 +166,35 @@ public static class TutorialCoreTrials
     public static string Hint(string key) => key switch
     {
         "core.movement" => "Hold the right mouse button toward the glowing blue floor tile in the road, up from the beach, to walk onto it, then walk onto the gold tile. Point farther from your character while holding the button to run.",
-        "core.backpack" => "Follow the arrow to the camp beside the road. First open your character window: double-click your own character (two quick left clicks on yourself), or click the paperdoll button. Then double-click the backpack picture in that window, and inside your backpack double-click the blue practice bag.",
+        // cc-P769 item 2: in the order the client shows them. One click on yourself opens a small menu (TazUO asks for it on a
+        // single click, GameActions.OpenPopupMenu); its Open Paperdoll entry, or a double-click on yourself, opens the window.
+        "core.backpack" => "Follow the arrow to the camp beside the road. 1. Open your character window: click your character once and choose Open Paperdoll in the small menu that appears (or double-click yourself). 2. In that window, double-click the backpack picture to open your backpack. 3. Inside your backpack, double-click the blue practice bag.",
         "core.paperdoll" => "Follow the arrow to the table by the clothes rack: a chest appears there for you, with your blue cloak of the Wakening Isle inside. Double-click the chest to open it. To move a thing, click it, hold the left mouse button down, move the mouse, and let go: that is drag and drop. Drag the cloak onto your character's picture in the character window to wear it, or into your backpack and double-click it there. If you already wear a cloak, drag it into your backpack first. The cloak is yours to keep.",
         "core.chat" => $"Follow the arrow to the signpost. Press Enter, type '{Phrase}', then press Enter again to speak. The Journal records what you say.",
         "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Hold the pitchfork she gives you and switch to war mode (press Tab), clear the pests in the cabbage rows, then go back to Wren: she gives you a pet of your own and teaches its commands.",
         "core.healing" => "Follow the arrow into the farmhouse by the field: Pip, the farm boy, sits hurt on the bench inside. Double-click a bandage in your backpack (this lesson gives you some; more lie on the table beside Pip, or double-click Wren), then click Pip. A bandage takes a few seconds: stand still until you see 'You finish applying the bandages'.",
         "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
         "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
-        "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss to finish this lesson; you can read about the League without joining.",
+        // cc-P769 item 5: what to do with Elara, exactly (her window opens and the lesson is done).
+        "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss (or click her once and choose Talk): her League window opens and this lesson is done. In that window, click Join the League to join now, or the X to close it; you can join later in New Haven.",
         "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the lesson's signpost there. Watch the vision; it lasts about a minute, holds you still, and will not change your character.",
         "core.travel" => "Follow the arrow to the end of the dock and walk into the shimmering blue moongate, or double-click it. It takes you, and your pet, to Rook on the New Haven plaza.",
         _ => "Double-click Tamsin on the Wakening Isle's beach to choose this lesson."
+    };
+
+    /// <summary>
+    /// cc-P769 item 3 (the tester: "I used that a lot", "they disappear ... I found it in journal"): one short client tip
+    /// where it fits a lesson, under the hint in the lesson window and after the hint line; null where none fits.
+    /// </summary>
+    public static string? Tip(string key) => key switch
+    {
+        "core.movement" => "Tip: drag the lower-right corner of the game view to make it bigger or smaller, and keep windows in the black space around it.",
+        "core.backpack" => "Tip: hold the mouse over any item to see its name and what it does.",
+        "core.paperdoll" => "Tip: drag a window by its edge to move it out of your way, into the black space beside the game view.",
+        "core.chat" => "Tip: chat scrolls away fast. Click Journal on your character window to read everything said again.",
+        "core.farm" => "Tip: double-click a door or gate to open it, and again to close it.",
+        "core.league" => "Tip: the roof lifts once you are inside. To see through walls near you too: Options on your character window, then Video, Misc, and tick Enable circle of transparency.",
+        _ => null
     };
 
     /// <summary>A lesson's practice item, made fresh (bright and named for what it is: cc-P480).</summary>
@@ -242,6 +283,7 @@ public static class TutorialCoreTrials
         Resupply(pm, trial);
         if (trial.Station.Key == "core.paperdoll") { TutorialCloakChest.EnsureFor(pm); } // cc-P718: a lost cloak comes back (cc-P728: in its chest)
         ClusterFTutorial.SystemLine(pm, Hint(trial.Station.Key));
+        if (Tip(trial.Station.Key) is { } tip) { ClusterFTutorial.SystemLine(pm, tip); } // cc-P769 item 3
         Point(pm, Destination(trial), ArrowLabel(trial));
         trial.ArrowAt = Destination(trial);
         pm.CloseGump<TutorialTrialGump>();
@@ -355,7 +397,40 @@ public static class TutorialCoreTrials
         if (!e.Blocked && e.Type == MessageType.Regular && e.Mobile is PlayerMobile { Alive: true } pm &&
             IsDoing(pm, "core.chat") && string.Equals(e.Speech.Trim(), Phrase, StringComparison.OrdinalIgnoreCase))
         { Observe(pm, TutorialAction.SaidPhrase); }
+
+        // cc-P769 item 4: "lesson" said aloud (no bracket) opens the lesson window, as [lesson does, for a trainee.
+        if (!e.Blocked && e.Mobile is PlayerMobile trainee && ClusterFTutorial.IsParticipant(trainee) &&
+            string.Equals(e.Speech.Trim().TrimEnd('.', '!', '?'), SpokenWord, StringComparison.OrdinalIgnoreCase))
+        { Reopen(trainee); }
+
+        if (!e.Blocked && e.Mobile is PlayerMobile banker && e.Speech.Contains("bank", StringComparison.OrdinalIgnoreCase))
+        { BankWord(banker); }
     }
+
+    /// <summary>
+    /// cc-P769 item 6 (the tester: "The blue tokens didn't show up the first time I went in the bank. I had to try again."):
+    /// after the death lesson the arrow points at the bank lesson's signpost, right at the bank's
+    /// door, so a trainee walks in and says "bank" with the lesson not started and no token to deposit. Saying "bank" in the
+    /// practice bank now starts the lesson when it is the next one (the token goes in the backpack before the banker opens
+    /// the box: EventSink.Speech runs before the NPCs hear it), and gives the token again when the lesson's one went missing.
+    /// </summary>
+    public static void BankWord(PlayerMobile pm)
+    {
+        if (!pm.Alive || !ClusterFTutorial.IsParticipant(pm) || pm.Map != TutorialWorld.MapOf(pm) ||
+            !TutorialCorePlacement.InBank(pm.Location)) { return; }
+        if (Current(pm) is { } trial)
+        {
+            if (trial.Station.Key == "core.banking") { Resupply(pm, trial); }
+            return;
+        }
+        if (ClusterFTutorial.RecordOf(pm) is not { } record || ClusterFTutorial.CoreLeft(record).FirstOrDefault() is not { Key: "core.banking" } bank)
+        { return; }
+        Start(pm, bank);
+        if (Current(pm)?.Supply is { Deleted: false } token && token.IsChildOf(pm.Backpack))
+        { ClusterFTutorial.SystemLine(pm, BankStartedLine); }
+    }
+
+    public const string BankStartedLine = "Bank lesson started: the blue practice token is in your backpack. Drag it into your bank box.";
 
     public static void OpenBag(PlayerMobile pm, Item bag)
     {
@@ -368,6 +443,7 @@ public static class TutorialCoreTrials
     {
         if (!IsDoing(pm, "core.death") || pm.FindMostRecentDamager(true) is not TutorialDeathEcho) { return; }
         Observe(pm, TutorialAction.EchoDeath);
+        DeathLessonLog(pm, "died to the pale gray rat");
         // PlayerDeathEvent is after YoungDeathTeleport (pinned PlayerMobile.OnDeath).
         // Return this lesson's ghost to the yard (Young's death teleport may have moved it), without changing Young.
         pm.MoveToWorld(TutorialCorePlacement.GhostSpot, TutorialWorld.MapOf(pm));
@@ -408,19 +484,28 @@ public static class TutorialCoreTrials
 
 public sealed class TutorialTrialGump : Gump
 {
-    public const string FinishedText = "Lesson finished. Click Next lesson / graduate to continue. If you close this window, type [lesson and press Enter to open it again.";
+    public const string FinishedText = "Lesson finished. Click Next lesson / graduate to continue. If you close this window, type [lesson (with the bracket) or just lesson, and press Enter, to open it again.";
     private readonly TutorialStation _station;
     private readonly bool _done;
     /// <summary>cc-P728 item 6: the step the trainee is on now, shown above the hint; null for none.</summary>
     public string? Now { get; }
+    /// <summary>cc-P769 item 3: the tip under the hint; null for none.</summary>
+    public string? Tip { get; }
+    public const int TipHeight = 40;
     public TutorialTrialGump(TutorialStation station, bool done, string? now = null) : base(80, 80)
     {
         _station = station; _done = done; Now = now;
         var extra = now != null ? 56 : 0;
+        // cc-P769 item 3: the lesson's tip, a line under the hint (the window is taller by TipHeight when there is one).
+        var tip = done ? null : TutorialCoreTrials.Tip(station.Key);
+        Tip = tip;
+        var hintTop = 50 + extra;
+        if (tip != null) { extra += TipHeight; }
         TutorialStyle.Panel(this, 480, 240 + extra);
         AddLabel(24, 18, TutorialStyle.HeadingHue, station.Title);
         if (now != null) { AddHtml(24, 46, 432, 50, TutorialStyle.HeadingHtml("Now: " + now), false, false); }
-        AddHtml(24, 50 + extra, 432, 100, TutorialStyle.Html(done ? FinishedText : TutorialCoreTrials.Hint(station.Key)), false, false);
+        AddHtml(24, hintTop, 432, 100, TutorialStyle.Html(done ? FinishedText : TutorialCoreTrials.Hint(station.Key)), false, false);
+        if (tip != null) { AddHtml(24, hintTop + 104, 432, TipHeight, TutorialStyle.Html(tip), false, false); }
         AddButton(24, 166 + extra, 4005, 4007, 1); AddLabel(60, 168 + extra, done ? TutorialStyle.DoneHue : TutorialStyle.ActionHue, done ? "Next lesson / graduate" : "Hint and arrow");
         AddButton(24, 204 + extra, 4017, 4019, 2); AddLabel(60, 206 + extra, TutorialStyle.TextHue, "Restart this lesson");
     }

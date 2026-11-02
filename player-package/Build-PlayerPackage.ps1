@@ -133,7 +133,14 @@ if (-not $TazUO) { $TazUO = Get-PackageClientDefault }
 # Reads the finished zip, not the staging folder, so it sees exactly what players get.
 # Fiddle-Me-This counts are the vendored tree's (vendor\fiddle-me-this\SOURCE.txt); change
 # them only together with that file.
-$fmtPngCount = 170     # [Original] 107 + [Custom] 63
+$fmtPngCount = 168     # [Original] 107 + [Custom] 63, less the $FmtLeftOut below
+# cc-P769 (the first outside playtester: the character screen's city boxes "are filled or not filled no matter if they are
+# clicked ... they unfill or fill when hovered"): Fiddle-Me-This's 1209 and 1210 are drawn the wrong way round for the
+# starting-city list (CreateCharSelectionCityGump: 0x04B9 a city not chosen, 0x04BA chosen or hovered). Its 1209 is a
+# filled red box and its 1210 an empty one, so every city not chosen looked ticked and the chosen one empty. Left out,
+# the stock gems draw (also TazUO's grid container's two corner buttons, the only other users). retired-files.txt removes
+# the two files from installs that had them.
+$FmtLeftOut = @('1209.png', '1210.png')
 $fmtXmlCount = 6
 $fmtMaxX = 1280; $fmtMaxY = 720
 # Our own art (cc-P26). The registry is the count: one PNG per registered ID, exactly.
@@ -845,7 +852,7 @@ Copy-Item (Join-Path $here 'LICENSE-TazUO.txt') (Join-Path $tazOut 'LICENSE-TazU
 $fmt       = Join-Path $here 'vendor\fiddle-me-this'
 $fmtGumps  = Join-Path $tazOut 'ExternalImages\gumps'
 $fmtXmlOut = Join-Path $tazOut 'Data\XmlGumps'
-$fmtOrig   = @(Get-ChildItem -LiteralPath (Join-Path $fmt '[Original]\ExternalImages\gumps') -File)
+$fmtOrig   = @(Get-ChildItem -LiteralPath (Join-Path $fmt '[Original]\ExternalImages\gumps') -File | Where-Object { $FmtLeftOut -notcontains $_.Name })
 $fmtCust   = @(Get-ChildItem -LiteralPath (Join-Path $fmt '[Custom]\ExternalImages\gumps') -File)
 $fmtXml    = @(Get-ChildItem -LiteralPath (Join-Path $fmt '[Custom]\Data\XmlGumps') -File)
 $both = @($fmtOrig | Where-Object { $fmtCust.Name -contains $_.Name } | ForEach-Object Name)

@@ -1006,6 +1006,11 @@ apply_patch "$PATCHES/PlayerMobile-tutorial-wake-move.patch"
 apply_patch "$PATCHES/FishingPole-high-seas-bait-hooks.patch"
 apply_patch "$PATCHES/Fishing-high-seas-bait-hooks-lava.patch"
 apply_patch "$PATCHES/AOS-fish-pies.patch"
+# cc-P769 (the first outside playtester: "an achievement ... for completing a first quest beyond the tutorial"): one
+# call at the end of MLQuestInstance.ClaimRewards into customizations ClusterFQuestMilestones.OnRewardClaimed, after the
+# quest is recorded done. Pinned raises no event there (Quest.OnRewardClaimed is per quest class). No other patch
+# meets MLQuestEntry.cs. Made with diff -u against pinned; pinned by PlaytesterNotesVerification.
+apply_patch "$PATCHES/MLQuestEntry-quest-milestones.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.

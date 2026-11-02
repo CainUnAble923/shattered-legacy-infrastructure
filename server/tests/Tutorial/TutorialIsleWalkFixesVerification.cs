@@ -332,7 +332,7 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         TutorialTestStart.Begin(p.Pm);
         PlayCoreUntil(p.Pm, "core.backpack");
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.backpack")!);
-        Assert.Contains("double-click your own character", TutorialCoreTrials.Hint("core.backpack"));
+        Assert.Contains("double-click yourself", TutorialCoreTrials.Hint("core.backpack")); // cc-P769: after Open Paperdoll, the click the client shows first
         var bag = (TutorialPracticeBag)TutorialCoreTrials.Current(p.Pm)!.Supply!;
 
         bag.OnDoubleClick(p.Pm);

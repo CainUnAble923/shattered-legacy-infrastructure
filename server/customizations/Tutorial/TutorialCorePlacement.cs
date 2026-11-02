@@ -816,7 +816,11 @@ public partial class TutorialHealer : Healer
     public override void OfferResurrection(Mobile m)
     {
         if (m is not PlayerMobile { Alive: false } pm || !TutorialCoreTrials.Nearby(pm, Location, 4)) { return; }
-        if (TutorialCoreTrials.IsDoing(pm, "core.death")) { TutorialCoreTrials.Observe(pm, TutorialAction.HealerOffer); }
+        if (TutorialCoreTrials.IsDoing(pm, "core.death"))
+        {
+            TutorialCoreTrials.Observe(pm, TutorialAction.HealerOffer);
+            TutorialCoreTrials.DeathLessonLog(pm, "was offered resurrection"); // cc-P769 item 7
+        }
         pm.SendGump(new TutorialResurrectionGump(this));
     }
 }
@@ -835,7 +839,9 @@ public sealed class TutorialResurrectionGump : Gump
     {
         if (info.ButtonID != 1 || sender.Mobile is not PlayerMobile { Alive: false } pm || _healer.Deleted ||
             !TutorialCoreTrials.Nearby(pm, _healer.Location, 4) || !pm.Map.CanFit(pm.Location, 16, false, false)) { return; }
+        var lesson = TutorialCoreTrials.IsDoing(pm, "core.death");
         pm.Resurrect();
+        if (lesson) { TutorialCoreTrials.DeathLessonLog(pm, pm.Alive ? "was resurrected" : "clicked Resurrect and is still a ghost"); } // cc-P769 item 7
         if (pm.Alive) { TutorialCoreTrials.Observe(pm, TutorialAction.Resurrected); }
     }
 }
