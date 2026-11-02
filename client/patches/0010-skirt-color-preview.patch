@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Sun, 1 Nov 2026 12:00:00 -0600
+Subject: [PATCH] Character creation: a human woman's skirt takes the pants
+ color in the preview (Shattered Legacy cc-P769)
+
+The appearance screen put a human woman's skirt on the Pants layer, while its color picker looks on the Skirt layer for a woman (ColorPicker_ColorSelected), as the elf's skirt is. Pants Color changed nothing on screen; the server already dyes the skirt. Now the skirt is on the Skirt layer.
+---
+ .../Game/UI/Gumps/CharCreation/CreateCharAppearanceGump.cs    | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/ClassicUO.Client/Game/UI/Gumps/CharCreation/CreateCharAppearanceGump.cs b/src/ClassicUO.Client/Game/UI/Gumps/CharCreation/CreateCharAppearanceGump.cs
+index f2f8548dc..42c619826 100644
+--- a/src/ClassicUO.Client/Game/UI/Gumps/CharCreation/CreateCharAppearanceGump.cs
++++ b/src/ClassicUO.Client/Game/UI/Gumps/CharCreation/CreateCharAppearanceGump.cs
+@@ -317,7 +317,9 @@ namespace ClassicUO.Game.UI.Gumps.CharCreation
+                         it = CreateItem(0x1710, 0x0384, Layer.Shoes);
+                         _character.PushToBack(it);
+ 
+-                        it = CreateItem(0x1531, CurrentColorOption[Layer.Pants].Item2, Layer.Pants);
++                        // Shattered Legacy patch (cc-P769): the skirt on the Skirt layer, as the elf's, where the pants color
++                        // picker looks for a woman's (ColorPicker_ColorSelected); on Pants its color never showed.
++                        it = CreateItem(0x1531, CurrentColorOption[Layer.Pants].Item2, Layer.Skirt);
+ 
+                         _character.PushToBack(it);
+ 
+-- 
+2.51.2.windows.1
+

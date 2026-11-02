@@ -261,6 +261,7 @@ public static class ClusterFTutorial
 
         var station = TutorialStations.Find(key);
         SystemLine(pm, $"Lesson finished: {station?.Title ?? key}.");
+        TutorialLessonAchievements.Grant(pm, key); // cc-P769 item 8: one per isle lesson
 
         if (record.State == TutorialState.InCore && CoreDone(record))
         {

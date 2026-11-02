@@ -1,0 +1,12 @@
+--- "a/Projects/UOContent/Engines/ML Quests/MLQuestEntry.cs"	2026-11-01 00:00:00.000000000 -0600
++++ "b/Projects/UOContent/Engines/ML Quests/MLQuestEntry.cs"	2026-11-01 00:00:00.000000000 -0600
+@@ -439,6 +439,9 @@
+             }
+ 
+             Remove();
++
++            // cc-P769: a quest's rewards were claimed (its completion recorded above): the shard's first-quest achievement.
++            ClusterFQuestMilestones.OnRewardClaimed(Player, Quest);
+         }
+ 
+         public void Cancel()

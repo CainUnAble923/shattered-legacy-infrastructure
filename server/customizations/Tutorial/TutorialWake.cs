@@ -71,7 +71,8 @@ public static class TutorialWake
     public static readonly TimeSpan GetUpResend = TimeSpan.FromMilliseconds(100); // after the reject; P740 tried 300 (a 0.3 s stand flash)
     public const int WaveSound = 0x12;    // "wave01_l"
     public const string LyingLine = "You wake on cold sand, soaked and aching. Waves wash over your boots...";
-    public const string MoveHintLine = "Move to get up.";
+    // cc-P769 item 1 (the first outside playtester: "can you include how to get up?"): the hint says how to move.
+    public const string MoveHintLine = "To get up, take a step: hold the right mouse button on the ground, or press an arrow key.";
     public const string LieOverheadLine = "You lie on the wet sand...";
 
     private sealed class Lie

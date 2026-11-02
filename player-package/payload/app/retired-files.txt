@@ -8,3 +8,6 @@
 # holds a wildcard, is anything under app\tazuo\Data\ (players' profiles and saved
 # gump positions), names app, app\tazuo, app\uo-path.txt or a settings*.json, or names
 # a file the package itself still ships.
+# cc-P769: Fiddle-Me-This's city-list boxes, drawn the wrong way round on the character screen (Build-PlayerPackage.ps1, FmtLeftOut).
+app\tazuo\ExternalImages\gumps\1209.png
+app\tazuo\ExternalImages\gumps\1210.png

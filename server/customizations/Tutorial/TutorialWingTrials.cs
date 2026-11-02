@@ -534,7 +534,15 @@ namespace Server.Tutorial
             ClusterFTutorial.CompleteStation(pm, trial.Key);
             ClusterFTutorial.SystemLine(pm, $"{trial.Station.Title}: finished. The loaned supplies have been returned.");
             Show(pm, trial);
+            // cc-P769 item 12 (the first outside playtester: "Past the first initial quest, I don't have specifics of what
+            // to do ... Took me a while"): where the next lesson is, plainly, with the arrow on Rook.
+            Line(pm, NextLessonLine);
+            TutorialRecruiter.PointTo(pm);
         }
+
+        /// <summary>cc-P769 item 12: said after every New Haven lesson.</summary>
+        public const string NextLessonLine =
+            "Next: follow the arrow back to Rook on his bench by the Albatross tavern and double-click him. His window lists every lesson you have left.";
 
         /// <summary>Takes everything back: the loaners, the skill, Intelligence and tithing loans, the trial's creatures.</summary>
         private static void Return(Trial trial)

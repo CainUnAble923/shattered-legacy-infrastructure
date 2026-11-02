@@ -394,4 +394,42 @@ public class TutorialTradeTrialVerification : IDisposable
             own.Delete();
         }
     }
+
+    // ---------------------------------------------------------------- cc-P769 items 12 and 13
+
+    // The first outside playtester (11-01): "I could not find the skill to investigate an item", and "Past the first
+    // initial quest, I don't have specifics of what to do". The curio's double-click starts Item Identification, the step
+    // names the skill, and a finished lesson says to go back to Rook, with the arrow on him.
+    [Fact]
+    public void P769_TheCurioStartsItemIdentificationAndTheEndSendsYouBackToRook()
+    {
+        ItemIdentification.Initialize();
+        var said = new List<string>();
+        var seam = TutorialWingTrials.Said;
+        TutorialWingTrials.Said = (_, line) => said.Add(line);
+        try
+        {
+            using var p = new Player(TutorialWingTrials.TradesYard);
+            var trial = Begin(p, "crafting.tinkering");
+            Assert.Contains("Item Identification skill", TutorialWingTrials.Hint("crafting.tinkering"));
+            Assert.Contains("double-click the curio", TutorialWingTrials.Hint("crafting.tinkering"));
+
+            var curio = p.Pm.Backpack!.FindItemByType<TutorialCurio>()!;
+            Assert.Null(p.Pm.Target);
+            curio.OnDoubleClick(p.Pm);
+            Assert.NotNull(p.Pm.Target); // Item Identification's target cursor
+            p.Pm.Target = null;
+
+            p.Pm.AddToBackpack(new Scissors());
+            Tick();
+            Roll(p, SkillName.ItemID);
+            Assert.Contains("crafting.tinkering", p.Record.StationsDone);
+            Assert.Contains(TutorialWingTrials.NextLessonLine, said);
+            Assert.Contains("Rook", TutorialWingTrials.NextLessonLine);
+        }
+        finally
+        {
+            TutorialWingTrials.Said = seam;
+        }
+    }
 }

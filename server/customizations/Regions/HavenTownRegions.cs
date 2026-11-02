@@ -88,7 +88,7 @@ public static class HavenTownRegions
 
         foreach (var shop in stock.Where(s => s.Parent == StockTownName && !LeftOut.Contains(s.Name)))
         {
-            var r = new NoHousingRegion(shop.Name, Map.Trammel, Town, shop.Area)
+            var r = new NoHousingRegion(shop.Name, Map.Trammel, EscortParent(shop) ?? Town, shop.Area)
             {
                 RuneName = shop.RuneName,
                 NoLogoutDelay = shop.NoLogoutDelay
@@ -109,6 +109,48 @@ public static class HavenTownRegions
         };
         inn.Register();
         Shops.Add(inn);
+    }
+
+    /// <summary>
+    /// cc-P769 item 11 (the first outside playtester: "It says to look for a specific person for Warrior but I can not find
+    /// them"): the stock New Haven escorts (pinned Engines/ML Quests/Definitions/NewHaven.cs, offered by the escortables
+    /// pinned spawns in Haven town) end in the ML plaza's regions, which step 1 took off the map, so "take me to the local
+    /// weapons trainer" had nowhere to go and never finished. Each escort's destination name is registered again over the
+    /// Haven building that does that job, as the shop region's parent (inside the town), so a lookup there still finds the
+    /// shop by its own name and the escort's IsPartOf finds the destination. The ML
+    /// Alchemist and Farm have no such building in pinned's Haven and stay unmatched (shard-migration
+    /// notes/cc-P769-playtester-ux-notes-1.md).
+    /// </summary>
+    public static readonly (string Destination, string Shop)[] EscortDestinations =
+    [
+        ("the New Haven Warrior", "the Proving Grounds in Haven"),
+        ("the New Haven Bowyer", "the Bullseye Marksmen in Haven"),
+        ("the New Haven Tailor", "A Stitch in Time in Haven"),
+        ("the New Haven Carpenter", "Carpenters of Haven"),
+        ("the New Haven Mapmaker", "Mapmakers of Haven"),
+        ("the New Haven Mage", "The Little Shop of Magic in Haven"),
+        ("the New Haven Docks", "the docks in Haven"),
+        ("the New Haven Bank", "the Second Bank of Haven"),
+        ("the New Haven Bard", "the Bardic Guild in Haven"),
+    ];
+
+    public static List<Region> EscortRegions { get; } = [];
+
+    /// <summary>The escort destination over <paramref name="shop"/>, registered under the town, or null for a shop that is none.</summary>
+    private static Region? EscortParent(StockRegion shop)
+    {
+        foreach (var (destination, shopName) in EscortDestinations)
+        {
+            if (shopName == shop.Name)
+            {
+                var r = new NoHousingRegion(destination, Map.Trammel, Town, shop.Area);
+                r.Register();
+                EscortRegions.Add(r);
+                return r;
+            }
+        }
+
+        return null;
     }
 
     public sealed record StockRegion(string Name, string? Parent, string? RuneName, bool NoLogoutDelay, MusicName? Music, Rectangle3D[] Area);
