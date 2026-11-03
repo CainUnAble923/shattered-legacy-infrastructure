@@ -644,7 +644,10 @@ public static class FestivalMarket
         peddler.MoveToWorld(at, Facet);
         placed.Add(peddler.Serial);
 
-        return [$"[FestivalMarket] The Festival Peddler's stall is up at {at} ({placed.Count} pieces)."];
+        // cc-P784: the holiday stocking hangs on the table while its season is on.
+        var lines = new List<string> { $"[FestivalMarket] The Festival Peddler's stall is up at {at} ({placed.Count} pieces)." };
+        lines.AddRange(HolidayStockings.Sync());
+        return lines;
     }
 
     /// <summary>Takes away exactly what Up placed (by serial).</summary>
@@ -662,6 +665,8 @@ public static class FestivalMarket
         }
 
         placed.Clear();
-        return [$"[FestivalMarket] The Festival Peddler's stall is down ({n} pieces taken away)."];
+        var lines = new List<string> { $"[FestivalMarket] The Festival Peddler's stall is down ({n} pieces taken away)." };
+        lines.AddRange(HolidayStockings.Sync()); // cc-P784: the stocking comes down with it
+        return lines;
     }
 }
