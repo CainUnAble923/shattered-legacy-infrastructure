@@ -21,6 +21,15 @@
 // once and the player gets a plain line.
 //
 // Testers only produce evidence. Nothing here marks a test Pass or Fail; Chase alone does that on the play-test page.
+//
+// cc-P789 (notes/cc-P789-tasks-window-and-staff-testers.md):
+//   - the window is readable: a solid dark body, near-white text in TazUO's plain Unicode font, a taller text area, the
+//     plain task title, and the task id only in a small gray footer. No prompt or test id is ever shown (PlayTestText).
+//   - a task carries "needsPlayer" (true: the card needs a normal player account: a new character, the tutorial, Young
+//     status...). A staff account holding one sees a line saying to try it on a player character.
+//   - tester-accounts.json, beside testers.json, is written by the shard only: each tester's account, whether it exists
+//     and its access level, so the Play Test Goblin never gives a player-only card to a staff account (it reads this
+//     instead of a hand-set flag that could drift). Written at start and every ExportMinutes.
 
 using System;
 using System.Collections.Generic;
@@ -61,6 +70,9 @@ public sealed class PlayTestTask
     public string Intro { get; init; } = "";
     public string Status { get; init; } = "open";
     public string AssignedAt { get; init; } = "";
+
+    /// <summary>cc-P789: true when the card needs a normal player account; null when the task does not say.</summary>
+    public bool? NeedsPlayer { get; init; }
 }
 
 public static class PlayTestFiles
@@ -69,6 +81,7 @@ public static class PlayTestFiles
     public const string TestersFileName = "testers.json";
     public const string TasksFileName = "tasks.json";
     public const string ReportsFileName = "playtest-reports.jsonl";
+    public const string AccountsFileName = "tester-accounts.json";
     public const int TextMax = 2000;
 
     public static readonly string[] Buttons = { "worked", "wrong", "couldnt", "report" };
@@ -85,6 +98,7 @@ public static class PlayTestFiles
     public static string TestersPath => Path.Combine(Folder, TestersFileName);
     public static string TasksPath => Path.Combine(Folder, TasksFileName);
     public static string ReportsPath => Path.Combine(Folder, ReportsFileName);
+    public static string AccountsPath => Path.Combine(Folder, AccountsFileName);
 
     /// <summary>One log line per distinct problem, so a broken file does not fill the log at every login.</summary>
     private static void LogOnce(string what)
@@ -247,11 +261,15 @@ public static class PlayTestFiles
                 }
 
                 var status = Str(e, "status");
+                bool? needsPlayer = e.TryGetProperty("needsPlayer", out var np)
+                    ? np.ValueKind switch { JsonValueKind.True => true, JsonValueKind.False => false, _ => null }
+                    : null;
                 result.Add(new PlayTestTask
                 {
                     Id = id, Account = account, TestId = Str(e, "testId"), Title = Str(e, "title"), Why = Str(e, "why"),
                     Where = Str(e, "where"), Coords = Str(e, "coords"), Steps = steps, LookFor = Str(e, "lookFor"),
-                    Intro = Str(e, "intro"), Status = status.Length == 0 ? "open" : status, AssignedAt = Str(e, "assignedAt")
+                    Intro = Str(e, "intro"), Status = status.Length == 0 ? "open" : status, AssignedAt = Str(e, "assignedAt"),
+                    NeedsPlayer = needsPlayer
                 });
             }
 
@@ -414,7 +432,12 @@ public static class PlayTestTasks
         CommandSystem.Register("Tasks", AccessLevel.Player, OnTasksCommand);
         CommandSystem.Register("Report", AccessLevel.Player, OnReportCommand);
         EventSink.Speech += OnSpeech;
+        EventSink.ServerStarted += PlayTestAccounts.Start;
     }
+
+    /// <summary>cc-P789: a staff account (Counselor and up), on the account or the character.</summary>
+    public static bool IsStaff(Mobile m) =>
+        m != null && (m.AccessLevel >= AccessLevel.Counselor || (m.Account as Account)?.AccessLevel >= AccessLevel.Counselor);
 
     /// <summary>The tester for this player, or null; error is set when the list cannot be read.</summary>
     public static PlayTester TesterOf(Mobile m, out string error)
@@ -522,7 +545,7 @@ public static class PlayTestTasks
         }
 
         MarkSeen(m, open);
-        m.SendGump(new PlayTestTasksGump(open));
+        m.SendGump(new PlayTestTasksGump(open, IsStaff(m)));
     }
 
     /// <summary>
@@ -643,102 +666,308 @@ public static class PlayTestTasks
     }
 }
 
+/// <summary>
+/// cc-P789: tester-accounts.json, beside testers.json: for each tester's account, whether it exists on this shard and its
+/// access level. The shard writes it (at start and every ExportMinutes, whole and atomic); the Play Test Goblin and the
+/// web console's Play testers page only read it. Only the testers' accounts are listed, nothing else about them.
+///   {"version": 1, "writtenAt": "...Z", "accounts": [{"account": "admin-chase", "exists": true,
+///    "accessLevel": "Owner", "staff": true}]}
+/// </summary>
+public static class PlayTestAccounts
+{
+    public const int ExportMinutes = 5;
+    private static Timer _timer;
+
+    public static void Start()
+    {
+        Export();
+        _timer?.Stop();
+        _timer = Timer.DelayCall(TimeSpan.FromMinutes(ExportMinutes), TimeSpan.FromMinutes(ExportMinutes), () => Export());
+    }
+
+    /// <summary>The export's text for these testers. Pure but for the account lookup, for the tests.</summary>
+    public static string ExportJson(IEnumerable<PlayTester> testers, DateTime utc)
+    {
+        var buffer = new MemoryStream();
+        using (var w = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true }))
+        {
+            w.WriteStartObject();
+            w.WriteNumber("version", 1);
+            w.WriteString("writtenAt", utc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture));
+            w.WriteStartArray("accounts");
+            foreach (var t in testers)
+            {
+                var acct = Accounts.GetAccount(t.Account) as Account;
+                w.WriteStartObject();
+                w.WriteString("account", t.Account);
+                w.WriteBoolean("exists", acct != null);
+                w.WriteString("accessLevel", (acct?.AccessLevel ?? AccessLevel.Player).ToString());
+                w.WriteBoolean("staff", acct != null && acct.AccessLevel >= AccessLevel.Counselor);
+                w.WriteEndObject();
+            }
+
+            w.WriteEndArray();
+            w.WriteEndObject();
+        }
+
+        return Encoding.UTF8.GetString(buffer.ToArray()) + "\n";
+    }
+
+    /// <summary>Writes the export. False (and logged) when the tester list cannot be read or the file written.</summary>
+    public static bool Export()
+    {
+        try
+        {
+            var testers = PlayTestFiles.ReadTesters(out var error);
+            if (testers == null)
+            {
+                return false; // a broken list is logged by ReadTesters; the old export stays
+            }
+
+            Directory.CreateDirectory(PlayTestFiles.Folder);
+            var tmp = PlayTestFiles.AccountsPath + ".tmp";
+            File.WriteAllText(tmp, ExportJson(testers, DateTime.UtcNow), new UTF8Encoding(false));
+            File.Move(tmp, PlayTestFiles.AccountsPath, true);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"[PlayTest] {PlayTestFiles.AccountsFileName} not written: {e.Message}");
+            return false;
+        }
+    }
+}
+
+/// <summary>
+/// cc-P789: the look of the play test windows. Chase (11-03) found P773's window hard to read: pale text on the HTML
+/// box's parchment, every line in the bold pixel Unicode font, an italic intro, a small scrolling steps box, and prompt
+/// and test ids in the title. Now: a solid dark body (no parchment, no see-through), near-white text, color only for
+/// the headings and the three answer buttons, the body and the intro in Unicode font 2 (the plain, thin one), and only
+/// the title and the headings in font 1.
+///
+/// The font: TazUO draws a server gump's HTML with its own copy of UO's Unicode fonts, never with its TTF fonts (its
+/// HtmlControl is a RenderedText on unifont; GumpHelpers.cs builds every htmlgump that way, TazUO 3212623f). The only
+/// font choice the server has is BASEFONT SIZE (FontsLoader.cs:3092-3125): 0 and 4 pick font 1 (the default), 1 to 3
+/// pick font 2, and 5 or more pick font 0, which is blackletter (all three rendered from the client's unifont files in
+/// shard-migration notes/cc-P789-tools/unifont-sample.png). So the words say SIZE=2 and the headings SIZE=4.
+/// </summary>
+public static class PlayTestStyle
+{
+    public const int Frame = 9270;          // the tutorial's dark stone frame
+    public const int Solid = 2624;          // a black tile, laid solid (no alpha region): no parchment, nothing behind
+    public const string Text = "#F4F4F4";   // near white
+    public const string Heading = "#FFD54A"; // warm yellow: the four headings and the title
+    public const string Intro = "#BFE3FF";  // pale blue: the Goblin's one line, plain
+    public const string Staff = "#FF9E7A";  // soft orange: the staff account's note
+    public const int FooterHue = 0x3B2;     // gray: the task id
+    public const int TextHue = 1153;        // near white labels
+    public const int WorkedHue = 68;        // green
+    public const int ProblemHue = 34;       // light red
+    public const int ActionHue = 90;        // light cyan
+
+    /// <summary>Body words: font 2, plain.</summary>
+    public static string Font(string color, string text) => $"<BASEFONT SIZE=2 COLOR={color}>{text}</BASEFONT>";
+
+    /// <summary>The title and the headings: font 1, bold.</summary>
+    public static string HeadFont(string color, string text) => $"<BASEFONT SIZE=4 COLOR={color}>{text}</BASEFONT>";
+
+    public static void Panel(Gump g, int width, int height)
+    {
+        g.AddBackground(0, 0, width, height, Frame);
+        g.AddImageTiled(10, 10, width - 20, height - 20, Solid);
+    }
+}
+
+/// <summary>
+/// cc-P789: what a tester sees of a card is plain words only. Prompt numbers (P762, cc-P773, P762-0), play-test rows
+/// (T-012, PT-4) and task ids (G-0001) are taken out of every line shown; the task id is shown once, in the footer.
+/// </summary>
+public static class PlayTestText
+{
+    private const string Id = @"(?:cc-)?P\d{2,4}(?:-\d+)?|PT-\d+|T-\d{2,4}|G-\d{3,}";
+
+    private static readonly System.Text.RegularExpressions.Regex Parenthetical =
+        new(@"\s*\([^()]*\b(?:" + Id + @")\b[^()]*\)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex Bare =
+        new(@"\b(?:(?:test|task|prompt|item|card|row)\s+)?(?:" + Id + @")\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex Spaces = new(@"\s{2,}");
+    private static readonly System.Text.RegularExpressions.Regex BeforePunct = new(@"\s+([.,;:!?])");
+    private static readonly System.Text.RegularExpressions.Regex Empty = new(@"\(\s*[,;:]?\s*\)");
+
+    /// <summary>A line with every prompt, test and task id taken out.</summary>
+    public static string Scrub(string s)
+    {
+        if (string.IsNullOrEmpty(s))
+        {
+            return "";
+        }
+
+        s = Parenthetical.Replace(s, "");
+        s = Bare.Replace(s, "");
+        s = Empty.Replace(s, "");
+        s = BeforePunct.Replace(s, "$1");
+        s = Spaces.Replace(s, " ");
+        return s.Trim().TrimStart(',', ';', ':').Trim();
+    }
+
+    /// <summary>True when a line still carries an id a tester must not see (the tests' check).</summary>
+    public static bool HasId(string s) =>
+        !string.IsNullOrEmpty(s) && new System.Text.RegularExpressions.Regex(@"\b(?:" + Id + @")\b",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase).IsMatch(s);
+}
+
 /// <summary>The tester's open tasks, one page each.</summary>
 public sealed class PlayTestTasksGump : Gump
 {
     public const int ReportButton = 2;
-    public const int Width = 540, Height = 500;
+    public const int Width = 620, Height = 666;
+    public const int BodyTop = 96, BodyHeight = 420;
+    public const string StaffLine = "This one needs a player account. Try it on your player character.";
+
     private readonly List<PlayTestTask> _tasks;
+    private readonly List<string> _shown = new();
+    private readonly List<string> _footers = new();
 
     public IReadOnlyList<PlayTestTask> Tasks => _tasks;
+
+    /// <summary>Every piece of text the window shows a tester, but the footers (the tests read it).</summary>
+    public IReadOnlyList<string> Shown => _shown;
+
+    /// <summary>The small gray footer lines, one per page: the task id, so a report ties back.</summary>
+    public IReadOnlyList<string> Footers => _footers;
 
     public static int ButtonFor(int index, string button) =>
         100 + index * 10 + button switch { "worked" => 1, "wrong" => 2, _ => 3 };
 
-    public PlayTestTasksGump(List<PlayTestTask> tasks) : base(60, 60)
+    public PlayTestTasksGump(List<PlayTestTask> tasks, bool staff = false) : base(40, 30)
     {
         _tasks = tasks;
         AddPage(0);
-        TutorialStyle.Panel(this, Width, Height);
-        AddButton(24, Height - 40, 4011, 4013, ReportButton);
-        AddLabel(60, Height - 38, TutorialStyle.ActionHue, "Report something else");
+        PlayTestStyle.Panel(this, Width, Height);
+        AddButton(24, Height - 64, 4011, 4013, ReportButton);
+        Label(60, Height - 62, PlayTestStyle.ActionHue, "Report something else");
 
         for (var i = 0; i < tasks.Count; i++)
         {
             var t = tasks[i];
             AddPage(i + 1);
-            AddLabel(24, 16, TutorialStyle.HeadingHue, $"Play test tasks: {i + 1} of {tasks.Count}");
+            Label(24, 18, PlayTestStyle.TextHue, $"Play test task {i + 1} of {tasks.Count}");
+            Html(24, 42, Width - 48, 24, PlayTestStyle.HeadFont(PlayTestStyle.Heading, Escape(PlayTestText.Scrub(t.Title))), false);
             if (t.Intro.Length > 0)
             {
-                AddHtml(24, 40, Width - 48, 22, TutorialStyle.Html("<I>" + Escape(t.Intro) + "</I>"), false, false);
+                Html(24, 68, Width - 48, 24, PlayTestStyle.Font(PlayTestStyle.Intro, Escape(PlayTestText.Scrub(t.Intro))), false);
             }
 
-            var ids = t.TestId.Length > 0 ? $" (test {t.TestId}, task {t.Id})" : $" (task {t.Id})";
-            AddHtml(24, 64, Width - 48, 22, TutorialStyle.HeadingHtml(Escape(t.Title) + ids), false, false);
-            AddHtml(24, 90, Width - 48, 236, TutorialStyle.Html(Body(t)), true, true);
+            Html(24, BodyTop, Width - 48, BodyHeight, Body(t, staff), NeedsScroll(t, staff));
 
-            AddLabel(24, 334, TutorialStyle.TextHue, "What happened? (needed for the last two buttons)");
-            AddBackground(24, 354, Width - 48, 26, 9350);
-            AddTextEntry(30, 357, Width - 60, 20, 0, i, "");
+            Label(24, 524, PlayTestStyle.TextHue, "What happened? (needed for the last two buttons)");
+            AddBackground(24, 544, Width - 48, 28, 9350);
+            AddTextEntry(30, 548, Width - 60, 20, 0, i, "");
 
-            AddButton(24, 392, 4005, 4007, ButtonFor(i, "worked"));
-            AddLabel(58, 394, TutorialStyle.DoneHue, "Worked");
-            AddButton(150, 392, 4005, 4007, ButtonFor(i, "wrong"));
-            AddLabel(184, 394, TutorialStyle.WarnHue, "Something was wrong");
-            AddButton(346, 392, 4005, 4007, ButtonFor(i, "couldnt"));
-            AddLabel(380, 394, TutorialStyle.WarnHue, "Couldn't do it");
+            AddButton(24, 580, 4005, 4007, ButtonFor(i, "worked"));
+            Label(58, 582, PlayTestStyle.WorkedHue, "Worked");
+            AddButton(170, 580, 4005, 4007, ButtonFor(i, "wrong"));
+            Label(204, 582, PlayTestStyle.ProblemHue, "Something was wrong");
+            AddButton(390, 580, 4005, 4007, ButtonFor(i, "couldnt"));
+            Label(424, 582, PlayTestStyle.ProblemHue, "Couldn't do it");
 
             if (i > 0)
             {
-                AddButton(300, Height - 40, 4014, 4016, 0, GumpButtonType.Page, i);
-                AddLabel(334, Height - 38, TutorialStyle.TextHue, "Back");
+                AddButton(360, Height - 64, 4014, 4016, 0, GumpButtonType.Page, i);
+                Label(394, Height - 62, PlayTestStyle.TextHue, "Back");
             }
 
             if (i < tasks.Count - 1)
             {
-                AddButton(410, Height - 40, 4005, 4007, 0, GumpButtonType.Page, i + 2);
-                AddLabel(444, Height - 38, TutorialStyle.TextHue, "Next task");
+                AddButton(470, Height - 64, 4005, 4007, 0, GumpButtonType.Page, i + 2);
+                Label(504, Height - 62, PlayTestStyle.TextHue, "Next task");
             }
+
+            var footer = $"Task {t.Id}";
+            _footers.Add(footer);
+            AddLabel(24, Height - 34, PlayTestStyle.FooterHue, footer);
         }
     }
 
-    /// <summary>The task's words in the window: why, where, steps, what to look for. Plain player language.</summary>
-    public static string Body(PlayTestTask t)
+    private void Label(int x, int y, int hue, string text)
     {
-        var sb = new StringBuilder();
+        _shown.Add(text);
+        AddLabel(x, y, hue, text);
+    }
+
+    private void Html(int x, int y, int w, int h, string html, bool scroll)
+    {
+        _shown.Add(html);
+        AddHtml(x, y, w, h, html, false, scroll);
+    }
+
+    private static string Section(string heading) => PlayTestStyle.HeadFont(PlayTestStyle.Heading, heading) + "<BR>";
+
+    // Font 2 in the 572 x 420 text area, measured on the after shot (notes): about 105 characters a line and 18 pixels a
+    // line, so 23 lines. Counted with a margin: 90 characters a line, 22 lines. The longest isle card is 17.
+    public const int LineChars = 90, BodyLines = 22;
+
+    /// <summary>A scroll bar only for a card too long for the text area (none of the 16 isle cards is).</summary>
+    public static bool NeedsScroll(PlayTestTask t, bool staff = false)
+    {
+        int Lines(string s) => Math.Max(1, (PlayTestText.Scrub(s).Length + LineChars - 1) / LineChars);
+        var n = staff && t.NeedsPlayer == true ? 2 : 0;
+        n += t.Why.Length > 0 ? 2 + Lines(t.Why) : 0;
+        n += t.Where.Length > 0 || t.Coords.Length > 0 ? 2 + Lines(t.Where + " (" + t.Coords + ")") : 0;
+        n += t.Steps.Count > 0 ? 2 + t.Steps.Sum(Lines) : 0;
+        n += t.LookFor.Length > 0 ? 1 + Lines(t.LookFor) : 0;
+        return n > BodyLines;
+    }
+
+    private static string Words(string text) => PlayTestStyle.Font(PlayTestStyle.Text, Escape(PlayTestText.Scrub(text)));
+
+    /// <summary>The task's words in the window: why, where, steps, what to look for, a blank line between sections.
+    /// Plain player language: no prompt, test or task ids. staff: the account is staff, so a card that needs a player
+    /// account says so first.</summary>
+    public static string Body(PlayTestTask t, bool staff = false)
+    {
+        var parts = new List<string>();
+        if (staff && t.NeedsPlayer == true)
+        {
+            parts.Add(PlayTestStyle.HeadFont(PlayTestStyle.Staff, StaffLine));
+        }
+
         if (t.Why.Length > 0)
         {
-            sb.Append("<B>Why it matters:</B> ").Append(Escape(t.Why)).Append("<BR><BR>");
+            parts.Add(Section("Why it matters") + Words(t.Why));
         }
 
         if (t.Where.Length > 0 || t.Coords.Length > 0)
         {
-            sb.Append("<B>Where to go:</B> ").Append(Escape(t.Where));
-            if (t.Coords.Length > 0)
-            {
-                sb.Append(t.Where.Length > 0 ? " " : "").Append('(').Append(Escape(t.Coords)).Append(')');
-            }
-
-            sb.Append("<BR><BR>");
+            var where = PlayTestText.Scrub(t.Where);
+            var coords = PlayTestText.Scrub(t.Coords);
+            var text = coords.Length > 0 ? (where.Length > 0 ? $"{where} ({coords})" : coords) : where;
+            parts.Add(Section("Where to go") + PlayTestStyle.Font(PlayTestStyle.Text, Escape(text)));
         }
 
         if (t.Steps.Count > 0)
         {
-            sb.Append("<B>Steps:</B><BR>");
+            var sb = new StringBuilder(Section("Steps"));
             for (var i = 0; i < t.Steps.Count; i++)
             {
-                sb.Append(i + 1).Append(". ").Append(Escape(t.Steps[i])).Append("<BR>");
+                sb.Append(PlayTestStyle.Font(PlayTestStyle.Text, $"{i + 1}. {Escape(PlayTestText.Scrub(t.Steps[i]))}"));
+                if (i < t.Steps.Count - 1)
+                {
+                    sb.Append("<BR>");
+                }
             }
 
-            sb.Append("<BR>");
+            parts.Add(sb.ToString());
         }
 
         if (t.LookFor.Length > 0)
         {
-            sb.Append("<B>What to look for:</B> ").Append(Escape(t.LookFor));
+            parts.Add(Section("What to look for") + Words(t.LookFor));
         }
 
-        return sb.ToString();
+        return string.Join("<BR><BR>", parts);
     }
 
     public static string Escape(string s) => (s ?? "").Replace("<", "(").Replace(">", ")");
@@ -770,26 +999,28 @@ public sealed class PlayTestTasksGump : Gump
     }
 }
 
-/// <summary>[report: a box for anything odd, not tied to a task.</summary>
+/// <summary>[report: a box for anything odd, not tied to a task. cc-P789: the tasks window's look.</summary>
 public sealed class PlayTestReportGump : Gump
 {
     public const int SendButton = 1;
+    public const int Width = 560, Height = 250;
 
     public PlayTestReportGump() : base(80, 80)
     {
-        TutorialStyle.Panel(this, 500, 210);
-        AddLabel(24, 16, TutorialStyle.HeadingHue, "Report something to Chase");
+        PlayTestStyle.Panel(this, Width, Height);
+        AddHtml(24, 18, Width - 48, 24, PlayTestStyle.HeadFont(PlayTestStyle.Heading, "Report something to Chase"), false, false);
         AddHtml(
-            24, 42, 452, 56,
-            TutorialStyle.Html(
+            24, 50, Width - 48, 80,
+            PlayTestStyle.Font(
+                PlayTestStyle.Text,
                 "Anything odd, broken, confusing or fun: say what happened and what you expected. Where you stand and the time are saved with it."
             ),
             false, false
         );
-        AddBackground(24, 104, 452, 26, 9350);
-        AddTextEntry(30, 107, 440, 20, 0, 0, "");
-        AddButton(24, 150, 4005, 4007, SendButton);
-        AddLabel(58, 152, TutorialStyle.ActionHue, "Send");
+        AddBackground(24, 138, Width - 48, 28, 9350);
+        AddTextEntry(30, 142, Width - 60, 20, 0, 0, "");
+        AddButton(24, 190, 4005, 4007, SendButton);
+        AddLabel(58, 192, PlayTestStyle.ActionHue, "Send");
     }
 
     public override void OnResponse(NetState sender, in RelayInfo info)

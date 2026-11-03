@@ -63,7 +63,11 @@
           esc(r.x) + ", " + esc(r.y) + ", " + esc(r.z) + "</td></tr>";
       });
       return "<div class='tester'><h2>" + esc(t.name || t.account) + " <span class='muted'>(account " + esc(t.account) + ")</span>" +
-        (t.paused ? " <span class='paused'>paused</span>" : "") + "</h2>" +
+        (t.paused ? " <span class='paused'>paused</span>" : "") +
+        (t.access && t.access.staff ? " <span class='paused'>staff (" + esc(t.access.level) + ")</span>" : "") + "</h2>" +
+        (t.access && t.access.note ? "<p class='muted'>" + esc(t.access.note) + "</p>" : "") +
+        (t.goblin ? "<p class='muted'>The Goblin's last run" + (d.goblinAt ? " (" + esc(d.goblinAt) + ")" : "") + ": " +
+          esc(t.goblin) + "</p>" : "") +
         "<button class='small' data-pause='" + esc(t.account) + "' data-paused='" + (t.paused ? "0" : "1") + "'>" +
         (t.paused ? "Resume" : "Pause") + "</button> " +
         "<button class='small' data-remove='" + esc(t.account) + "'>Remove</button>" +

@@ -1,10 +1,11 @@
 {
- "_about": "cc-P773: the Play Test Goblin's task cards (scripts/playtest_goblin.py). Each card is one thing a play tester can do and report on, in plain player language, with the play-test item it gives evidence for (testId: a T- row or a prompt's item on the play-test page). The Goblin hands them out in this order within the same rank, so the Wakening Isle path comes first. A card is never given twice to the same tester. Add cards at the end; never reuse a key; set retired true to stop handing one out. Coordinates are on the Wakening Isle (each new character wakes on a private copy of it) unless the card says otherwise. Testers only report what they saw: Chase marks Pass or Fail.",
+ "_about": "cc-P773: the Play Test Goblin's task cards (scripts/playtest_goblin.py). Each card is one thing a play tester can do and report on, in plain player language, with the play-test item it gives evidence for (testId: a T- row or a prompt's item on the play-test page). The Goblin hands them out in this order within the same rank, so the Wakening Isle path comes first. A card is never given twice to the same tester. Add cards at the end; never reuse a key; set retired true to stop handing one out. Coordinates are on the Wakening Isle (each new character wakes on a private copy of it) unless the card says otherwise. Testers only report what they saw: Chase marks Pass or Fail. cc-P789: needsPlayer true means the card needs a normal player account (a new character, character creation, Young status, the tutorial, anything staff powers skip or change); the Goblin never gives such a card to a staff account. A card without the field is treated as needing one. Every Wakening Isle card needs one: each starts from a new character on its own private copy of the isle, which a staff account does not get.",
  "version": 1,
  "cards": [
   {
    "key": "isle-01-new-character",
    "testId": "P762-0",
+   "needsPlayer": true,
    "title": "Make a brand new character",
    "why": "Every new player starts here. If creation goes wrong, nobody reaches the game.",
    "where": "The character creation screen, then the Wakening Isle beach",
@@ -19,6 +20,7 @@
   {
    "key": "isle-02-wake-and-stand",
    "testId": "P740-0",
+   "needsPlayer": true,
    "title": "Wake up on the beach and get up",
    "why": "The very first minute of play. The hint has to tell you how to move.",
    "where": "The Wakening Isle beach, where you wake",
@@ -32,6 +34,7 @@
   {
    "key": "isle-03-tamsin-and-lessons",
    "testId": "P728-0",
+   "needsPlayer": true,
    "title": "Meet Tamsin and open your lessons",
    "why": "Tamsin is the guide for the whole island. A lost lesson window must be easy to get back.",
    "where": "Tamsin, standing on the beach just east of where you wake",
@@ -46,6 +49,7 @@
   {
    "key": "isle-04-walk-and-run",
    "testId": "P718-0",
+   "needsPlayer": true,
    "title": "The walk and run lesson",
    "why": "Moving is the first real lesson. The glowing tiles have to be easy to find.",
    "where": "The road up from the beach: a blue floor tile, then a gold one",
@@ -60,6 +64,7 @@
   {
    "key": "isle-05-backpack",
    "testId": "P718-0",
+   "needsPlayer": true,
    "title": "The backpack lesson",
    "why": "Opening your character window and backpack is something every player does all the time.",
    "where": "The camp beside the road",
@@ -74,6 +79,7 @@
   {
    "key": "isle-06-cloak",
    "testId": "P728-0",
+   "needsPlayer": true,
    "title": "Put on the blue cloak",
    "why": "This teaches drag and drop, which players need for almost everything.",
    "where": "The table by the clothes rack",
@@ -87,6 +93,7 @@
   {
    "key": "isle-07-say-the-phrase",
    "testId": "P718-0",
+   "needsPlayer": true,
    "title": "The chat lesson",
    "why": "Talking is how players use banks, shops and other players.",
    "where": "The signpost along the road",
@@ -100,6 +107,7 @@
   {
    "key": "isle-08-farm-and-pet",
    "testId": "P726-0",
+   "needsPlayer": true,
    "title": "Clear the pests on Wren's farm and get your pet",
    "why": "Your first fight and your first pet both happen here.",
    "where": "Wren the Farmhand at the farm gate, then the cabbage rows",
@@ -114,6 +122,7 @@
   {
    "key": "isle-09-bandage-pip",
    "testId": "P751-0",
+   "needsPlayer": true,
    "title": "Bandage Pip in the farmhouse",
    "why": "Healing is how new players stay alive. It has to be clear that a bandage takes a few seconds.",
    "where": "Pip, the hurt farm boy, on the bench inside the farmhouse",
@@ -128,6 +137,7 @@
   {
    "key": "isle-10-death-lesson",
    "testId": "P751-0",
+   "needsPlayer": true,
    "title": "The death lesson",
    "why": "Dying for the first time should not be scary or confusing, and it must never disconnect you.",
    "where": "The training yard: the pale gray rat and Sera beside it",
@@ -141,6 +151,7 @@
   {
    "key": "isle-11-bank",
    "testId": "P749-0",
+   "needsPlayer": true,
    "title": "The bank lesson",
    "why": "The bank keeps players' things safe. An earlier tester found the blue token missing on the first try.",
    "where": "The practice bank in the trades square: Merrin the banker",
@@ -154,6 +165,7 @@
   {
    "key": "isle-12-league-lodge",
    "testId": "P758-0",
+   "needsPlayer": true,
    "title": "Visit Elara in the League lodge",
    "why": "The League is how players find their way after the island.",
    "where": "The League lodge: enter by the door on its north side, Elara Voss inside",
@@ -168,6 +180,7 @@
   {
    "key": "isle-13-vision-stones",
    "testId": "P742-0",
+   "needsPlayer": true,
    "title": "Watch the vision at the standing stones",
    "why": "The vision is the story's first scene. It holds you still for about a minute.",
    "where": "The standing stones on the knoll",
@@ -181,6 +194,7 @@
   {
    "key": "isle-14-moongate-to-new-haven",
    "testId": "P758-0",
+   "needsPlayer": true,
    "title": "Take the dock moongate to New Haven",
    "why": "This is the end of the island. Your pet must come with you.",
    "where": "The blue moongate at the end of the dock",
@@ -194,6 +208,7 @@
   {
    "key": "isle-15-skip-the-island",
    "testId": "P762-0",
+   "needsPlayer": true,
    "title": "Skip the island on a second character",
    "why": "Players who already know the game will run straight for the gate. That has to work and be a little funny.",
    "where": "A second new character on the same account, from the beach to the dock moongate",
@@ -208,6 +223,7 @@
   {
    "key": "isle-16-walk-the-shore",
    "testId": "P741-0",
+   "needsPlayer": true,
    "title": "Walk the island's coast and the wreck",
    "why": "Odd tiles, holes or invisible walls are easiest to spot by just walking around.",
    "where": "All around the Wakening Isle's shore, including the shipwreck",
@@ -223,6 +239,7 @@
    "retired": true,
    "retiredWhy": "Not on the test shard yet: P764 is on main, not on the isle release the testers play. Set retired to false once the test shard runs main.",
    "testId": "P764-0",
+   "needsPlayer": true,
    "title": "Leash and shrink your starter pet",
    "why": "New players need an easy way to carry their first pet around town.",
    "where": "New Haven, with the pet you got on the island",

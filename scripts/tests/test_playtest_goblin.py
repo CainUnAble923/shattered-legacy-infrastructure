@@ -6,7 +6,13 @@ Its rules: at most 3 open tasks per tester; never the same card twice to a teste
 paused testers skipped; cards no human has answered first, then conflicting ones, then the rest; a settled play-test item
 is not handed out; the Goblin's voice only in the one-line intro, the card's plain words and its test id kept; a
 summary each run, a draft for each problem report, an email only when something changed; and nothing it writes says
-Pass or Fail, and the play-test page's file is never written. The real task bank (the isle path) is checked too."""
+Pass or Fail, and the play-test page's file is never written. The real task bank (the isle path) is checked too.
+
+cc-P789: staff testers. The shard's export (tester-accounts.json) says which tester accounts are staff; the fixture
+writes it as the shard does (PlayTestAccounts.ExportJson). A staff account, or one the shard has not listed, never gets
+a player-only card (a card is player-only unless it says "needsPlayer": false); a player still does; a staff tester with
+only player-only cards left gets none, and why is kept for the Play testers page; the one-time cleanup pulls back the
+player-only tasks staff hold through the normal Pull back, so the history stays."""
 import hashlib
 import json
 import os
@@ -63,9 +69,16 @@ class Goblin(unittest.TestCase):
         with open(path, "w", encoding="utf-8") as f:
             json.dump(obj, f)
 
-    def testers(self, *rows):
+    def testers(self, *rows, staff=()):
         self.write(os.path.join(self.pt, "testers.json"),
                    {"version": 1, "testers": [{"account": a, "name": a.title(), "paused": p} for a, p in rows]})
+        self.export([a for a, _ in rows], staff)
+
+    def export(self, accounts, staff=()):
+        """tester-accounts.json in the shard's shape (PlayTestAccounts.ExportJson)."""
+        self.write(os.path.join(self.pt, "tester-accounts.json"), {"version": 1, "writtenAt": "2026-11-03T04:55:00Z", "accounts": [
+            {"account": a, "exists": True, "accessLevel": "Administrator" if a in staff else "Player", "staff": a in staff}
+            for a in accounts]})
 
     def tasks(self):
         with open(os.path.join(self.pt, "tasks.json"), encoding="utf-8") as f:
@@ -141,6 +154,7 @@ class Goblin(unittest.TestCase):
             doc = json.load(f)
         doc["testers"].append({"account": "dylan", "name": "Dylan", "paused": False})
         self.write(os.path.join(self.pt, "testers.json"), doc)
+        self.export(["chase", "paige", "dylan"])
         out = self.run_goblin("2026-11-04")
         self.assertEqual(["c", "a", "b"], [t["card"] for t in out["newTasks"] if t["account"] == "dylan"])
 
@@ -215,6 +229,107 @@ class Goblin(unittest.TestCase):
         self.assertEqual("", out["mail"])
 
 
+    # --- cc-P789 ---------------------------------------------------------------------------------------------------
+    def test_staff_never_get_player_only_cards_and_players_still_do(self):
+        self.cards = [card("p1"), card("p2"), dict(card("s1"), needsPlayer=False), dict(card("p3"), needsPlayer=True),
+                      dict(card("s2"), needsPlayer=False)]
+        self.write(self.bank, {"version": 1, "cards": self.cards})
+        self.testers(("admin-chase", False), ("paige", False), staff=("admin-chase",))
+        out = self.run_goblin()
+        got = lambda acc: [t["card"] for t in self.tasks() if t["account"] == acc]   # noqa: E731
+        self.assertEqual(["s1", "s2"], got("admin-chase"))
+        self.assertEqual(["p1", "p2", "p3"], got("paige"))
+        self.assertEqual([False, False], [t["needsPlayer"] for t in self.tasks() if t["account"] == "admin-chase"])
+        self.assertEqual([True, True, True], [t["needsPlayer"] for t in self.tasks() if t["account"] == "paige"])
+        self.assertIn("admin-chase", [t["account"] for t in out["newTasks"]])
+
+    def test_a_staff_tester_with_only_player_only_cards_gets_none_and_the_page_says_why(self):
+        self.testers(("admin-chase", False), ("paige", False), staff=("admin-chase",))
+        out = self.run_goblin()
+        self.assertEqual([], [t for t in self.tasks() if t["account"] == "admin-chase"])
+        self.assertEqual(3, len([t for t in self.tasks() if t["account"] == "paige"]))
+        self.assertTrue(any(s.startswith("Admin-Chase: staff account (Administrator)") for s in out["skipped"]), out["skipped"])
+        view = goblin.playtesters.PlayTestData(self.pt).view()
+        admin = [t for t in view["testers"] if t["account"] == "admin-chase"][0]
+        self.assertTrue(admin["access"]["staff"])
+        self.assertEqual("Administrator", admin["access"]["level"])
+        self.assertIn("staff account (Administrator)", admin["goblin"])
+        self.assertIn("player-only", admin["goblin"].lower())
+        paige = [t for t in view["testers"] if t["account"] == "paige"][0]
+        self.assertFalse(paige["access"]["staff"])
+        self.assertEqual("got 3 new tasks", paige["goblin"])
+
+    def test_an_account_the_shard_has_not_listed_gets_only_staff_safe_cards(self):
+        self.testers(("paige", False))
+        os.remove(os.path.join(self.pt, "tester-accounts.json"))
+        out = self.run_goblin()
+        self.assertEqual([], out["newTasks"])
+        self.assertIn("not listed", out["skipped"][0])
+        view = goblin.playtesters.PlayTestData(self.pt).view()
+        self.assertFalse(view["testers"][0]["access"]["known"])
+        # an account listed as not made yet is a player account to be
+        self.write(os.path.join(self.pt, "tester-accounts.json"), {"version": 1, "accounts": [
+            {"account": "paige", "exists": False, "accessLevel": "Player", "staff": False}]})
+        self.assertEqual(3, len(self.run_goblin("2026-11-04")["newTasks"]))
+
+    def test_the_export_round_trip(self):
+        # the shard's text (PlayTestAccounts.ExportJson's shape, indented, with writtenAt), read back by the page module
+        text = ('{\n  "version": 1,\n  "writtenAt": "2026-11-03T04:55:00Z",\n  "accounts": [\n    {\n      "account": "admin-chase",\n'
+                '      "exists": true,\n      "accessLevel": "Owner",\n      "staff": true\n    },\n    {\n      "account": "Paige",\n'
+                '      "exists": true,\n      "accessLevel": "Player",\n      "staff": false\n    }\n  ]\n}\n')
+        with open(os.path.join(self.pt, "tester-accounts.json"), "w", encoding="utf-8") as f:
+            f.write(text)
+        data = goblin.playtesters.PlayTestData(self.pt)
+        acc = data.accounts()
+        self.assertEqual({"admin-chase", "paige"}, set(acc))
+        self.assertEqual("staff", goblin.access_of(acc, "Admin-Chase"))
+        self.assertEqual("player", goblin.access_of(acc, "paige"))
+        self.assertEqual("unknown", goblin.access_of(acc, "dylan"))
+        self.assertEqual("2026-11-03T04:55:00Z", data.accounts_written_at())
+
+    def test_the_cleanup_pulls_back_staff_player_only_tasks_and_keeps_the_history(self):
+        # tasks handed out before cc-P789: no needsPlayer field; the bank says the card needs a player
+        self.cards = [card("p1"), card("p2"), dict(card("s1"), needsPlayer=False)]
+        self.write(self.bank, {"version": 1, "cards": self.cards})
+        self.testers(("admin-chase", False), ("paige", False), staff=("admin-chase",))
+        old = []
+        for n, (acc, c) in enumerate([("admin-chase", "p1"), ("admin-chase", "p2"), ("admin-chase", "s1"), ("paige", "p1")], 1):
+            old.append({"id": "G-%04d" % n, "account": acc, "card": c, "testId": "T-1", "title": "t", "status": "open",
+                        "assignedAt": "2026-11-02T05:00:0%dZ" % n})
+        self.write(os.path.join(self.pt, "tasks.json"), {"version": 1, "tasks": old})
+        self.answer("admin-chase", "G-0002", "couldnt", "admin skips creation")   # answered: history, not pulled
+
+        self.assertEqual(["G-0001"], goblin.pull_staff_player_only(self.pt, self.bank, dry_run=True))
+        self.assertEqual(["open"] * 4, [t["status"] for t in self.tasks()])
+        self.assertEqual(0, goblin.main(["--playtest-dir", self.pt, "--notes", self.notes, "--bank", self.bank,
+                                         "--pull-staff-player-only"]))
+        after = {t["id"]: t for t in self.tasks()}
+        self.assertEqual(4, len(after))                               # nothing deleted
+        self.assertEqual("pulled", after["G-0001"]["status"])         # the normal Pull back: status and when
+        self.assertTrue(after["G-0001"]["pulledAt"])
+        self.assertEqual("open", after["G-0002"]["status"])           # answered: kept as it was
+        self.assertEqual("open", after["G-0003"]["status"])           # staff-safe: kept
+        self.assertEqual("open", after["G-0004"]["status"])           # the player's: kept
+        view = goblin.playtesters.PlayTestData(self.pt).view()
+        admin = [t for t in view["testers"] if t["account"] == "admin-chase"][0]
+        self.assertEqual(["G-0001"], [t["id"] for t in admin["pulled"]])
+        self.assertEqual(["G-0002"], [t["id"] for t in admin["finished"]])
+        # a second cleanup finds nothing more
+        self.assertEqual([], goblin.pull_staff_player_only(self.pt, self.bank))
+
+    def test_old_tasks_get_needs_player_from_the_bank(self):
+        self.cards = [card("p1"), dict(card("s1"), needsPlayer=False)]
+        self.write(self.bank, {"version": 1, "cards": self.cards})
+        self.testers(("paige", False))
+        self.write(os.path.join(self.pt, "tasks.json"), {"version": 1, "tasks": [
+            {"id": "G-0001", "account": "paige", "card": "p1", "status": "open", "assignedAt": "x"},
+            {"id": "G-0002", "account": "paige", "card": "s1", "status": "open", "assignedAt": "y"}]})
+        self.run_goblin()
+        got = {t["id"]: t.get("needsPlayer") for t in self.tasks()}
+        self.assertEqual(True, got["G-0001"])
+        self.assertEqual(False, got["G-0002"])
+
+
 class TheRealBank(unittest.TestCase):
     def test_the_isle_path_comes_first_in_plain_words(self):
         cards = goblin.load_bank(goblin.DEFAULT_BANK)
@@ -228,6 +343,13 @@ class TheRealBank(unittest.TestCase):
             self.assertNotIn("Goblin", blob)
             self.assertTrue(all(ord(ch) < 128 for ch in blob), c["key"])
         self.assertEqual(sorted(c["key"] for c in cards), sorted(set(c["key"] for c in cards)))
+
+    def test_every_isle_card_says_it_needs_a_player_account(self):
+        cards = goblin.load_bank(goblin.DEFAULT_BANK)
+        isle = [c for c in cards if c["key"].startswith("isle-")]
+        self.assertEqual(16, len(isle))
+        self.assertTrue(all(c.get("needsPlayer") is True for c in isle), [c["key"] for c in isle if c.get("needsPlayer") is not True])
+        self.assertTrue(all(isinstance(c.get("needsPlayer"), bool) for c in cards))
 
 
 if __name__ == "__main__":

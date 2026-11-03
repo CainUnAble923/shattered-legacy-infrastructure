@@ -12,6 +12,16 @@
 //   5. "tasks" said aloud opens the window for a tester, alone and in any case; nobody else is answered.
 //   6. A tester logging in to tasks they have not been shown is told; once shown, not again until a new one arrives.
 //   7. Nothing here writes Pass or Fail: the buttons are worked, wrong, couldnt and report.
+//
+// cc-P789 (notes: shard-migration notes/cc-P789-tasks-window-and-staff-testers.md), each seen failing first:
+//   8. A card full of prompt, test and task ids comes out clean: no P number, test id or task id anywhere the window
+//      shows a tester, the title is the plain task title, and the task id is in the footer; a typical card has no
+//      scroll bar, and one too long for the window does.
+//   9. A staff account holding a player-only card sees the line saying to try it on a player character; a player
+//      account does not, and neither does a staff account on a card that works for staff.
+//  10. tester-accounts.json lists each tester's account with whether it exists and its access level, staff or not,
+//      and nothing else; it reads back as written.
+// Fact 1's body checks follow the window's new headings (no colons; each heading on its own line).
 
 #nullable enable
 
@@ -146,11 +156,11 @@ public class PlayTestTasksVerification : IDisposable
         Assert.Equal(new[] { "G-0001", "G-0004" }, gump!.Tasks.Select(t => t.Id));
 
         var body = PlayTestTasksGump.Body(gump.Tasks[0]);
-        Assert.Contains("Why it matters:", body);
-        Assert.Contains("Where to go:</B> The Wakening Isle beach, by Tamsin (6638, 3993)", body);
+        Assert.Contains("Why it matters</BASEFONT>", body);
+        Assert.Contains("The Wakening Isle beach, by Tamsin (6638, 3993)", body);
         Assert.Contains("1. Make a new character.", body);
         Assert.Contains("2. Get up.", body);
-        Assert.Contains("What to look for:", body);
+        Assert.Contains("What to look for</BASEFONT>", body);
 
         // an answered task is finished
         Assert.True(PlayTestTasks.Answer(p.Pm, "G-0001", "worked", ""));
@@ -345,5 +355,109 @@ public class PlayTestTasksVerification : IDisposable
     {
         Assert.Equal(new[] { "worked", "wrong", "couldnt", "report" }, PlayTestFiles.Buttons);
         Assert.DoesNotContain(PlayTestFiles.Buttons, b => b.Contains("pass") || b.Contains("fail"));
+    }
+
+    // ---------------------------------------------------------------- 8 (cc-P789)
+
+    [Fact]
+    public void P789_TheWindowShowsNoPromptOrTestIdsAndTheTaskIdIsInTheFooter()
+    {
+        using var p = new Player();
+        Testers((p.User, false));
+        Tasks(new
+        {
+            id = "G-0001", account = p.User, testId = "P762-0", title = "Make a brand new character (test P762-0, task G-0001)",
+            why = "Every new player starts here (cc-P773, T-012). See P762 and PT-4.",
+            where = "The beach (P740-0)", coords = "about 6638, 3993 (task G-0001)",
+            steps = new[] { "Do what prompt P718-0 says.", "Test P762-0 again, then T-012." },
+            lookFor = "You stand up (row T-012; card G-0002).", intro = "The Goblin found G-0001 under a rock.",
+            status = "open", assignedAt = "2026-11-02T05:00:00Z"
+        });
+
+        Assert.True(Command(p.Pm, "tasks"));
+        var gump = p.Pm.FindGump<PlayTestTasksGump>()!;
+        Assert.NotNull(gump);
+        var leaks = gump.Shown.Where(PlayTestText.HasId).ToList();
+        Assert.True(leaks.Count == 0, "ids shown: " + string.Join(" | ", leaks));
+        Assert.Contains(gump.Shown, x => x.Contains(">Make a brand new character</BASEFONT>"));
+        Assert.Contains(gump.Shown, x => x.Contains("Every new player starts here."));
+        Assert.Equal(new[] { "Task G-0001" }, gump.Footers);
+        Assert.DoesNotContain(gump.Shown, x => x.Contains("<I>"));      // the intro is plain, not italic
+        Assert.Equal("Make a brand new character", PlayTestText.Scrub("Make a brand new character (test P762-0, task G-0001)"));
+
+        // a card of a typical size has no scroll bar; one far too long for the window does
+        Assert.False(PlayTestTasksGump.NeedsScroll(gump.Tasks[0]));
+        var longCard = new PlayTestTask { Id = "G-0009", Account = p.User, Why = new string('w', 900), Steps = Enumerable.Repeat(new string('s', 200), 12).ToList() };
+        Assert.True(PlayTestTasksGump.NeedsScroll(longCard));
+    }
+
+    // ---------------------------------------------------------------- 9 (cc-P789)
+
+    [Fact]
+    public void P789_AStaffAccountHoldingAPlayerOnlyCardIsToldToUseAPlayerCharacter()
+    {
+        using var staff = new Player("Chase");
+        using var player = new Player("Paige");
+        staff.Account.AccessLevel = AccessLevel.Administrator;
+        staff.Pm.AccessLevel = AccessLevel.Administrator;
+        Testers((staff.User, false), (player.User, false));
+        object Card(string id, string account, bool needsPlayer) => new
+        {
+            id, account, testId = "T-1", title = "Card " + id, why = "Why.", where = "Here", coords = "1, 2",
+            steps = new[] { "Step." }, lookFor = "Look.", intro = "The Goblin.", needsPlayer, status = "open",
+            assignedAt = "2026-11-02T05:00:0" + id[^1] + "Z"
+        };
+        Tasks(Card("G-0001", staff.User, true), Card("G-0002", staff.User, false), Card("G-0003", player.User, true));
+
+        Assert.True(PlayTestTasks.IsStaff(staff.Pm));
+        Assert.False(PlayTestTasks.IsStaff(player.Pm));
+        Assert.True(Command(staff.Pm, "tasks"));
+        var gump = staff.Pm.FindGump<PlayTestTasksGump>()!;
+        var bodies = gump.Shown.Where(x => x.Contains("Why it matters")).ToList();
+        Assert.Equal(2, bodies.Count);
+        Assert.Contains(PlayTestTasksGump.StaffLine, bodies[0]);        // G-0001: player-only, held by staff
+        Assert.DoesNotContain(PlayTestTasksGump.StaffLine, bodies[1]);  // G-0002: works for staff
+
+        Assert.True(Command(player.Pm, "tasks"));
+        var theirs = player.Pm.FindGump<PlayTestTasksGump>()!;
+        Assert.DoesNotContain(theirs.Shown, x => x.Contains(PlayTestTasksGump.StaffLine));
+        Assert.Equal(true, theirs.Tasks[0].NeedsPlayer);
+    }
+
+    // ---------------------------------------------------------------- 10 (cc-P789)
+
+    [Fact]
+    public void P789_TheAccessLevelExportListsEachTesterAndReadsBack()
+    {
+        using var staff = new Player("Chase");
+        using var player = new Player("Paige");
+        staff.Account.AccessLevel = AccessLevel.Owner;
+        var missing = "p789nobody" + Guid.NewGuid().ToString("N")[..6];
+        Testers((staff.User, false), (player.User, true), (missing, false));
+
+        Assert.True(PlayTestAccounts.Export());
+        var path = Path.Combine(_folder, "tester-accounts.json");
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        Assert.Equal(1, doc.RootElement.GetProperty("version").GetInt32());
+        Assert.True(doc.RootElement.GetProperty("writtenAt").GetString()!.EndsWith('Z'));
+        var rows = doc.RootElement.GetProperty("accounts").EnumerateArray().ToList();
+        Assert.Equal(3, rows.Count);
+        var names = rows.Select(r => r.EnumerateObject().Select(p => p.Name).ToArray()).ToList();
+        Assert.All(names, n => Assert.Equal(new[] { "account", "exists", "accessLevel", "staff" }, n));
+
+        JsonElement Row(string account) => rows.Single(r => r.GetProperty("account").GetString() == account);
+        Assert.True(Row(staff.User).GetProperty("exists").GetBoolean());
+        Assert.Equal("Owner", Row(staff.User).GetProperty("accessLevel").GetString());
+        Assert.True(Row(staff.User).GetProperty("staff").GetBoolean());
+        Assert.Equal("Player", Row(player.User).GetProperty("accessLevel").GetString());
+        Assert.False(Row(player.User).GetProperty("staff").GetBoolean());
+        Assert.False(Row(missing).GetProperty("exists").GetBoolean());
+        Assert.False(Row(missing).GetProperty("staff").GetBoolean());
+
+        // a broken tester list leaves the last export alone
+        var before = File.ReadAllText(path);
+        File.WriteAllText(Path.Combine(_folder, "testers.json"), "{ broken");
+        Assert.False(PlayTestAccounts.Export());
+        Assert.Equal(before, File.ReadAllText(path));
     }
 }
