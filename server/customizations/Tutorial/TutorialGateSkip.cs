@@ -137,7 +137,7 @@ public partial class PetChoiceScroll : Item
         pm.SendGump(new PetChoiceGump(this));
     }
 
-    /// <summary>The choice: the pet given and the scroll used up, or the scroll kept when there is no follower slot.</summary>
+    /// <summary>The choice: the pet and a pet leash (cc-P764) given and the scroll used up, or the scroll kept when there is no follower slot.</summary>
     public BaseCreature? Choose(PlayerMobile pm, bool dog)
     {
         if (Deleted || !IsChildOf(pm.Backpack))
@@ -153,6 +153,9 @@ public partial class PetChoiceScroll : Item
         }
 
         pm.SendMessage(0x3B2, $"Your new {(dog ? "dog" : "cat")} follows you. Say \"all follow\", \"all guard\" or \"all stay\", or click it for its orders.");
+        // cc-P764: a pet leash with it, to carry the pet as a figurine.
+        pm.AddToBackpack(new PetLeash());
+        pm.SendMessage(0x3B2, "A pet leash comes with it. Double-click the leash and target your pet to carry it as a figurine.");
         Delete();
         return pet;
     }

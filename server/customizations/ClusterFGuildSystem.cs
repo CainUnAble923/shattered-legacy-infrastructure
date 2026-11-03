@@ -1047,6 +1047,7 @@ public class GuildTaskDetailGump : GuildStyledGump
     public const int BtnSchematics = 7; // cc-P70: mule module schematics
     public const int BtnRecipes    = 8; // cc-P78: the guild's pattern books and recipe scrolls
     public const int BtnRequisitions = 9; // cc-P150 (F-47): this guild's requisitions, the chapter's view of the board
+    public const int BtnStore = 10; // cc-P760: the guild's store (RewardStores/GuildStores.cs)
 
     public GuildTaskDetailGump(PlayerMobile pm, GuildDef def, IAccount acct) : this(pm, def, acct, null) { }
 
@@ -1069,7 +1070,7 @@ public class GuildTaskDetailGump : GuildStyledGump
         var starters  = GuildStarterItems.For(def.Key).Length;
         var isApprentice = ClusterFGuildSystem.IsApprentice(data, def.Key);
 
-        const int H = 400;
+        const int H = 440; // cc-P760: 400 before the Guild Store row
         AddBackground(0, 0, W, H, 9270);
         AddAlphaRegion(10, 10, W - 20, H - 20);
 
@@ -1137,6 +1138,15 @@ public class GuildTaskDetailGump : GuildStyledGump
         {
             AddButton(20, y, 4005, 4007, BtnRecipes);
             AddLabel(55, y + 2, 999, "Pattern books and recipe scrolls");
+            y += 28;
+        }
+
+        // cc-P760: the guild's store, for members at the guildmaster, paid in the guild's points.
+        if (atMaster && isMember)
+        {
+            var store = new Server.Engines.RewardStores.GuildStoreDef(def.Key, _guildmaster);
+            AddButton(20, y, 4005, 4007, BtnStore);
+            AddLabel(55, y + 2, 999, $"Guild Store ({store.Currency.Balance(pm):N0} {store.Currency.Name})");
             y += 28;
         }
 
@@ -1243,6 +1253,10 @@ public class GuildTaskDetailGump : GuildStyledGump
 
             case BtnRequisitions: // cc-P150 (F-47)
                 RequisitionsBoard.OpenFor(_pm, _def.Key);
+                return;
+
+            case BtnStore: // cc-P760
+                Server.Engines.RewardStores.GuildStores.Open(_pm, _def.Key, _guildmaster);
                 return;
 
             default:

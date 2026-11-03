@@ -48,6 +48,9 @@ public static class ClusterFGuildPromotion
                 Update(pm, key);
             }
         }
+
+        // cc-P763: a box for each new rank of a guild the loot table names (the first check records the ranks held).
+        Server.LootBoxes.ClusterFLootBoxes.CheckGuildRanks(pm);
     }
 
     public static bool IsTracked(CharacterGuildData data, string key) => data.RankCap.ContainsKey(key);
@@ -166,6 +169,7 @@ public static class ClusterFGuildPromotion
             said.AddRange(Grant(pm, key, r));
         }
 
+        Server.LootBoxes.ClusterFLootBoxes.CheckGuildRanks(pm); // cc-P763: the promotion's Society box
         return said;
     }
 

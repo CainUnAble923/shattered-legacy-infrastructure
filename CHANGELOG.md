@@ -29,6 +29,29 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03
+
+### Added
+- A pet leash: double-click it and target your pet, and the pet shrinks into a figurine in your backpack (weight 1). Double-click the figurine to call your pet back out, with its name and loyalty as they were. Only the owner can call it out, and not in a fight; summons and pets carrying items cannot be leashed. Animal trainers sell leashes for 150 gold, and the pet choice scroll (dog or cat) now comes with one. Ported from "Pet shrink for 57.2" by Queen.
+- Loot boxes now roll a rarity when you earn them: Common, Rare, Epic or Legendary. Rarer boxes hold more items in bigger stacks, Epic and Legendary boxes add a guaranteed prize for their kind, and each step has a bigger celebration; a Legendary box is announced to the whole shard. Higher-grade boxes are rare more often.
+- Four new kinds of loot box: Fisher's (your first catch of each High Seas fish), Sailor's (your first SOS chest of each level), Herbalist's (each kind of plant you first set to decorative) and Delver's (a boss's first kill inside a dungeon).
+- Seasonal loot boxes: while Halloween, winter or spring is on, every box you earn holds one extra seasonal treat or decoration and carries the season's name.
+- New loot box prizes: Bags of Holding in five sizes, which hold a set number of items however heavy (after TheArt's Bags of Holding), and a Reagent Bag that holds only reagents and makes them lighter (after Bittiez's Regeant Bag); paintings, trophies, crystal balls and other house decorations; tools, trap training kits, pet treats, dyes, League title deeds and more.
+- The Achievement Store (type [apstore, or "AP Store" in the achievements window): spend your achievement points on titles, achiever's sashes, the robe of the Noted, an engraved plaque and twelve classic paintings. Your AP total never goes down, so nothing it has opened closes.
+- The League shop (type [leagueshop) has fourteen more rows: a blessed League runebook, special hair and beard dye, an oil lantern, a bag of sending, furniture and metallic dye tubs, a crystal ball, two floating crystals, a pet bonding potion, a name change deed, the title "the League Champion" and the System's Platinum loot box.
+- Festival Tokens: while Halloween, winter or spring is on, strong creatures sometimes drop a token to whoever did the most damage, each Sorcerer's Dungeon artifact you hand in pays 2, and your first login of the day pays 1. They are kept for the Festival Peddler, who is not in this test world yet.
+- Travelers may now run into trouble on the roads. Out in the wilds of Trammel and Felucca (never in towns, dungeons, houses or on boats, and never on the Wakening Isle), you may meet brigands demanding a toll, a League surveyor pinned down by local wildlife, or, on Halloween nights, a lantern procession best left alone. Young characters, the hidden, the idle and anyone already in a fight are left in peace, and each traveler meets at most one every 25 minutes.
+
+### Changed
+- Everything in a loot box now does something: the placeholder items, loop scroll fragments and epic components are gone from boxes, recipe scrolls come only for crafts you have 50 or more skill in, and a boss box holds a real trophy named for the boss.
+- Loot box grades are now named Plain, Sturdy, Fine, Grand, Exalted and Celestial, and a box's name shows its rarity, grade and kind, as in "Epic Fine Explorer's Box".
+
+### Staff
+- Every reward store price and what opens each row are in Configuration/reward-stores.json; [RewardStores reload reads it again. Guild Stores and guild points are in the code but open only beside a guildmaster, and the Festival Peddler's stall does not put itself up on this branch (clusterf.festival.stallOnWorldLoad, false here); [FestivalMarket place still puts it at clusterf.festival.peddlerAt for testing.
+- The leash's price, uses, fight rule and blessed options are clusterf.petLeash.* in the shard's configuration.
+- [LootBox give takes an optional rarity and season, [LootBox season says which season's slot boxes earned now get, and [ClusterFSpring shows the spring window (clusterf.seasonal.spring.start and .end, 03-20 to 04-20). Every loot box number and item list is in loot-boxes.json.
+- [Encounters status, check, reload and force <id>: the random encounters, set in Configuration/encounters.json ("enabled": false turns them off).
+
 ## 2026.11.02
 
 ### Added

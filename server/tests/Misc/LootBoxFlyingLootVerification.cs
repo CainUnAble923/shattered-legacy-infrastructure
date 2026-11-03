@@ -62,6 +62,8 @@ public class LootBoxFlyingLootVerification
         }
 
         LootTable.Current = LootTable.Defaults;
+        ClusterFLootBoxes.RarityRoll = _ => BoxRarity.Common; // cc-P763: these facts predate the rarity roll
+        ClusterFLootBoxes.SeasonClock = () => new DateTime(2026, 6, 15); // and the season slot: a day in no season
         FanfareLines.Current = FanfareLines.Defaults;
         ClusterFLootBoxes.LoopProvider = _ => 1;
         ClusterFFanfare.FlushAll();

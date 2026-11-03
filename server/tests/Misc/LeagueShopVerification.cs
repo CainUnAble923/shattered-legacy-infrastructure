@@ -370,6 +370,11 @@ public class LeagueShopVerification
         // cc-P365: the reward mounts routed to the shop (RewardMounts.ShopRows), statuettes at 1750 AP.
         ("mount.chestnut-draft", 1750, 750), ("mount.bay-draft", 1750, 750), ("mount.grey-draft", 1750, 750),
         ("mount.palomino-draft", 1750, 750), ("mount.barded-warhorse", 1750, 1000), ("mount.gilded-charger", 1750, 1500),
+        // cc-P760 (the reward stores plan, section 4): fourteen more rows.
+        ("runebook", 100, 150), ("hairdye", 100, 75), ("bearddye", 100, 75), ("lantern", 100, 100),
+        ("bagofsending", 250, 250), ("furnituretub", 250, 200), ("crystalball", 250, 300),
+        ("metallictub", 500, 400), ("bondingpotion", 500, 400), ("crystal.green", 500, 300), ("crystal.purple", 500, 300),
+        ("namechange", 1000, 600), ("title.champion", 1750, 800), ("box.platinum", 1750, 800),
     ];
 
     [Fact]
@@ -384,8 +389,8 @@ public class LeagueShopVerification
             Assert.Equal((key, ap, renown), (row.Key, row.ApRequired, row.Renown));
         }
 
-        Assert.Equal(3, LeagueShop.Stock.Count(r => r.IsTitle));
-        Assert.Equal(3, LeagueShop.Stock.Count(r => r.Kind == LeagueShopKind.LootBox));
+        Assert.Equal(4, LeagueShop.Stock.Count(r => r.IsTitle)); // cc-P760: the League Champion
+        Assert.Equal(4, LeagueShop.Stock.Count(r => r.Kind == LeagueShopKind.LootBox)); // cc-P760: Platinum
 
         // F-13's AP totals: every achievement's AP, for the AP titles' top threshold. Counted, not quoted.
         var total = ClusterFAchievementSystem.Definitions.Values.Where(d => !d.Retired).Sum(d => d.AP);

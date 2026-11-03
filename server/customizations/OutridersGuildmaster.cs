@@ -91,6 +91,14 @@ public partial class OutridersGuildmaster : BaseCreature
             return;
 
         var s = e.Speech;
+
+        // cc-P760: the guild's store (RewardStores/GuildStores.cs), as at every other guildmaster.
+        if (s.Contains("guild store", StringComparison.OrdinalIgnoreCase))
+        {
+            Server.Engines.RewardStores.GuildStores.Open(pm, "rangers", this);
+            return;
+        }
+
         if (s.Contains("outrider",  StringComparison.OrdinalIgnoreCase) ||
             s.Contains("ranger",    StringComparison.OrdinalIgnoreCase) ||
             s.Contains("orders",    StringComparison.OrdinalIgnoreCase) ||

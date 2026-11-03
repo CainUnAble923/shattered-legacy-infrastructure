@@ -46,6 +46,9 @@ public class LeagueRegistrarGump : GuildStyledGump
     // cc-P280: the League Register, issued (or re-issued) free from Dull Copper, on the Citizen Status row's right.
     public const int BtnRegister = 29;
 
+    // cc-P760: the Achievement store, on the About Renown row's right.
+    public const int BtnApStore = 30;
+
     private readonly PlayerMobile _pm;
     private readonly View         _view;
 
@@ -133,7 +136,8 @@ public class LeagueRegistrarGump : GuildStyledGump
 
         AddButton(18, y, 4011, 4012, 11); AddLabel(44, y + 2, 999, "Citizen Status");
         AddButton(230, y, 4011, 4012, BtnRegister); AddLabel(256, y + 2, 999, "League Register"); y += 28;
-        AddButton(18, y, 4011, 4012, 12); AddLabel(44, y + 2, 999, "About Renown");      y += 28;
+        AddButton(18, y, 4011, 4012, 12); AddLabel(44, y + 2, 999, "About Renown");
+        AddButton(230, y, 4011, 4012, BtnApStore); AddLabel(256, y + 2, 999, "Achievement Store"); y += 28;
         AddButton(18, y, 4011, 4012, 13); AddLabel(44, y + 2, 999, "Achievements");
         AddButton(230, y, 4011, 4012, BtnShop); AddLabel(256, y + 2, 999, "League Shop");  y += 28;
         AddButton(18, y, 4011, 4012, 14); AddLabel(44, y + 2, 999, "Guilds Overview");
@@ -405,6 +409,10 @@ public class LeagueRegistrarGump : GuildStyledGump
                     _pm.SendGump(new LeagueRegistrarGump(_pm, View.MuleErrand));
                 }
                 break;
+
+            case BtnApStore: // cc-P760
+                Server.Engines.RewardStores.AchievementStoreDef.Open(_pm);
+                return;
 
             case BtnShop: // cc-P229 (F-13)
                 _pm.SendGump(new Server.Engines.LeagueRewards.LeagueShopGump(_pm));

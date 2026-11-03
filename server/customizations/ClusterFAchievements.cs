@@ -1681,6 +1681,18 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
         dict[counter] = value;
     }
 
+    /// <summary>
+    /// cc-P760: adds to a named account counter (saved with the achievement counters) and returns the new value. The reward
+    /// stores keep their spent and earned counts here (Festival Tokens, spendable AP, guild points spent). A counter is
+    /// never taken below zero.
+    /// </summary>
+    public static int AddToCounter(string username, string counter, int amount)
+    {
+        var value = Math.Max(0, GetCounter(username, counter) + amount);
+        SetCounter(username, counter, value);
+        return value;
+    }
+
     public static int GetCounter(string username, string counter)
     {
         if (!_counters.TryGetValue(username, out var dict)) return 0;
@@ -2118,6 +2130,7 @@ public class AchievementsGump : Gump
     // cc-P229 (F-13): the footer's League shop and title picker buttons.
     public const int BtnLeagueShop = 201;
     public const int BtnTitles = 202;
+    public const int BtnApStore = 203; // cc-P760: the Achievement store (RewardStores/AchievementStore.cs)
 
     // cc-P57 Part F (bug-list D80, Chase screenshot 2026-10-05): rows were a fixed 64 high, five to a page, and a row
     // with a wrapped flavor, an Earned line and a progress line ran under the next row's title. Each row now gets the
@@ -2286,6 +2299,9 @@ public class AchievementsGump : Gump
 
         // -- Footer --------------------------------------------------------
         AddImageTiled(10, GumpHeight - 40, GumpWidth - 20, 2, 9304);
+        // cc-P760: the Achievement store, which spends AP without lowering the AP total.
+        AddButton(GumpWidth / 2 - 270, GumpHeight - 30, 4011, 4012, BtnApStore);
+        AddLabel(GumpWidth / 2 - 236,  GumpHeight - 28, 999, "AP Store");
         AddButton(GumpWidth / 2 - 150, GumpHeight - 30, 4011, 4012, 200);
         AddLabel(GumpWidth / 2 - 132,  GumpHeight - 28, 999, "Guilds");
         AddButton(GumpWidth / 2 - 40, GumpHeight - 30, 4023, 4025, 0);
@@ -2572,6 +2588,12 @@ public class AchievementsGump : Gump
         {
             if (_pm.Account is Accounting.IAccount acct)
                 _pm.SendGump(new GuildProgressGump(_pm, acct));
+            return;
+        }
+
+        if (info.ButtonID == BtnApStore)
+        {
+            Server.Engines.RewardStores.AchievementStoreDef.Open(_pm);
             return;
         }
 

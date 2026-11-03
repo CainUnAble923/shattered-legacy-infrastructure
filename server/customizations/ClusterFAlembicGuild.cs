@@ -38,7 +38,7 @@ namespace Server
 
         // The guild's scrip, by name (stored per guild key like every guild's, CharacterGuildData.GuildCurrency).
         // A placeholder name until Chase picks; MuleUpgrades.CurrencyName reads it.
-        public const string CurrencyName = "Alembic Drams";
+        public const string CurrencyName = "Alembic Drops"; // cc-P760: the reward stores plan's name
 
         // Rank names by GuildRankIndex 0 to 5 on the generic six-rank ladder (ClusterFGuildSystem.RankThresholds:
         // 0, 1,000, 5,000, 15,000, 50,000, 100,000 standing). PLACEHOLDERS: the generic names until Chase picks from

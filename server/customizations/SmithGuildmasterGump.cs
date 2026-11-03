@@ -32,6 +32,7 @@ public class SmithGuildmasterGump : GuildStyledGump
     private const int BtnCatalog      = 6;
     private const int BtnMuleExchange = 20;
     private const int BtnSchematics   = 21; // cc-P70: mule module schematics
+    private const int BtnGuildStore   = 22; // cc-P760: the Society's Guild Store (RewardStores/GuildStores.cs)
     private const int BtnJoin         = 10;
 
     // Smith rank thresholds - mirrors Phase 4 design doc
@@ -193,6 +194,8 @@ public class SmithGuildmasterGump : GuildStyledGump
 
         AddButton(18, btnY, 4005, 4007, BtnCatalog, GumpButtonType.Reply, 0);
         AddLabel(54, btnY + 2, 999, "Seal Catalog");
+        AddButton(240, btnY, 4005, 4007, BtnGuildStore, GumpButtonType.Reply, 0); // cc-P760
+        AddLabel(276, btnY + 2, 999, "Guild Store");
         btnY += 32;
 
         AddImageTiled(10, btnY + 4, W - 20, 2, 9304);
@@ -289,6 +292,10 @@ public class SmithGuildmasterGump : GuildStyledGump
 
             case BtnSchematics:
                 pm.SendGump(new Server.Mobiles.GuildSchematicsGump(pm, "smithing", _npc));
+                break;
+
+            case BtnGuildStore: // cc-P760
+                Server.Engines.RewardStores.GuildStores.Open(pm, "smithing", _npc);
                 break;
 
             case BtnJoin:
