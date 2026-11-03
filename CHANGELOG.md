@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03.7
+
+### Added
+- A wicked witch haunts the Halloween season. While Halloween is on, one stands near each of the Yew, Cove and Britain graveyards, and travelers in the wild at night may meet one coming for them. She is a strong mage (about 900 hits). Her corpse holds a prize: a witch's Ouija board that glows and moans when used, a torture block deed or a gore rack deed for your house. Whoever hurt her most also gets 5 Festival Tokens. A slain witch returns to her graveyard after a while, and all of them leave when Halloween ends. (After Milva's Halloween Witch.)
+
+### Staff
+- Every witch number (her hits, skills and resists, gold, the prizes and their odds, the tokens, the graveyard spots, how soon she returns, and her random encounter) is in Configuration/halloween-witch.json, written with the defaults on first start; scrolls, gear and bless deeds are refused as prizes. [HalloweenWitch status|reload|sync|clear. Her encounter joins the random encounters by itself, also on a world whose encounters.json was written before.
+
 ## 2026.11.03.6
 
 ### Added
