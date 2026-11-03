@@ -16,7 +16,8 @@
 // Truffle are sold only by the Sea Market's tavern keeper in ServUO, and Fresh Ginger by bakers and farmers there; no
 // vendor here stocks them yet (shard-migration notes/cc-P269-high-seas-fishing-second-half.md).
 //
-// Left out: the three ChocolateNutcracker entries (:447-463) need SweetCocoaButter, in neither tree; FoodEngraver
+// Left out: the three ChocolateNutcracker entries (:447-463) and SweetCocoaButter (:419), added by cc-P785 in
+// Chocolatiering/ChocolatieringRecipes.cs (SweetCocoaButter is in ServUO after all, Items/Consumables/Chocolatiering.cs); FoodEngraver
 // (:395) is not ported (the engraving tools, notes); KhaldunTastyTreat (:365) is in neither tree.
 
 using System;

@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03.7
+
+### Added
+- Chocolate making in Cooking grows. Under Chocolatiering you can now make sweet cocoa butter (sugar and cocoa butter, at an oven), and from it the dark, milk and white chocolate nutcrackers, wrapped in a foil sheet. Pour a bar of dark, milk or white chocolate into a mold and wrap it in foil for a chocolate orc, beetle, bunny, solen or unicorn. Provisioners now sell the five chocolate molds, sacks of sugar, vanilla and foil sheets. Cocoa butter, cocoa liquor and the three chocolates were already in Cooking. (Figures and molds after Carlos_ar's Chocolatiering Adventure.)
+
+### Staff
+- Every chocolatiering number (each recipe's skill range and ingredients, and what provisioners sell at what price) is in Configuration/chocolatiering.json, written with the defaults on first start and read at start; deeds, scrolls and gear are refused there. [Chocolatiering status says what is in force and checks the file.
+
 ## 2026.11.03.6
 
 ### Added

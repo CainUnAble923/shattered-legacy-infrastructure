@@ -2,8 +2,10 @@
 // holiday cooking): a wrapped candy that unwraps on double-click into a dark, milk or white chocolate nutcracker, then
 // eats as a candy cane. Two things ServUO's version has are not here, both recorded in the notes:
 //   - the one-in-ten Card of Semidar under the wrapper (the card is in neither tree);
-//   - the three cooking entries (their resource, SweetCocoaButter, is in neither tree), so the kind comes from the
-//     constructor ([add ChocolateNutcracker Dark) rather than from CraftItem.Data, which pinned's craft engine lacks.
+//   - (until cc-P785) the three cooking entries. cc-P785 adds sweet cocoa butter (it is in ServUO after all, pub57
+//     Items/Consumables/Chocolatiering.cs:164) and the three entries (Chocolatiering/ChocolatieringRecipes.cs). Pinned's
+//     craft engine has no CraftItem.Data, so OnCraft reads the kind from the craft entry (ChocolatieringRecipes.RecipeOf);
+//     [add ChocolateNutcracker Dark still works.
 
 using System;
 using ModernUO.Serialization;
@@ -103,5 +105,14 @@ public partial class ChocolateNutcracker : CandyCane, ICraftable
     public int OnCraft(
         int quality, bool makersMark, Mobile from, CraftSystem craftSystem, System.Type typeRes, BaseTool tool,
         CraftItem craftItem, int resHue
-    ) => quality;
+    )
+    {
+        // cc-P785: the dark, milk or white entry in Cooking's Chocolatiering group.
+        if (ChocolatieringRecipes.RecipeOf(craftItem) is { } recipe)
+        {
+            Type = recipe.ChocolateKind;
+        }
+
+        return quality;
+    }
 }
