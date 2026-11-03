@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03.9
+
+### Added
+- Beekeeping. Buy a beehive deed from a beekeeper (Vesper has one) and set up a beehive in your house; it takes one lockdown, and a house holds two. Start it with a bee swarm, bought from the beekeeper or caught at a wild hive. Keep flowers (blooming plant bowls, potted and garden flowers) and water (a trough, tub, barrel or a pitcher of water) within 5 tiles, and treat the colony like a plant: a Poison potion for parasites, a Cure potion for disease, Heal and Greater Heal to mend it, Strength to make it hardier for a day and Agility to let the bees range further. From its third day a healthy hive makes honey and raw beeswax every day; harvest them with a hive tool. Render raw beeswax into beeswax in a wax pot by a fire or oven (the pot is sold by beekeepers and made with Tinkering), then make candles, short, long and large candles under Alchemy's new Candles group from beeswax and thread.
+- About a dozen wild beehives grow in Trammel's woods near Yew, Britain, Vesper, Minoc, Trinsic and Skara Brae. Anyone may pull a honeycomb from one (and get stung a little); a beekeeper with a hive tool can catch a swarm there for free. An emptied hive regrows after a few hours. (After the apiculture in Shafev's Cooking Expansion Set.)
+
+### Staff
+- Every beekeeping number (the daily check, range, flower and water needs, ailment chances, potion effects, honey and wax per day, the hive tool's uses, the wax pot, the candle recipes, the beekeeper's prices, hives per house and the wild hive spots) is in Configuration/beekeeping.json, written with the defaults on first start; candle rows must be stock candles and the beekeeper sells only beekeeping goods. [Beekeeping status|reload|seed [dryrun]. Wild hives are placed by themselves after every world load, once per spot.
+
 ## 2026.11.03.8
 
 ### Added
