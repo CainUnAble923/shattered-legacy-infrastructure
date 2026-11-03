@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03.5
+
+### Added
+- Artisan Festival decorations for spring: 64 pieces from Britannia's Artisan Festival, made for the virtues and the dungeons. There are paper lanterns and wooden sculptures that light up when you double-click them where they stand, and throw pillows and tapestries; double-click a lantern, pillow or tapestry in your backpack to turn it to face the other way. While spring is on, the Festival Peddler sells twelve of them for 10 to 25 Festival Tokens, and every loot box you earn in spring may hold one of the other 52. (After Sareus's Artisan Festival reward scripts.)
+
+### Staff
+- Every Artisan Festival piece, the twelve the Festival Peddler sells and their prices, and the weight of the rest in the spring loot box slot are in Configuration/artisan-festival.json, written with the defaults on first start; [ArtisanFestivalStaff reload|status|give <key>.
+
 ## 2026.11.03.4
 
 ### Added

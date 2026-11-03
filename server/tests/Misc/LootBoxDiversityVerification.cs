@@ -272,7 +272,9 @@ public class LootBoxDiversityVerification
                     var types = def.Items.Where(e => !e.Item.StartsWith('@')).Select(e => e.Item).ToHashSet();
                     var fromPool = types.Contains(last.GetType().Name) ||
                                    last is LootDecor && def.Items.Any(e => e.Item == "@Decor") ||
-                                   last is Seed && def.Items.Any(e => e.Item == "@Seed");
+                                   last is Seed && def.Items.Any(e => e.Item == "@Seed") ||
+                                   // cc-P783: spring's slot also holds the Artisan Festival pieces (LootBoxRoller.SeasonItems).
+                                   last is IArtisanPiece && season == "spring";
                     Assert.True(fromPool, $"{season}: {last.GetType().Name} is not from its pool");
                 }
                 finally
