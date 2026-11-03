@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03.3
+
+### Added
+- Gold panning. With Mining 60 or more, buy a prospector's pan from the Compact assayer who stands beside the Miners' Compact Liaison, then double-click it and target the water at a river or lake (not the open sea). Each pan may turn up a small gold nugget, from Mining 75 a medium one and from 90 a large one, and now and then a blue diamond, fire ruby, white pearl or another fine gem. A stretch of water gives a handful of finds, then needs time to settle. Sell the nuggets to the assayer for gold or, as a member of the Miners' Compact, hand them to him for standing with the Compact. (After the Gold Panning system by Hammerhand and Milva, shared by manwitch.)
+
+### Staff
+- Every gold panning number (skill, sizes, prices, standing, gem chance, the water's yield, which tiles are water and how sheltered it must be, the pan's price and uses) is in Configuration/gold-panning.json, written with the defaults on first start; [GoldPanningStaff reload|status. The assayers place themselves beside each Miners' Compact Liaison on every start; [ClusterFSeedAssayers does it at once.
+
 ## 2026.11.03
 
 ### Added
