@@ -151,7 +151,8 @@ public class RequisitionsBoardGump : Gump
     private readonly List<RequisitionEntry> _rows = new();
 
     private const int W = 600;
-    private const int H = 440;
+    private const int H = 620; // cc-P780: 440 before the hunts section
+    private const int HuntsTop = 376;
 
     public const int BtnClose = 0;
     public const int BtnPrev = 1;
@@ -234,6 +235,8 @@ public class RequisitionsBoardGump : Gump
             }
         }
 
+        AddHunts(pm);
+
         AddImageTiled(10, H - 50, W - 20, 2, 9304);
 
         if (_guildKey == null && guilds.Count > 1)
@@ -252,6 +255,45 @@ public class RequisitionsBoardGump : Gump
     }
 
     private static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s[1..];
+
+    /// <summary>cc-P780: the character's League hunts, today's and this week's great hunt, with progress. Kills count on their own.</summary>
+    private void AddHunts(PlayerMobile pm)
+    {
+        var table = LeagueHuntTable.Current;
+        if (!table.Enabled)
+            return;
+
+        var y = HuntsTop;
+        AddImageTiled(10, y, W - 20, 2, 9304);
+        y += 6;
+        AddLabel(20, y, 1154, "League hunts");
+        AddHtml(130, y + 1, W - 150, 20,
+            $"<BASEFONT COLOR=#AAAAAA>Kills count by themselves, for you and your party nearby. Daily at {RequisitionTable.Current.RefreshHourUtc:00}:00 UTC; the great hunt each {table.ResetDay}.</BASEFONT>",
+            false, false);
+        y += 22;
+
+        var data = LeagueHunts.EnsureCurrent(pm);
+        var hunts = data == null ? new List<HuntEntry>() : data.Hunts.Append(data.GreatHunt).Where(h => h != null).ToList();
+        if (hunts.Count == 0)
+        {
+            AddLabel(20, y, 999, "No hunts are posted for you today.");
+            return;
+        }
+
+        foreach (var h in hunts)
+        {
+            var color = h.Done ? "77DD77" : h.Great ? "FFD700" : "FFFFFF";
+            var label = h.Great ? "Great hunt:" : "Hunt:";
+            AddLabel(20, y, h.Great ? 53 : 1154, label);
+            AddHtml(110, y + 1, W - 130, 36,
+                $"<BASEFONT COLOR=#{color}>{Cap(LeagueHunts.Describe(h))}: {LeagueHunts.Progress(h)}. In {LeagueHunts.HomeOf(h)}.</BASEFONT>",
+                false, false);
+            y += 32;
+            AddHtml(110, y, W - 130, 20,
+                $"<BASEFONT COLOR=#AAAAAA>{(h.Paid ? "Paid" : "Pays")} {LeagueHunts.PayText(h)}.</BASEFONT>", false, false);
+            y += 22;
+        }
+    }
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {

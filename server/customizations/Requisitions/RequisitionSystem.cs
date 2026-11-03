@@ -12,8 +12,8 @@
 //                stays empty until the next refresh.
 //   Quiet expiry An unfilled request simply rolls over: no Renown loss, no standing loss, no Infamy (which does not
 //                exist in code: nothing here writes anything but the new set).
-//   Hunts        HuntFamily is the seam for League hunts and culls (F-24, not built): a slayer row marked "any" asks it
-//                for the family first.
+//   Hunts        HuntFamily is the seam for League hunts and culls (F-24): a slayer row marked "any" asks it for the
+//                family first. cc-P780 fills it (LeagueHunts.HuntFamilyFor) and rolls the hunts in EnsureCurrent.
 //   Commands     [requisitions (player): the open requests as "[Requisition]" lines, for the combat script's loot rater
 //                (cc-P145, section 4 of the prompt). [RequisitionsStaff reload|reroll|show (GM).
 
@@ -90,6 +90,8 @@ public static class ClusterFRequisitions
     {
         var data = DataOf(pm, true);
         if (data == null) return null;
+        // cc-P780: the hunts first, so a slayer row marked "any" rolled now sees today's hunts (HuntFamily).
+        LeagueHunts.Refresh(pm, data, Clock(), false);
         Refresh(pm, data, Clock(), false);
         return data;
     }
