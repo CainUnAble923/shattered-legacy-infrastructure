@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03.1
+
+### Changed
+- Play testers: the task list is easier to read, and staff accounts no longer get player-only tasks.
+
 ## 2026.11.03
 
 ### Added
