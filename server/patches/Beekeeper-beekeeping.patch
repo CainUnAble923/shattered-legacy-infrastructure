@@ -1,0 +1,11 @@
+--- a/Projects/UOContent/Mobiles/Vendors/NPC/Beekeeper.cs
++++ b/Projects/UOContent/Mobiles/Vendors/NPC/Beekeeper.cs
+@@ -20,6 +20,8 @@
+         public override void InitSBInfo()
+         {
+             m_SBInfos.Add(new SBBeekeeper());
++            // cc-P787: the beehive deed, bee swarm, hive tool and wax pot (SBApiarist, beekeeping.json).
++            m_SBInfos.Add(new Server.Engines.Beekeeping.SBApiarist());
+         }
+     }
+ }

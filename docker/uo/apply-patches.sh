@@ -1069,6 +1069,11 @@ apply_patch "$PATCHES/SBTinker-gravediggers-spade.patch"
 # Made with diff -u against pinned; pinned by ChocolatieringVerification.
 apply_patch "$PATCHES/Provisioner-chocolatiering.patch"
 
+# cc-P787: beekeepers also stock the beehive deed, bee swarm, hive tool and wax pot (SBApiarist, from beekeeping.json);
+# pinned's AfterDeserialization reloads a vendor's lists, so standing beekeepers stock them too. Made with diff -u
+# against pinned; pinned by BeekeepingVerification.
+apply_patch "$PATCHES/Beekeeper-beekeeping.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
