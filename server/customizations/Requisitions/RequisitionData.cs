@@ -13,7 +13,11 @@
 // (RequisitionLeads). A request with a live Lead survives the daily refresh; every other open request is replaced then.
 // Nothing here loses Renown or standing when a request or a Lead lapses: there is no penalty of any kind.
 //
-// Both records carry their own version and fail loudly on an unknown one (the D40 rule).
+// cc-P780 (F-24): the record also holds the character's League hunts: the daily hunts (HuntDay, Hunts) and the weekly
+// great hunt (GreatHuntWeek, GreatHunt), each a HuntEntry (kill N of a League Bestiary family; LeagueHunts.cs). Version
+// 1 of CharacterRequisitionData adds them; a version 0 record reads with no hunts and rolls them at the next read.
+//
+// Every record carries its own version and fails loudly on an unknown one (the D40 rule).
 
 using System;
 using System.Collections.Generic;
@@ -119,14 +123,28 @@ public sealed class RequisitionEntry
 /// </summary>
 public sealed class CharacterRequisitionData
 {
-    public const int CurrentVersion = 0;
+    // 0: cc-P150. 1: cc-P780, the League hunts (HuntDay, Hunts, GreatHuntWeek, GreatHunt).
+    public const int CurrentVersion = 1;
 
     /// <summary>The refresh day the open requests were rolled on; -1 before the first roll.</summary>
     public int RolledDay { get; set; } = -1;
 
     public List<RequisitionEntry> Requests { get; } = new();
 
-    public bool IsEmpty => RolledDay < 0 && Requests.Count == 0;
+    /// <summary>cc-P780: the refresh day the daily hunts were rolled on; -1 before the first roll.</summary>
+    public int HuntDay { get; set; } = -1;
+
+    /// <summary>cc-P780: today's hunts. A finished one stays (shown done) until the next refresh.</summary>
+    public List<HuntEntry> Hunts { get; } = new();
+
+    /// <summary>cc-P780: the hunt week the great hunt was rolled on; -1 before the first roll.</summary>
+    public int GreatHuntWeek { get; set; } = -1;
+
+    /// <summary>cc-P780: this week's great hunt, or null (none rolled, or no family open to the character).</summary>
+    public HuntEntry GreatHunt { get; set; }
+
+    public bool IsEmpty => RolledDay < 0 && Requests.Count == 0 && HuntDay < 0 && Hunts.Count == 0 &&
+                           GreatHuntWeek < 0 && GreatHunt == null;
 
     public CharacterRequisitionData() { }
 
@@ -142,6 +160,17 @@ public sealed class CharacterRequisitionData
         var count = r.ReadInt();
         for (var i = 0; i < count; i++)
             Requests.Add(new RequisitionEntry(r));
+
+        if (version < 1)
+            return;
+
+        HuntDay = r.ReadInt();
+        var hunts = r.ReadInt();
+        for (var i = 0; i < hunts; i++)
+            Hunts.Add(new HuntEntry(r));
+
+        GreatHuntWeek = r.ReadInt();
+        GreatHunt = r.ReadBool() ? new HuntEntry(r) : null;
     }
 
     public void Serialize(IGenericWriter w)
@@ -151,6 +180,16 @@ public sealed class CharacterRequisitionData
         w.Write(Requests.Count);
         foreach (var e in Requests)
             e.Serialize(w);
+
+        // v1
+        w.Write(HuntDay);
+        w.Write(Hunts.Count);
+        foreach (var h in Hunts)
+            h.Serialize(w);
+
+        w.Write(GreatHuntWeek);
+        w.Write(GreatHunt != null);
+        GreatHunt?.Serialize(w);
     }
 
     public RequisitionEntry Find(Guid id) => Requests.Find(e => e.Id == id);
@@ -162,5 +201,73 @@ public sealed class CharacterRequisitionData
             if (e.GuildKey.Equals(guildKey, StringComparison.OrdinalIgnoreCase))
                 n++;
         return n;
+    }
+}
+
+/// <summary>
+/// cc-P780 (F-24): one League hunt: kill <see cref="Needed"/> of a League Bestiary family (LeagueHuntTable.Families) for a
+/// guild, at a tier. Kills count until it is finished; it pays once, when the last kill lands. The pay is fixed when the
+/// hunt is rolled, so a later edit to league-hunts.json changes new hunts only.
+/// </summary>
+public sealed class HuntEntry
+{
+    public const int CurrentVersion = 0;
+
+    public Guid     Id         { get; private set; }
+    public string   FamilyKey  { get; set; } = "";  // LeagueHuntFamily.Key
+    public string   GuildKey   { get; set; } = "";  // the guild whose standing it pays
+    public int      Tier       { get; set; }        // 0 to 5, as a requisition's
+    public bool     Great      { get; set; }        // the weekly great hunt
+    public int      Needed     { get; set; }
+    public int      Kills      { get; set; }
+    public int      Renown     { get; set; }
+    public int      Reputation { get; set; }
+    public int      Gold       { get; set; }
+    public string   LootBox    { get; set; } = "";  // a LeagueShop.BoxTier name, or empty for none
+    public bool     Paid       { get; set; }
+    public DateTime RolledAt   { get; set; }
+
+    public bool Done => Kills >= Needed;
+
+    public HuntEntry() => Id = Guid.NewGuid();
+
+    public HuntEntry(IGenericReader r)
+    {
+        var version = r.ReadInt();
+        if (version is < 0 or > CurrentVersion)
+            throw new System.IO.InvalidDataException(
+                $"HuntEntry version {version} is not one this build reads (0 to {CurrentVersion}).");
+
+        Id         = r.ReadGuid();
+        FamilyKey  = r.ReadString();
+        GuildKey   = r.ReadString();
+        Tier       = r.ReadInt();
+        Great      = r.ReadBool();
+        Needed     = r.ReadInt();
+        Kills      = r.ReadInt();
+        Renown     = r.ReadInt();
+        Reputation = r.ReadInt();
+        Gold       = r.ReadInt();
+        LootBox    = r.ReadString();
+        Paid       = r.ReadBool();
+        RolledAt   = r.ReadDateTime();
+    }
+
+    public void Serialize(IGenericWriter w)
+    {
+        w.Write(CurrentVersion);
+        w.Write(Id);
+        w.Write(FamilyKey);
+        w.Write(GuildKey);
+        w.Write(Tier);
+        w.Write(Great);
+        w.Write(Needed);
+        w.Write(Kills);
+        w.Write(Renown);
+        w.Write(Reputation);
+        w.Write(Gold);
+        w.Write(LootBox);
+        w.Write(Paid);
+        w.Write(RolledAt);
     }
 }

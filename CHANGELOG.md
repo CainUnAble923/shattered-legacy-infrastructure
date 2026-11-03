@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03
+
+### Added
+- League hunts on the requisitions board. Each day the board posts two hunts for you from the League Bestiary ("cull 12 hedge snatchers", "hunt down 4 tunnelmaws"), sized to your rank in the guild that posts them, and each week one great hunt with a bigger count. Kills count by themselves: the player who did the most damage gets the kill, and party members nearby count it too. A finished hunt pays League Renown, guild standing and gold on the spot; the great hunt also pays a System's Silver Loot Box. The board shows your progress, and unfinished hunts simply roll over, with no penalty. (The daily-hunt idea is after DragnMaw's DailyQuests.)
+- While you hold a hunt, the board's "any slayer" requests can ask for a slayer of that hunt's creatures.
+
+### Staff
+- [hunts lists a character's hunts; [LeagueHuntsStaff reload, reroll and show. Every hunt number (counts, pay by tier, the great hunt's multipliers and box, the weekly reset day, party range, the families) is in Configuration/league-hunts.json, written with the defaults on first start. A family is only offered while one of its bestiary spawners stands, so run [ClusterFSeedBestiary if it has not been run on a world.
+
 ## 2026.11.02.6
 
 ### Added

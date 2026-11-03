@@ -3,8 +3,8 @@
 // cc-P364 (F-24): the League hunt bestiary, batch 2. Fourteen creatures on the player package's own bodies
 // (2072-2085, cc-P139's route), each with a new name of ours, a monster part, a home and a use for the League's work:
 // a hunt target (a named or elite creature whose part a hunt asks for), a culling pack (kill N of a species in a
-// region), or a mini-boss. F-24's job board is not built yet (feature-queue F-24; RequisitionSystem.HuntFamily is its
-// seam), so this file is the data it will read: the hunt table (HuntTargets), the culling table (CullingPacks), the
+// region), or a mini-boss. cc-P780 built F-24's daily and weekly hunts on the requisitions board
+// (Requisitions/LeagueHunts.cs, families in league-hunts.json), so this file is the data it reads: the hunt table (HuntTargets), the culling table (CullingPacks), the
 // bestiary lines, and the spawn data that gives each creature a home.
 //
 // Bestiary lines. Each entry has the System's snarky line and the plain line in parentheses, as achievements do
