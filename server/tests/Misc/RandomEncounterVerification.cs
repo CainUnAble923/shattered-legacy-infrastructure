@@ -38,8 +38,10 @@ public class RandomEncounterVerification : IDisposable
     private readonly List<Account> _accounts = [];
     private DateTime _now = new(2026, 11, 2, 12, 0, 0, DateTimeKind.Utc);
 
-    // A wilderness spot well away from other facts' regions (no region is registered here in the test host).
-    private static readonly Point3D Spot = new(4400, 600, 0);
+    // A wilderness spot well away from other facts' regions. Not under an SOS fence (SosFenceRegion, priority 60): a
+    // fence another fact registers covers the north-east snow isles, where this spot first stood, and hid the regions
+    // these facts register under it in the full run. The place facts check the spots they use are clear of every fence.
+    private static readonly Point3D Spot = new(3400, 400, 0);
 
     public RandomEncounterVerification(ITestOutputHelper output)
     {
@@ -144,8 +146,11 @@ public class RandomEncounterVerification : IDisposable
 
     private void AssertRefused(PlayerMobile pm, string because)
     {
+        Assert.False(SosFenceRegion.InAnyFence(pm.X, pm.Y), $"{pm.Location} is under an SOS fence; move the fact's spot");
         var why = ClusterFEncounters.WhyNot(pm, _now);
         _out.WriteLine($"refused: {why}");
+        var found = Server.Region.Find(pm.Location, pm.Map);
+        _out.WriteLine($"region at {pm.Location} on {pm.Map}: {found?.Name} ({found?.GetType().Name}, priority {found?.Priority}, parent {found?.Parent?.Name}); registered here: {string.Join(", ", _regions.Select(r => $"{r.Name}:{r.Registered}"))}");
         Assert.Equal(because, why);
         Assert.Null(ClusterFEncounters.TryEncounter(pm, _now));
         Assert.Empty(ClusterFEncounters.Active);
