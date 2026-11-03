@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03.5
+
+### Added
+- A holiday stocking hangs on the Festival Peddler's table in New Haven while the winter festival is on. Double-click it and hold still for six seconds to pull out a treat: gingerbread cookies, candy canes, jelly beans, a cake, or a little winter decoration (a holiday bell, a poinsettia or a snowflake). Once a day per account, and the day's first grab also gives a Festival Token. (After Candy Apple's Stocking full of goodies.)
+
+### Staff
+- Every holiday stocking number (its season, the hold-still time, the reach, grabs a day, the token, where it hangs, and the prizes with their weights) is in Configuration/holiday-stocking.json, written with the defaults on first start; deeds, scrolls and gear are refused there. [HolidayStocking status|reload|place|clear. It hangs and comes down by itself with the winter stall.
+
 ## 2026.11.03.4
 
 ### Added
