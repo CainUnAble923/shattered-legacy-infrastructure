@@ -1060,6 +1060,10 @@ apply_patch "$PATCHES/MLQuestEntry-quest-milestones.patch"
 apply_patch "$PATCHES/Fishing-loot-box-firsts.patch"
 apply_patch "$PATCHES/SetToDecorativeGump-loot-box-herbalist.patch"
 
+# cc-P782: tinkers also stock the gravedigger's spade (GraveDigging), beside the shovel, at grave-digging.json's
+# price. Made with diff -u against pinned; pinned by GraveDiggingVerification.
+apply_patch "$PATCHES/SBTinker-gravediggers-spade.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

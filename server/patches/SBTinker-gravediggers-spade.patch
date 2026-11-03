@@ -1,0 +1,11 @@
+--- a/Projects/UOContent/Mobiles/Vendors/SBInfo/SBTinker.cs
++++ b/Projects/UOContent/Mobiles/Vendors/SBInfo/SBTinker.cs
+@@ -55,6 +55,8 @@
+                 // TODO: Sledgehammer
+ 
+                 Add(new GenericBuyInfo(typeof(Shovel), 12, 20, 0xF39, 0));
++                // cc-P782: the gravedigger's spade (GraveDigging), at grave-digging.json's price.
++                Add(new GenericBuyInfo("a gravedigger's spade", typeof(Server.Items.GravediggersSpade), Server.Engines.GraveDigging.GraveDiggingTable.Current.Spade.Price, 20, Server.Items.GravediggersSpade.SpadeItemID, Server.Items.GravediggersSpade.SpadeHue));
+ 
+                 Add(new GenericBuyInfo(typeof(MouldingPlane), 11, 20, 0x102C, 0));
+                 Add(new GenericBuyInfo(typeof(JointingPlane), 10, 20, 0x1030, 0));
