@@ -456,6 +456,21 @@ public static class LootBoxRoller
             : null;
     }
 
+    /// <summary>
+    /// cc-P782: one row of this table's format made outside a box (grave digging's bonus roll), at a grade, Common, for
+    /// this character. The caller checks the row first (CheckEntry, and its own allowed list).
+    /// </summary>
+    public static Item? MakeRow(PlayerMobile pm, PoolEntry e, int grade)
+    {
+        grade = Math.Clamp(grade, 1, 6);
+        var c = new Ctx
+        {
+            Pm = pm, Theme = BoxTheme.Explorer, Grade = grade, Rarity = BoxRarity.Common, Craft = null,
+            Account = pm.Account?.Username ?? "", SourceName = null, Level = 0, R = new Rolled(), BoxGrade = grade,
+        };
+        return Make(e, c);
+    }
+
     /// <summary>Makes an entry's item for this roll, or null (a mount chance that missed, a Renown bonus, no recipe).</summary>
     private static Item? Make(PoolEntry e, Ctx c)
     {

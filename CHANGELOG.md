@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03.3
+
+### Added
+- Grave digging. Tinkers now sell a gravedigger's spade. Double-click it and target a grave in one of Britannia's cemeteries (Britain, Vesper, Cove, Moonglow, Jhelom, Yew, the Chapel of Saint Lucia and others) to dig with Forensic Evaluation. Anyone can turn up bones; from 50 skill you also find fertile dirt, and from 75 the necromancer's reagents: grave dust, nox crystal, bat wing, daemon blood and pig iron. Now and then the spade strikes something else: human remains, a gravestone or headstone for your house, from 75 skill an old treasure map, and from 90 a wooden coffin. Each grave gives up a handful of finds and then rests for a while, for everyone. Graves outside cemeteries are left alone. (After the Grave Digging system by Massapequa.)
+
+### Staff
+- Every grave digging number (the cemeteries, the graves' yield, what each skill tier finds, the bonus chance and list, the spade's price and uses) is in Configuration/grave-digging.json, written with the defaults on first start; [GraveDiggingStaff reload|status|here ("here" says whether your spot counts as a cemetery).
+
 ## 2026.11.03
 
 ### Added
