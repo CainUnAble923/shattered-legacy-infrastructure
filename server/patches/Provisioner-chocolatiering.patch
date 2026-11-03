@@ -1,0 +1,11 @@
+--- a/Projects/UOContent/Mobiles/Vendors/NPC/Provisioner.cs
++++ b/Projects/UOContent/Mobiles/Vendors/NPC/Provisioner.cs
+@@ -20,6 +20,8 @@
+         public override void InitSBInfo()
+         {
+             m_SBInfos.Add(new SBProvisioner());
++            // cc-P785: chocolate molds, sugar, vanilla and foil sheets (SBChocolatier, chocolatiering.json).
++            m_SBInfos.Add(new SBChocolatier());
+ 
+             if (IsTokunoVendor)
+             {

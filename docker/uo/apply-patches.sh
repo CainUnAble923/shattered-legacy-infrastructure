@@ -1064,6 +1064,11 @@ apply_patch "$PATCHES/SetToDecorativeGump-loot-box-herbalist.patch"
 # price. Made with diff -u against pinned; pinned by GraveDiggingVerification.
 apply_patch "$PATCHES/SBTinker-gravediggers-spade.patch"
 
+# cc-P785: provisioners also stock the chocolate molds, sugar, vanilla and foil sheets (SBChocolatier, from
+# chocolatiering.json); pinned's AfterDeserialization reloads a vendor's lists, so standing provisioners stock them too.
+# Made with diff -u against pinned; pinned by ChocolatieringVerification.
+apply_patch "$PATCHES/Provisioner-chocolatiering.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
