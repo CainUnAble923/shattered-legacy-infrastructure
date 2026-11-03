@@ -368,7 +368,26 @@ public static class FestivalStock
         yield return R(s, "garland", "Flower garland", 10, 0x2306, RewardStore.One(() => new FlowerGarland(0x2B)));
         yield return R(s, "pottedplant", "Potted plant", 10, 0x11CA, RewardStore.One(() => new PottedPlant()));
         yield return R(s, "heartbox", "Heart-shaped box", 10, 0x49CA, RewardStore.One(() => new HeartShapedBox()));
+
+        // cc-P783: the Artisan Festival pieces artisan-festival.json stocks (lanterns, sculptures, pillows, tapestries),
+        // at its token prices; the rest of the 64 go in the spring loot box slot (ArtisanFestivalBoxes).
+        foreach (var row in Server.Engines.ArtisanFestival.ArtisanFestivalTable.Current.Stock)
+        {
+            var piece = Server.Engines.ArtisanFestival.ArtisanFestivalTable.Current.Piece(row.Key);
+            if (piece == null)
+            {
+                continue;
+            }
+
+            var key = piece.Key;
+            yield return R(s, $"artisan.{key}", ArtisanLabel(piece), row.Price, piece.Facings[0].Id,
+                RewardStore.One(() => Server.Engines.ArtisanFestival.ArtisanFestival.Create(key)!));
+        }
     }
+
+    /// <summary>cc-P783: a row's label: the piece's name, capitalised, and what it is.</summary>
+    public static string ArtisanLabel(Server.Engines.ArtisanFestival.ArtisanPiece piece) =>
+        $"{char.ToUpperInvariant(piece.Name[0])}{piece.Name[1..]} ({piece.Virtue}{(piece.IsLight ? ", a light" : "")})";
 
     /// <summary>Halloween's treats: a bag of eight of pinned's Halloween candies.</summary>
     public static Item Treats()

@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Server.Engines.Craft;
 using Server.Engines.Plants;
 using Server.Items;
@@ -253,8 +254,9 @@ public static class LootBoxRoller
             r.Items.Add((item, true));
         }
 
-        // cc-P763: the season's slot.
-        if (seasonDef != null && PickEntry(seasonDef.Items, c) is { } seasonal && Make(seasonal, c) is { } seasonItem)
+        // cc-P763: the season's slot. cc-P783: plus the Artisan Festival pieces in spring, from their own table
+        // (artisan-festival.json), so a world whose loot-boxes.json predates them still gets them.
+        if (seasonDef != null && PickEntry(SeasonItems(season!, seasonDef), c) is { } seasonal && Make(seasonal, c) is { } seasonItem)
         {
             r.Items.Add((seasonItem, false));
         }
@@ -407,6 +409,27 @@ public static class LootBoxRoller
         return new Bandage(10 + 10 * c.Grade);
     }
 
+    /// <summary>
+    /// cc-P783: a season's slot entries: the table's (loot-boxes.json), and in spring every Artisan Festival piece the
+    /// spring stall does not sell, at artisan-festival.json's boxWeight each (@ArtisanDecor, the key as its name).
+    /// </summary>
+    public static PoolEntry[] SeasonItems(string season, SeasonDef def)
+    {
+        if (!season.Equals("spring", StringComparison.OrdinalIgnoreCase))
+        {
+            return def.Items;
+        }
+
+        var t = Server.Engines.ArtisanFestival.ArtisanFestivalTable.Current;
+        if (t.BoxWeight <= 0)
+        {
+            return def.Items;
+        }
+
+        return def.Items.Concat(t.BoxPieces.Select(p => new PoolEntry { Item = "@ArtisanDecor", Name = p.Key, Weight = t.BoxWeight }))
+            .ToArray();
+    }
+
     /// <summary>The amount an entry gives: Min to Max, plus PerGrade per grade, times the rarity's stack multiplier.</summary>
     private static int AmountOf(PoolEntry e, Ctx c)
     {
@@ -421,7 +444,8 @@ public static class LootBoxRoller
         "@Ore", "@Boards", "@Hides", "@Metal", "@Wood", "@Leather", "@Gems", "@CraftResources", "@PatternBook",
         "@CraftTool", "@RunicTool", "@SlayerWeapon", "@TreasureMap", "@Mount", "@Reagents", "@Scroll", "@Trophy",
         "@LoopSash", "@LeagueCloak", "@LeagueTitle", "@Potion", "@MagicGear", "@Recipe", "@BoxSash", "@BoxInBox",
-        "@MuleSchematic", "@BagOfHolding", "@ReagentBag", "@Decor", "@RenownBonus", "@RarePick", "@Seed", "@RunicMallet"
+        "@MuleSchematic", "@BagOfHolding", "@ReagentBag", "@Decor", "@RenownBonus", "@RarePick", "@Seed", "@RunicMallet",
+        "@ArtisanDecor" // cc-P783: an Artisan Festival piece, its key in name
     };
 
     /// <summary>Why an entry cannot be made, or null when it can (LootTable.Parse refuses a file with any).</summary>
@@ -440,6 +464,8 @@ public static class LootBoxRoller
                 "@bagofholding" when e.Arg is < 1 or > 5 => "@BagOfHolding needs arg 1 to 5 (the bag's size).",
                 "@treasuremap" when e.Arg is < 0 or > 6 => "@TreasureMap's arg is a map level 1 to 6 (0: the grade).",
                 "@runictool" when e.Arg is < 0 or > 1 => "@RunicTool's arg is 0 (the lowest material) or 1 (one step up).",
+                "@artisandecor" when Server.Engines.ArtisanFestival.ArtisanFestivalTable.Current.Piece(e.Name) == null =>
+                    $"@ArtisanDecor's name '{e.Name}' is not an Artisan Festival piece (artisan-festival.json).",
                 _ => null
             };
         }
@@ -454,6 +480,21 @@ public static class LootBoxRoller
         return ActivatorExtensions.GetConstructor(type, null, Type.EmptyTypes, out _) == null
             ? $"'{e.Item}' cannot be made with no arguments."
             : null;
+    }
+
+    /// <summary>
+    /// cc-P782: one row of this table's format made outside a box (grave digging's bonus roll), at a grade, Common, for
+    /// this character. The caller checks the row first (CheckEntry, and its own allowed list).
+    /// </summary>
+    public static Item? MakeRow(PlayerMobile pm, PoolEntry e, int grade)
+    {
+        grade = Math.Clamp(grade, 1, 6);
+        var c = new Ctx
+        {
+            Pm = pm, Theme = BoxTheme.Explorer, Grade = grade, Rarity = BoxRarity.Common, Craft = null,
+            Account = pm.Account?.Username ?? "", SourceName = null, Level = 0, R = new Rolled(), BoxGrade = grade,
+        };
+        return Make(e, c);
     }
 
     /// <summary>Makes an entry's item for this roll, or null (a mount chance that missed, a Renown bonus, no recipe).</summary>
@@ -537,6 +578,7 @@ public static class LootBoxRoller
             case "@bagofholding": return new BagOfHolding(e.Arg);
             case "@reagentbag": return new ReagentBag(t.ReagentBagCut[Math.Clamp((int)c.Rarity, 0, 3)]);
             case "@decor": return new LootDecor(e.ItemId, e.AltId, e.Name ?? "a decoration");
+            case "@artisandecor": return Server.Engines.ArtisanFestival.ArtisanFestival.Create(e.Name ?? "");
             case "@renownbonus":
                 c.R.Renown += Math.Max(t.Renown[c.BoxGrade - 1] * e.Arg / 100, 25 * c.Grade);
                 return null;
