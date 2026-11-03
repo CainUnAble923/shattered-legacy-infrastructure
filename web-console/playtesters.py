@@ -9,6 +9,9 @@ The files are in the test world's playtest folder, beside Saves, so a -Fresh sta
                            written here (Pull back) and by the Goblin (new tasks); never deleted from
   playtest-reports.jsonl   one line per answer, appended by the shard (server/customizations/PlayTest/PlayTestTasks.cs);
                            only read here
+  tester-accounts.json     cc-P789: each tester's account, whether it exists and its access level, written by the shard
+                           only (PlayTestAccounts); read here and by the Goblin, so staff accounts get staff-safe tasks
+  goblin-state.json        the Goblin's own state; "why" says, per account, what its last run gave or why not
 The shard reads the first two and appends to the third. Every write here is whole and atomic (a temporary file, then a
 rename) under playtest/.lock, which the Goblin and the page both take. None of it is ever committed: the world folder
 is outside git (server/lib is ignored), and nothing here holds an address, a password or a Pass or Fail.
@@ -26,6 +29,8 @@ import time
 
 TESTERS = "testers.json"
 TASKS = "tasks.json"
+ACCOUNTS = "tester-accounts.json"
+GOBLIN_STATE = "goblin-state.json"
 REPORTS = "playtest-reports.jsonl"
 LOCK = ".lock"
 ANSWERS = ("worked", "wrong", "couldnt")
@@ -78,6 +83,36 @@ class PlayTestData:
     def tasks(self):
         """(tasks, error), every task ever handed out."""
         return self._read_json(TASKS, "tasks")
+
+    def accounts(self):
+        """cc-P789: the shard's export, lower-case account -> {"account", "exists", "accessLevel", "staff"}. Missing or
+        broken: empty (every tester's level unknown)."""
+        try:
+            with open(self.path(ACCOUNTS), "r", encoding="utf-8-sig") as f:
+                doc = json.load(f)
+        except (OSError, ValueError):
+            return {}
+        rows = doc.get("accounts") if isinstance(doc, dict) else None
+        return {str(r.get("account", "")).lower(): r for r in (rows or []) if isinstance(r, dict) and r.get("account")}
+
+    def accounts_written_at(self):
+        try:
+            with open(self.path(ACCOUNTS), "r", encoding="utf-8-sig") as f:
+                return str(json.load(f).get("writtenAt", ""))
+        except (OSError, ValueError, AttributeError):
+            return ""
+
+    def goblin_why(self):
+        """The Goblin's last word per account (goblin-state.json "why"), and when it ran."""
+        try:
+            with open(self.path(GOBLIN_STATE), "r", encoding="utf-8-sig") as f:
+                doc = json.load(f)
+        except (OSError, ValueError):
+            return {}, ""
+        if not isinstance(doc, dict):
+            return {}, ""
+        why = doc.get("why") if isinstance(doc.get("why"), dict) else {}
+        return {str(k).lower(): str(v) for k, v in why.items()}, str(doc.get("lastRun", ""))
 
     def reports(self):
         """Every readable report line, oldest first, each with its line number ("line"). Broken lines are skipped."""
@@ -186,6 +221,8 @@ class PlayTestData:
             if r.get("task") and r.get("button") in ANSWERS:
                 by_task.setdefault((str(r.get("account", "")).lower(), r["task"]), r)
         accounts = {str(t.get("account", "")).lower() for t in (testers or [])}
+        levels = self.accounts()
+        goblin, goblin_at = self.goblin_why()
         out = []
         for t in testers or []:
             acc = str(t.get("account", "")).lower()
@@ -203,11 +240,23 @@ class PlayTestData:
                 else:
                     open_.append(row)
             mine_reports = [r for r in reports if str(r.get("account", "")).lower() == acc]
+            lv = levels.get(acc)
+            if lv is None:
+                access = {"known": False, "staff": False, "level": "",
+                          "note": "Access level not known yet: the test shard lists it within a few minutes of a tester "
+                                  "being added. Until then only tasks that work on a staff account are given."}
+            elif lv.get("staff"):
+                access = {"known": True, "staff": True, "level": str(lv.get("accessLevel", "")),
+                          "note": "Staff account: gets only tasks that work on a staff account, never player-only ones."}
+            else:
+                access = {"known": True, "staff": False, "level": str(lv.get("accessLevel", "Player")),
+                          "note": "" if lv.get("exists", True) else "No such account on the test shard yet."}
             out.append({"account": t.get("account", ""), "name": t.get("name", ""), "paused": bool(t.get("paused")),
                         "addedAt": t.get("addedAt", ""), "open": open_, "finished": done, "pulled": pulled,
-                        "reports": list(reversed(mine_reports))})
+                        "reports": list(reversed(mine_reports)), "access": access, "goblin": goblin.get(acc, "")})
         others = [r for r in reports if str(r.get("account", "")).lower() not in accounts]
         return {"folder": self.folder, "testers": out, "testersError": terr, "tasksError": kerr,
+                "goblinAt": goblin_at, "accountsAt": self.accounts_written_at(),
                 "otherReports": len(others), "buttons": BUTTON_WORDS}
 
 

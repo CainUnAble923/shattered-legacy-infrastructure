@@ -17,6 +17,14 @@ What one run does, in order:
   4. When something changed (new reports, or new tasks), writes an email for Chase to <playtest>/goblin-mail.txt
      (subject, a blank line, the body); Run-PlayTestGoblin.ps1 sends it and removes it. Nothing changed: no email.
 
+cc-P789: staff accounts. A card says "needsPlayer": true when it needs a normal player account (a new character, the
+tutorial, Young status, anything staff powers skip or change); a card that does not say is taken to need one. The
+Goblin reads each tester's access level from tester-accounts.json, which the shard writes beside testers.json
+(playtesters.PlayTestData.accounts), and never gives a player-only card to a staff account, or to an account the shard
+has not listed yet. Such a tester gets none that night, and why is kept in goblin-state.json for the Play testers page.
+Each run also copies needsPlayer from the bank onto tasks handed out before it existed. --pull-staff-player-only is the
+one-time cleanup: it pulls back every open player-only task a staff tester holds, through the page's own Pull back.
+
 It never marks a test Pass or Fail and never writes the play-test page's data (testing/play-tests.json is only read):
 testers only produce evidence, and Chase alone marks results. The summaries and drafts quote the testers' words, so
 notes/goblin/ is git-ignored in shard-migration: they stay on the game PC.
@@ -114,32 +122,65 @@ def rank(buttons):
     return 2
 
 
-def assign(testers, tasks, reports, cards, settled, clock):
-    """The new tasks for tonight (appended to tasks in place) and why anyone got none. Pure but for clock."""
+def needs_player(card):
+    """True unless the card says it works on a staff account ("needsPlayer": false)."""
+    return card.get("needsPlayer") is not False
+
+
+def access_of(accounts, account):
+    """"staff", "player" or "unknown" for a tester's account, from the shard's export (tester-accounts.json)."""
+    rec = (accounts or {}).get(str(account).lower())
+    if rec is None:
+        return "unknown"
+    if not rec.get("exists", True):
+        return "player"   # not made yet: a new account is a player account when it is made at the login screen
+    return "staff" if rec.get("staff") else "player"
+
+
+STAFF_WHY = ("staff account (%s): only tasks that work on a staff account, and none are left in the bank for them. "
+             "Player-only tasks go to player accounts.")
+UNKNOWN_WHY = ("the shard has not listed this account's access level yet (tester-accounts.json, written by the test "
+               "shard every few minutes), so only tasks that work on a staff account, and none are left")
+
+
+def assign(testers, tasks, reports, cards, settled, clock, accounts=None):
+    """The new tasks for tonight (appended to tasks in place) and why anyone got none. Pure but for clock.
+    accounts: the shard's export by lower-case account; a staff or unlisted account gets only staff-safe cards."""
     live = [c for c in cards if not c.get("retired") and c.get("testId", "") not in settled]
     order = {c["key"]: i for i, c in enumerate(live)}
     answers = card_answers(tasks, reports)
     tonight = {}
     new, skipped = [], []
+    why = {}
     nid = next_id(tasks)
     for tester in testers:
         acc = str(tester.get("account", ""))
         label = tester.get("name") or acc
         if tester.get("paused"):
             skipped.append("%s: paused" % label)
+            why[acc.lower()] = "paused"
             continue
+        access = access_of(accounts, acc)
         mine = [t for t in tasks if str(t.get("account", "")).lower() == acc.lower()]
         done = playtesters.answered_ids(reports, acc)
         open_now = [t for t in mine if t.get("status", "open") == "open" and t.get("id") not in done]
         room = CAP - len(open_now)
         if room <= 0:
             skipped.append("%s: already has %d open tasks" % (label, len(open_now)))
+            why[acc.lower()] = "already has %d open tasks" % len(open_now)
             continue
         had = {t.get("card") for t in mine}
-        pool = sorted((c for c in live if c["key"] not in had),
+        pool = sorted((c for c in live if c["key"] not in had and (access == "player" or not needs_player(c))),
                       key=lambda c: (rank(answers.get(c["key"], set())), tonight.get(c["key"], 0), order[c["key"]]))
         if not pool:
-            skipped.append("%s: has done every card in the bank" % label)
+            if access == "staff":
+                reason = STAFF_WHY % ((accounts or {}).get(acc.lower(), {}).get("accessLevel") or "staff")
+            elif access == "unknown":
+                reason = UNKNOWN_WHY
+            else:
+                reason = "has done every card in the bank"
+            skipped.append("%s: %s" % (label, reason))
+            why[acc.lower()] = reason
             continue
         for c in pool[:room]:
             tid = "G-%04d" % nid
@@ -147,11 +188,56 @@ def assign(testers, tasks, reports, cards, settled, clock):
             task = {"id": tid, "account": acc, "card": c["key"], "testId": c.get("testId", ""), "title": c.get("title", ""),
                     "why": c.get("why", ""), "where": c.get("where", ""), "coords": c.get("coords", ""),
                     "steps": list(c.get("steps", [])), "lookFor": c.get("lookFor", ""), "intro": intro_for(tid),
-                    "status": "open", "assignedAt": clock()}
+                    "needsPlayer": needs_player(c), "status": "open", "assignedAt": clock()}
             tasks.append(task)
             new.append(task)
             tonight[c["key"]] = tonight.get(c["key"], 0) + 1
+        why[acc.lower()] = "got %d new task%s" % (min(room, len(pool)), "" if min(room, len(pool)) == 1 else "s")
+    assign.why = why
     return new, skipped
+
+
+def backfill(tasks, cards):
+    """Copies needsPlayer from the bank onto tasks handed out before the field existed. Returns how many changed."""
+    by_key = {c["key"]: c for c in cards}
+    n = 0
+    for t in tasks:
+        if "needsPlayer" not in t and t.get("card") in by_key:
+            t["needsPlayer"] = needs_player(by_key[t["card"]])
+            n += 1
+    return n
+
+
+def pull_staff_player_only(playtest_dir, bank_path, dry_run=False):
+    """The one-time cleanup: every open player-only task held by a staff tester, pulled back with the page's own Pull
+    back (status "pulled", pulledAt), so the history stays. Returns the task ids (would be) pulled."""
+    data = playtesters.PlayTestData(playtest_dir)
+    testers, terr = data.testers()
+    if testers is None:
+        raise _Broken(terr)
+    cards = {c["key"]: c for c in load_bank(bank_path)}
+    accounts = data.accounts()
+    tasks, kerr = data.tasks()
+    if tasks is None:
+        raise _Broken(kerr)
+    reports = data.reports()
+    pulled = []
+    for tester in testers:
+        acc = str(tester.get("account", ""))
+        if access_of(accounts, acc) != "staff":
+            continue
+        done = playtesters.answered_ids(reports, acc)
+        for t in tasks:
+            if (str(t.get("account", "")).lower() == acc.lower() and t.get("status", "open") == "open"
+                    and t.get("id") not in done):
+                card = cards.get(t.get("card"), {})
+                np = t.get("needsPlayer") if "needsPlayer" in t else needs_player(card)
+                if np is not False:
+                    pulled.append(t["id"])
+    if not dry_run:
+        for tid in pulled:
+            data.pull_back(tid)
+    return pulled
 
 
 def describe_report(r, task, tester_name):
@@ -201,8 +287,10 @@ def run(playtest_dir, notes, bank_path, today, clock=playtesters.now_iso, dry_ru
         if reports and reports[-1]["line"] < seen:
             seen = 0   # the reports file was replaced: everything in it is new to the Goblin
         fresh = [r for r in reports if r["line"] > seen]
-        new, skipped = assign(testers, tasks, reports, cards, settled, clock)
-        if new and not dry_run:
+        filled = backfill(tasks, cards)
+        new, skipped = assign(testers, tasks, reports, cards, settled, clock, data.accounts())
+        why = assign.why
+        if (new or filled) and not dry_run:
             data.write_tasks(tasks)
     names = {str(t.get("account", "")).lower(): (t.get("name") or t.get("account")) for t in testers}
     task_of = {(str(t.get("account", "")).lower(), t.get("id")): t for t in tasks}
@@ -274,7 +362,7 @@ def run(playtest_dir, notes, bank_path, today, clock=playtesters.now_iso, dry_ru
     if not dry_run:
         os.makedirs(playtest_dir, exist_ok=True)
         with open(state_path, "w", encoding="utf-8", newline="\n") as f:
-            json.dump({"reportsSeen": reports[-1]["line"] if reports else 0, "lastRun": clock()}, f, indent=1)
+            json.dump({"reportsSeen": reports[-1]["line"] if reports else 0, "lastRun": clock(), "why": why}, f, indent=1)
             f.write("\n")
     return {"newReports": fresh, "newTasks": new, "skipped": skipped, "summary": summary, "mail": mail}
 
@@ -289,8 +377,20 @@ def main(argv=None):
     ap.add_argument("--notes", default=DEFAULT_NOTES, help="the shard-migration folder (play-tests.json read; notes/goblin written)")
     ap.add_argument("--bank", default=DEFAULT_BANK)
     ap.add_argument("--dry-run", action="store_true", help="write only the summary: no tasks, drafts, mail or state")
+    ap.add_argument("--pull-staff-player-only", action="store_true",
+                    help="the one-time cleanup: pull back the player-only tasks staff testers hold (with --dry-run: list them)")
     a = ap.parse_args(argv)
     today = datetime.datetime.now().strftime("%Y-%m-%d")
+    if a.pull_staff_player_only:
+        try:
+            ids = pull_staff_player_only(a.playtest_dir, a.bank, dry_run=a.dry_run)
+        except (_Broken, playtesters.PlayTestError) as e:
+            print("The Goblin stopped: %s. Nothing was pulled back." % e)
+            return 2
+        print("%s %d player-only task%s from staff testers: %s" % ("Would pull back" if a.dry_run else "Pulled back",
+                                                                  len(ids), "" if len(ids) == 1 else "s",
+                                                                  ", ".join(ids) or "none"))
+        return 0
     try:
         out = run(a.playtest_dir, a.notes, a.bank, today, dry_run=a.dry_run)
     except (_Broken, playtesters.PlayTestError) as e:
