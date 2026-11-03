@@ -14,8 +14,8 @@
 //                appear on must pass the same place check, out of the player's line of sight when one allows.
 //   Rewards      Creatures carry their own loot. The Toll keeper's top damager gets a loot box through
 //                ClusterFLootBoxes.Award (source encounter:toll: once per loop, the repeat line after); the Procession's
-//                leader gives Festival Tokens (FestivalTokens.Grant). Nothing grants a skill or stat point, nothing is
-//                tamable.
+//                leader gives Festival Tokens (FestivalTokens.Grant). A Boss (cc-P786, the Halloween witch) pays its own
+//                reward. Nothing grants a skill or stat point, nothing is tamable.
 //   Cleanup      Sweep, every SweepSeconds: an encounter creature standing anywhere WhyNotHere refuses (a town, a
 //                house, the isle) is removed at once, so none follows a player into town; after LeaveAfterMinutes, each
 //                one not fighting leaves (fighting ones leave when they stop). A night encounter leaves at dawn. Only
@@ -595,6 +595,19 @@ public static class ClusterFEncounters
 
                     break;
                 }
+            case EncounterKind.Boss:
+                {
+                    // cc-P786: one strong creature (the Halloween witch) that comes for the player and stays near the spot.
+                    foreach (var bc in e.Creatures)
+                    {
+                        bc.FightMode = FightMode.Closest;
+                        bc.Home = spot;
+                        bc.RangeHome = 6;
+                        bc.Combatant = pm;
+                    }
+
+                    break;
+                }
             case EncounterKind.Procession:
                 {
                     // Harmless unless attacked; walks on across the player's path.
@@ -767,6 +780,12 @@ public static class ClusterFEncounters
                             ClusterFLootBoxes.Award(top, e.Def.BoxSource, BoxTheme.Hunter, e.Def.BoxGrade, null, e.Def.Name, out _);
                         }
 
+                        break;
+                    }
+                case EncounterKind.Boss:
+                    {
+                        // cc-P786: the boss pays its own reward (the witch's drop and tokens, HalloweenWitch.OnDeath).
+                        e.Stage = EncounterStage.Done;
                         break;
                     }
                 case EncounterKind.Procession:

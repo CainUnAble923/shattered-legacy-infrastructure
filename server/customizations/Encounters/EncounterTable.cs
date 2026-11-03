@@ -22,7 +22,10 @@ public enum EncounterKind
 {
     Toll,
     Surveyor,
-    Procession
+    Procession,
+
+    /// <summary>cc-P786: one strong creature that comes for the player (the Halloween witch). It pays its own reward.</summary>
+    Boss
 }
 
 /// <summary>When an encounter can happen, by the hour at the player's spot (Clock.GetTime).</summary>
@@ -168,8 +171,21 @@ public sealed class EncounterTable
 
     public static EncounterTable Current
     {
-        get => _current ??= Defaults;
-        set => _current = value;
+        get => _current ??= Supplemented(Defaults);
+        set => _current = Supplemented(value);
+    }
+
+    /// <summary>
+    /// cc-P786: other systems' encounters, added to every table as it comes into force (a system with its own config adds
+    /// its encounter here, so an encounters.json written before that system existed still gets it). A handler adds
+    /// nothing when the table already has an encounter with its id.
+    /// </summary>
+    public static event Action<EncounterTable>? Supplement;
+
+    private static EncounterTable Supplemented(EncounterTable table)
+    {
+        Supplement?.Invoke(table);
+        return table;
     }
 
     /// <summary>A facet by its name (Trammel, Felucca, ...), or null; never Internal.</summary>
