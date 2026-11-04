@@ -157,7 +157,9 @@ public static class LeagueShop
         new("title.champion", "Title: the League Champion", 1750, 800, LeagueShopKind.Title, TitleArt, LeagueHue,
             titleKey: Server.Engines.RewardStores.RewardStoreTitles.LeagueChampion, boxable: false),
         new("box.platinum", "System's Loot Box, Platinum", 1750, 800, LeagueShopKind.LootBox, BoxArt, 0,
-            pm => [MakeBox(pm, BoxTier.Platinum)], boxable: false)
+            pm => [MakeBox(pm, BoxTier.Platinum)], boxable: false),
+        // cc-P794: four of the ethereal looks, kind Mount like the reward mounts, so no box draws one.
+        .. EtherealLooks.ShopRows()
     ];
 
     private static Func<PlayerMobile, List<Item>> One(Func<PlayerMobile, Item> make) => pm => [make(pm)];

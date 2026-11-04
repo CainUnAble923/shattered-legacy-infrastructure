@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.04.2
+
+### Added
+- Seven new ethereal mounts, solid rather than see-through, and each a blessed statuette you double-click to ride. The League shop sells four at 1,750 AP: the peacock for 1,500 Renown, and the windrunner, dark tiger and light tiger for 2,000. Three are achievement rewards: the lasher for finishing all 38 New Haven trainer quests, the boura for discovering all 16 ore types, and the ancient hellhound for reaching 200 in three skills. If your account has already earned one of those three, it is in your backpack at your next login. (After the ethereal mounts of Neshoba, Shazzy and Yvan Major.)
+
+### Staff
+- The ethereal mount settings are clusterf.etherealLooks.hue, .followerSlots, .shopAp and .renown.<peacock|windrunner|tiger|light-tiger>.
+
 ## 2026.11.03.11
 
 ### Changed

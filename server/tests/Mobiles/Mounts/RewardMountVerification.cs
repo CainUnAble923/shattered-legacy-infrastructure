@@ -209,7 +209,7 @@ public class RewardMountVerification
     public void EveryMountHasItsRoute()
     {
         // League shop: six statuette rows at 1750 AP, past every League box's reach.
-        var rows = LeagueShop.Stock.Where(r => r.Kind == LeagueShopKind.Mount).ToArray();
+        var rows = LeagueShop.Stock.Where(r => r.Kind == LeagueShopKind.Mount && r.Key.StartsWith("mount.")).ToArray();
         Assert.Equal(RewardMounts.Defs.Where(d => d.Route == RewardMountRoute.LeagueShop).Select(d => $"mount.{d.Key}"), rows.Select(r => r.Key));
         Assert.Equal(6, rows.Length);
         var pm = Owner();
