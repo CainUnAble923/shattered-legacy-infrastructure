@@ -1,0 +1,22 @@
+--- a/Projects/UOContent/Misc/ShrinkTable.cs
++++ b/Projects/UOContent/Misc/ShrinkTable.cs
+@@ -37,6 +37,19 @@
+                 throw new JsonException($"Failed to deserialize {path}.");
+             }
+ 
++            // cc-P793: the shard's rows, on top of pinned's.
++            var shardPath = "Data/ShatteredLegacy/shrink.json";
++            var shardRows = JsonConfig.Deserialize<Dictionary<string, string>>(shardPath);
++            if (shardRows == null)
++            {
++                throw new JsonException($"Failed to deserialize {shardPath}.");
++            }
++
++            foreach (var (body, item) in shardRows)
++            {
++                table[body] = item;
++            }
++
+             var length = 0;
+ 
+             foreach (var key in table.Keys)
