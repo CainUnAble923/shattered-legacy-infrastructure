@@ -778,6 +778,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             flavor:          "Three skills at 200. This was clearly done on purpose.",
             itemGumpId:      0x0F26,
             hidden:          true,
+            rewardItems:     new[] { typeof(Server.Mobiles.EtherealAncientHellHound) }, // cc-P794: an ethereal look (EtherealLooks.PayOwed)
             prerequisiteKey: "skills.master");
 
         Reg("skills.triple_grandmaster",
@@ -939,6 +940,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             flavor:          "The survey is complete. The earth has no more surprises for you.",
             itemGumpId:      0x0F26,
             hidden:          true,
+            rewardItems:     new[] { typeof(Server.Mobiles.EtherealBoura) }, // cc-P794: an ethereal look (EtherealLooks.PayOwed)
             prerequisiteKey: "mining.surveyor",
             progressCounter: "ore_types_discovered");
 
@@ -1112,6 +1114,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             flavor:          "Done. Actually completely done. The System chooses to believe you.",
             itemGumpId:      0x0F26,
             hidden:          true,
+            rewardItems:     new[] { typeof(Server.Mobiles.EtherealLasher) }, // cc-P794: an ethereal look (EtherealLooks.PayOwed)
             prerequisiteKey: "legacy.new_haven_10",
             progressCounter: "new_haven_quests");
 
@@ -1478,7 +1481,13 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
         Server.Engines.LeagueRewards.LeagueTitles.Sync(data); // cc-P229: AP titles unlock as AP is reached, and stay
 
         if (def.RewardItems.Length > 0)
+        {
             SpawnRewardItems(acct, def);
+
+            // cc-P794: an ethereal look is paid once, now or at the next login
+            if (OnlineCharacter(acct) is { } online)
+                Server.Mobiles.EtherealLooks.PayOwed(online);
+        }
 
         ClusterFNotedBySystem.OnEarned(acct, def); // cc-P263: a title the Noted reward table names
 
@@ -1495,15 +1504,13 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
     /// </summary>
     private static void SpawnRewardItems(IAccount acct, AchievementDef def)
     {
-        PlayerMobile? pm = null;
-        for (var i = 0; i < acct.Count; i++)
-        {
-            if (acct[i] is PlayerMobile p && p.NetState != null) { pm = p; break; }
-        }
+        var pm = OnlineCharacter(acct);
         if (pm == null) return;
 
         foreach (var type in def.RewardItems)
         {
+            if (Server.Mobiles.EtherealLooks.PaysOnce(type)) continue; // cc-P794: TryGrant and the login pay these
+
             if (Activator.CreateInstance(type) is not Item item) continue;
 
             if (pm.Backpack != null)
@@ -1511,6 +1518,16 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             else
                 item.MoveToWorld(pm.Location, pm.Map);
         }
+    }
+
+    private static PlayerMobile? OnlineCharacter(IAccount acct)
+    {
+        for (var i = 0; i < acct.Count; i++)
+        {
+            if (acct[i] is PlayerMobile p && p.NetState != null) return p;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -1621,6 +1638,9 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
 
         // -- Jacob's Pickaxe -----------------------------------------------
         CheckJacobsPickaxe(pm);
+
+        // -- Ethereal looks, cc-P794: earned offline, or before they existed -
+        Server.Mobiles.EtherealLooks.PayOwed(pm);
     }
 
     [OnEvent(nameof(PlayerMobile.PlayerDeathEvent))]

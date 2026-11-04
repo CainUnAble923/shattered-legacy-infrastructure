@@ -375,6 +375,9 @@ public class LeagueShopVerification
         ("bagofsending", 250, 250), ("furnituretub", 250, 200), ("crystalball", 250, 300),
         ("metallictub", 500, 400), ("bondingpotion", 500, 400), ("crystal.green", 500, 300), ("crystal.purple", 500, 300),
         ("namechange", 1000, 600), ("title.champion", 1750, 800), ("box.platinum", 1750, 800),
+        // cc-P794: the ethereal looks routed to the shop (EtherealLooks.ShopRows).
+        ("ethereal.peacock", 1750, 1500), ("ethereal.windrunner", 1750, 2000), ("ethereal.tiger", 1750, 2000),
+        ("ethereal.light-tiger", 1750, 2000),
     ];
 
     [Fact]
