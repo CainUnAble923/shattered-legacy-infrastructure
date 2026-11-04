@@ -1074,6 +1074,12 @@ apply_patch "$PATCHES/Provisioner-chocolatiering.patch"
 # against pinned; pinned by BeekeepingVerification.
 apply_patch "$PATCHES/Beekeeper-beekeeping.patch"
 
+# cc-P793: Data/ShatteredLegacy/shrink.json adds rows to pinned's Data/shrink.json (Distribution/Data stays pinned), so a body
+# pinned has no figurine for gets one wherever pinned looks one up (the leash, Tracking, a pet's trade). ShrinkTable keeps its
+# table private and sized to the file, so writing into it from outside would mean rebuilding it by reflection. Made with
+# diff -u against pinned; pinned by PeacockVerification.
+apply_patch "$PATCHES/ShrinkTable-shard-rows.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

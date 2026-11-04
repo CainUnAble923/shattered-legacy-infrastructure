@@ -121,7 +121,9 @@ namespace Server
             (2130, BodyType.Animal, "spotted calf (cc-P365: evo young stage: a calf (prapilk_rindviehcher L_02))"),
             (2131, BodyType.Animal, "red calf (cc-P365: evo young stage: a calf (prapilk_rindviehcher L_03))"),
             (2132, BodyType.Animal, "piebald calf (cc-P365: evo young stage: a calf (prapilk_rindviehcher L_04))"),
-            (2133, BodyType.Animal, "great grey wolf (cc-P365: the evo dog's top stage (kr-wolf; actions 0-10 and 12))")
+            (2133, BodyType.Animal, "great grey wolf (cc-P365: the evo dog's top stage (kr-wolf; actions 0-10 and 12))"),
+            // cc-P793: the client's Bird_Peacock_Mount. bodyTable.cfg has no row for it (Empty); mobtypes.txt says ANIMAL.
+            (1440, BodyType.Animal, "peacock (cc-P793: the tamable mount)")
         };
 
         public static void Configure() => Apply();

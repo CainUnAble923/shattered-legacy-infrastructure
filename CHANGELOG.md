@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.04
+
+### Added
+- Peacocks strut the meadows north of Trinsic. Tame one (Animal Taming 29.1, one follower slot, it eats fruit and grain) and ride it, with an ostard's strength and speed. A pet leash shrinks one into its own figurine. (After WiKKiD's peacock mount.)
+
+### Staff
+- Every peacock number (taming, stats, the meadows and their spawners) is in Configuration/peacock.json, written with the defaults on first start. [Peacock status|reload|seed [dryrun]. Meadow spawners are placed by themselves after every world load, once per meadow.
+
 ## 2026.11.03.11
 
 ### Changed
