@@ -1,0 +1,32 @@
+--- a/Projects/Server/Skills.cs
++++ b/Projects/Server/Skills.cs
+@@ -73,7 +73,8 @@
+     Spellweaving = 54,
+     Mysticism = 55,
+     Imbuing = 56,
+-    Throwing = 57
++    Throwing = 57,
++    Herbalism = 58 // Shattered Legacy (cc-P804, F-51)
+ }
+ 
+ public enum Stat
+@@ -766,6 +767,9 @@
+     [CommandProperty(AccessLevel.Counselor, canModify: true)]
+     public Skill Throwing => this[SkillName.Throwing];
+ 
++    [CommandProperty(AccessLevel.Counselor)]
++    public Skill Herbalism => this[SkillName.Herbalism];
++
+     public override string ToString() => "...";
+ 
+     public static bool UseSkill(Mobile from, SkillName name) => UseSkill(from, (int)name);
+--- a/Projects/UOContent/Skills/AntiMacroSystem.cs
++++ b/Projects/UOContent/Skills/AntiMacroSystem.cs
+@@ -73,6 +73,7 @@
+         true,  // Mysticism = 55
+         true,  // Imbuing = 56
+         false, // Throwing = 57
++        false, // Herbalism = 58, Shattered Legacy (cc-P804): the table must hold every SkillName
+     };
+ 
+     private static Dictionary<Mobile, PlayerAntiMacro> _antiMacroTable;

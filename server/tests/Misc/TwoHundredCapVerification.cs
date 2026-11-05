@@ -118,7 +118,7 @@ public class TwoHundredCapVerification
             }
 
             Assert.Equal(SkillInfo.Table.Length * 2000, pm.Skills.Cap);
-            Assert.Equal(11600.0, ClusterFSkillCaps.TotalSkillCap);
+            Assert.Equal(SkillInfo.Table.Length * 200.0, ClusterFSkillCaps.TotalSkillCap);
             pm.Delete();
         }
         finally

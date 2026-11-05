@@ -329,13 +329,19 @@ public static class ClusterFGuildSystem
         return true;
     }
 
+    /// <summary>cc-P804 (F-51): the Order of the Alembic counts the higher of Alchemy and Herbalism.</summary>
+    public static double TaskSkillValue(PlayerMobile pm, GuildDef def) =>
+        def.Key == ClusterFAlembicGuild.Key
+            ? System.Math.Max(pm.Skills[def.TaskSkill].Base, pm.Skills[SkillName.Herbalism].Base)
+            : pm.Skills[def.TaskSkill].Base;
+
     /// <summary>The old join task, now the Apprentice task: skill, tribute in the backpack, or either.</summary>
     public static bool MeetsApprenticeTask(PlayerMobile pm, GuildDef def, out string reason)
     {
         switch (def.TaskType)
         {
             case GuildTaskType.SkillOnly:
-                if (pm.Skills[def.TaskSkill].Base >= def.TaskSkillMin)
+                if (TaskSkillValue(pm, def) >= def.TaskSkillMin)
                 {
                     reason = string.Empty;
                     return true;
@@ -353,7 +359,7 @@ public static class ClusterFGuildSystem
                 return false;
 
             case GuildTaskType.SkillOrItem:
-                if (pm.Skills[def.TaskSkill].Base >= def.TaskSkillMin)
+                if (TaskSkillValue(pm, def) >= def.TaskSkillMin)
                 {
                     reason = string.Empty;
                     return true;
@@ -398,7 +404,7 @@ public static class ClusterFGuildSystem
             return false;
 
         if (def.TaskType != GuildTaskType.SkillOnly &&
-            pm.Skills[def.TaskSkill].Base < def.TaskSkillMin &&
+            TaskSkillValue(pm, def) < def.TaskSkillMin &&
             def.TaskItemType != null)
         {
             // F-11: the tribute comes from the pack, then the bank, all or nothing.
