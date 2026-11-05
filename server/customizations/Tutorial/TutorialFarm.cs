@@ -932,7 +932,11 @@ namespace Server.Tutorial
 
         /// <summary>cc-P721: Pip may be bandaged; every other beneficial act is <paramref name="inner"/>'s (pinned's) to judge.</summary>
         public static bool AllowBeneficial(Mobile from, Mobile target, AllowBeneficialHandler? inner) =>
-            target is TutorialWoundedHelper || (inner?.Invoke(from, target) ?? true);
+            target is TutorialWoundedHelper ||
+            // cc-P799: the stable horse is as uncontrolled as Pip, and P743's lesson was refused the same way ("You cannot
+            // perform beneficial acts on your target"): its own trainee may bandage it.
+            target is TutorialStableHorse { Controlled: false } horse && horse.Trainee == from ||
+            (inner?.Invoke(from, target) ?? true);
 
         /// <summary>A trainee on the Wakening Isle (or a copy of it).</summary>
         public static bool IsleTrainee(Mobile m) => m is PlayerMobile pm && ClusterFTutorial.IsParticipant(pm) && TutorialWorld.IsOnIsle(pm);

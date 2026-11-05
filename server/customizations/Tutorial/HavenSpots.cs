@@ -37,7 +37,10 @@ public static class HavenSpots
     /// <summary>Rook's old spot on the square, where an older world's Rook is moved from (cc-P743).</summary>
     public static readonly Point3D OldRook = new(3631, 2584, 0);
 
-    /// <summary>His bench: two wooden bench pieces (0x0B2C, east-west), Rook on the west one (cc-P743).</summary>
+    /// <summary>The way Rook sits on his bench (cc-P806): the the moongate exit and the square are north of him.</summary>
+    public const Direction RookFacing = Direction.North;
+
+    /// <summary>His bench: two wooden bench pieces (0x0B2D, which runs east-west; cc-P806, read from the art), Rook on the west one (cc-P743).</summary>
     public static readonly Point3D[] RookBench = [new(3669, 2636, 0), new(3670, 2636, 0)];
 
     /// <summary>Where the isle's dock moongate sets a trainee down: in front of Rook's bench (cc-P743; was 3632,2584,0).</summary>
