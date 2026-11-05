@@ -17,13 +17,14 @@ namespace Server;
 ///   GuildReferrals -- the Guild Directory (cc-P15): the same rows as the board's first page and [guild
 ///   WhereToStart   -- step-by-step guidance for new arrivals
 ///   Rank           -- (cc-P48) the character's League rank, the next one, the four promotion checks, Promote
+///   Sash           -- (cc-P800) the character's League sash: take it, replace it, buy the next step
 ///   MuleErrand     -- (cc-P69) the Compact's Mule errand: take it, deliver ore and ingots, collect the mule, replace a lost one
 ///
 /// Opened by: LeagueRegistrar.OnDoubleClick
 /// </summary>
 public class LeagueRegistrarGump : GuildStyledGump
 {
-    public enum View { MainMenu, CitizenStatus, AboutRenown, GuildReferrals, WhereToStart, Rank, MuleErrand }
+    public enum View { MainMenu, CitizenStatus, AboutRenown, GuildReferrals, WhereToStart, Rank, MuleErrand, Sash }
 
     // cc-P48: the main menu's League Rank entry and the Rank page's Promote (the free IDs from 18).
     public const int BtnRank    = 18;
@@ -49,11 +50,19 @@ public class LeagueRegistrarGump : GuildStyledGump
     // cc-P760: the Achievement store, on the About Renown row's right.
     public const int BtnApStore = 30;
 
+    // cc-P800: the League sash, on the Guild Referrals row's right, and its page's actions.
+    public const int BtnSash = 31;
+    public const int BtnSashTake = 32;
+    public const int BtnSashUpgrade = 33;
+
     private readonly PlayerMobile _pm;
     private readonly View         _view;
 
     // The rank the page was drawn at. Promote acts only from this rank, so a stale page promotes nobody.
     private readonly int          _rankAtDraw;
+
+    // cc-P800: the step the Sash page was drawn at. Upgrade acts only from this step, so a stale page charges nobody.
+    private readonly int          _sashStepAtDraw;
 
     private const int W    = 440;
     private const int H    = 420;
@@ -64,6 +73,7 @@ public class LeagueRegistrarGump : GuildStyledGump
         _pm   = pm;
         _view = view;
         _rankAtDraw = ClusterFLeagueRanks.GetRank(pm);
+        _sashStepAtDraw = LeagueSashSystem.StepOf(pm);
 
         Closable   = true;
         Disposable = true;
@@ -91,6 +101,7 @@ public class LeagueRegistrarGump : GuildStyledGump
             case View.WhereToStart:  DrawWhereToStart(data);  break;
             case View.Rank:          DrawRank(data);          break;
             case View.MuleErrand:    DrawMuleErrand();        break;
+            case View.Sash:          DrawSash(data);          break;
         }
 
         // -- Footer --------------------------------------------------------
@@ -142,12 +153,72 @@ public class LeagueRegistrarGump : GuildStyledGump
         AddButton(230, y, 4011, 4012, BtnShop); AddLabel(256, y + 2, 999, "League Shop");  y += 28;
         AddButton(18, y, 4011, 4012, 14); AddLabel(44, y + 2, 999, "Guilds Overview");
         AddButton(230, y, 4011, 4012, BtnTitles); AddLabel(256, y + 2, 999, "Titles");     y += 28;
-        AddButton(18, y, 4011, 4012, 15); AddLabel(44, y + 2, 999, "Guild Referrals");   y += 28;
+        AddButton(18, y, 4011, 4012, 15); AddLabel(44, y + 2, 999, "Guild Referrals");
+        AddButton(230, y, 4011, 4012, BtnSash); AddLabel(256, y + 2, 999, "League Sash");  y += 28;
         AddButton(18, y, 4011, 4012, 16); AddLabel(44, y + 2, 999, "League Dispatch");   y += 28;
         AddButton(18, y, 4011, 4012, 17); AddLabel(44, y + 2, 999, "Where to go first?"); y += 28;
         AddButton(18, y, 4011, 4012, BtnRank); AddLabel(44, y + 2, 999, "League Rank");
         AddButton(230, y, 4011, 4012, BtnRequisitions); AddLabel(256, y + 2, 999, "Requisitions board"); y += 28;
         AddButton(18, y, 4011, 4012, BtnMuleErrand); AddLabel(44, y + 2, 999, "The Compact's Mule (errand)");
+    }
+
+    // cc-P800: the character's sash, what it does now, and the next step's rank and fee. The press checks again.
+    private void DrawSash(ClusterFAccountData data)
+    {
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "League Sash");
+        AddImageTiled(10, 72, W - 20, 1, 9304);
+
+        var table = LeagueSashTable.Current;
+        var step = _sashStepAtDraw;
+
+        if (_rankAtDraw <= 0)
+        {
+            AddHtml(18, 82, W - 36, 60, "<BASEFONT COLOR=#AAAAAA>Register with the League first, and your sash is free.</BASEFONT>", false, false);
+            return;
+        }
+
+        var sash = LeagueSashSystem.Find(_pm);
+
+        if (sash == null)
+        {
+            var had = LeagueSashSystem.Has(_pm);
+            var offer = had
+                ? "The League keeps a record of every sash. Yours can be replaced at the step it had reached, at no charge."
+                : "Every citizen may wear the League's sash. It is bound to you and you keep it through every loop. " +
+                  $"As you rise, come back to me: it grows in {table.MaxStep} steps, each with a new name and metal hue.";
+
+            AddHtml(18, 82, W - 36, 90, $"<BASEFONT COLOR=#AAAAAA>{offer}</BASEFONT>", false, false);
+            AddButton(18, 180, 4011, 4012, BtnSashTake);
+            AddLabel(44, 182, 0x44, had ? "Replace my sash" : "Take my sash");
+            return;
+        }
+
+        AddLabel(18, 80, 999, "Your sash:");
+        AddLabel(110, 80, sash.Hue, $"{sash.DefaultName} (step {step} of {table.MaxStep})");
+        AddLabel(18, 102, 999, "Worn:");
+        AddLabel(110, 102, 999, table.BonusOf(step) > 0 ? $"+{table.BonusOf(step)}% Renown earned" : "no Renown bonus yet");
+        AddImageTiled(10, 126, W - 20, 1, 9304);
+
+        var next = step + 1;
+
+        if (next > table.MaxStep)
+        {
+            AddHtml(18, 136, W - 36, 60, "<BASEFONT COLOR=#AAAAAA>Your sash has reached its last step. The League has no higher honor.</BASEFONT>", false, false);
+            return;
+        }
+
+        var need = table.RankNeeded(next);
+        var fee = table.FeeOf(next);
+
+        AddLabel(18, 136, 999, "Next step:");
+        AddLabel(110, 136, table.HueOf(next), $"a {table.MetalNameOf(next)} League sash, +{table.BonusOf(next)}% Renown");
+
+        var reqs = new RequirementList()
+            .Check(_rankAtDraw >= need, $"League rank: {ClusterFLeagueRanks.RankName(need)}", $"League rank: {ClusterFLeagueRanks.RankName(need)}")
+            .Amount("Renown", data.Renown, fee);
+
+        var y = reqs.Draw(this, 18, 162);
+        reqs.DrawFooter(this, 18, y + 6, BtnSashUpgrade, $"Upgrade for {fee:N0} Renown");
     }
 
     // cc-P69: the Compact's Mule errand (MuleErrand). The page says where the character is; every button re-checks.
@@ -432,6 +503,26 @@ public class LeagueRegistrarGump : GuildStyledGump
             case BtnRequisitions: // cc-P150 (F-47): the League board, every guild
                 Server.Items.RequisitionsBoard.OpenFor(_pm, null);
                 return;
+
+            case BtnSash: // cc-P800
+                _pm.SendGump(new LeagueRegistrarGump(_pm, View.Sash));
+                break;
+
+            case BtnSashTake when _view == View.Sash:
+                {
+                    var issued = LeagueSashSystem.Issue(_pm, out var sashMsg);
+                    _pm.SendMessage(issued != null ? 0x44 : 0x22, sashMsg);
+                    _pm.SendGump(new LeagueRegistrarGump(_pm, View.Sash));
+                }
+                break;
+
+            case BtnSashUpgrade when _view == View.Sash: // every check again, server side, from the step this page was drawn at
+                {
+                    var upgraded = LeagueSashSystem.Upgrade(_pm, _sashStepAtDraw, out var sashMsg);
+                    _pm.SendMessage(upgraded ? 0x44 : 0x22, sashMsg);
+                    _pm.SendGump(new LeagueRegistrarGump(_pm, View.Sash));
+                }
+                break;
 
             case BtnRank: // League Rank (cc-P48)
                 _pm.SendGump(new LeagueRegistrarGump(_pm, View.Rank));

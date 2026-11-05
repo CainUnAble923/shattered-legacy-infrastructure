@@ -270,6 +270,8 @@ public partial class LootBox : Item
                 continue;
             }
 
+            item = LeagueSashSystem.FromBox(pm, item); // cc-P800: an old League sash becomes the opener's own
+
             shown.Add(LootBoxRoller.Describe(item));
             rare |= IsRareSlot(i);
             boxInBox |= item is LootBox;
