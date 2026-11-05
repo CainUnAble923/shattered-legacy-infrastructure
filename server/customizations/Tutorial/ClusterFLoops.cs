@@ -58,6 +58,7 @@ namespace Server.Tutorial
 
             ResetLevelAndSkillsForF12(pm, loop);
             ClusterFAccountPersistence.GetOrCreate(acct).FlagValues[LoopKey(pm)] = loop.ToString(CultureInfo.InvariantCulture);
+            LeagueSashSystem.Refresh(pm); // cc-P800: its "worn through" line; the sash and its step stay
             return new AwardResultOrNone(ClusterFLootBoxes.OnLoopCompleted(pm, loop));
         }
     }

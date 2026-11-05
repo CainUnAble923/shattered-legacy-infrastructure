@@ -1477,7 +1477,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
 
         var data = ClusterFAccountPersistence.GetOrCreate(acct);
         data.AchievementPoints += def.AP;
-        data.GrantRenown(def.Renown, RenownSource.Achievement); // and LifetimeRenown (cc-P48)
+        LeagueSashSystem.Earn(data, OnlineCharacter(acct), def.Renown, RenownSource.Achievement); // and LifetimeRenown (cc-P48); cc-P800: the worn sash's bonus
         Server.Engines.LeagueRewards.LeagueTitles.Sync(data); // cc-P229: AP titles unlock as AP is reached, and stay
 
         if (def.RewardItems.Length > 0)

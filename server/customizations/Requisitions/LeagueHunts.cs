@@ -313,7 +313,7 @@ public static class LeagueHunts
             return false;
 
         h.Paid = true;
-        ClusterFAccountPersistence.GetOrCreate(acct).GrantRenown(h.Renown, RenownSource.LeagueJob);
+        LeagueSashSystem.Earn(ClusterFAccountPersistence.GetOrCreate(acct), pm, h.Renown, RenownSource.LeagueJob); // cc-P800: the worn sash's bonus
         ClusterFAccountPersistence.GetOrCreateGuild(pm).AddReputation(h.GuildKey, h.Reputation);
         var guildPoints = Server.Engines.RewardStores.GuildPointEarning.OnRequisition(pm, h.GuildKey, h.Reputation);
         ClusterFRequisitions.GiveGold(pm, h.Gold);
