@@ -571,6 +571,11 @@ namespace Server.Mobiles
             {
                 Healed = true;
                 Tamable = true;
+                // cc-P799: pinned's taming stops ("You do not have a clear path") unless the animal can walk to the tamer,
+                // and this one could not. It stays in its stall by its home range.
+                CantWalk = false;
+                Home = Location;
+                RangeHome = 0;
                 Name = "a calmer horse";
                 if (Trainee != null) { TutorialWingTrials.Line(Trainee, TutorialWingTrials.HorseHealedLine); }
             }

@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.05.2
+
+### Fixed
+- The ankh outside the League building in New Haven now resurrects ghosts. It appears by itself on a world that did not have it.
+- The Animals lesson's injured horse can now be bandaged and tamed; it refused both before.
+
 ## 2026.11.04.3
 
 ### Added

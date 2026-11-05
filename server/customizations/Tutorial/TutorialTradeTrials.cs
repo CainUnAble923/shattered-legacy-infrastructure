@@ -137,7 +137,7 @@ namespace Server.Tutorial
                     S(SkillName.Veterinary, "Veterinary: bandage the injured horse"),
                     S(SkillName.AnimalTaming, "Animal Taming: tame the healed horse")
                 ],
-                "In the stall, double-click a bandage, then click the injured horse. When it is healed, open Skills on your character window, use Animal Taming, and click the horse. Use Animal Lore on it any time to see its health."),
+                "In the stall, double-click a bandage, then click the injured horse. When it is healed, stand beside it, open Skills on your character window, use Animal Taming, and click the horse. Use Animal Lore on it any time to see its health."),
 
             // -- Bard --
             new("bard.trial", BardWhere, new Point2D(HavenSpots.BardicGuild.X, HavenSpots.BardicGuild.Y), // cc-P743 item 7

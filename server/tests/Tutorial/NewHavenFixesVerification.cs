@@ -213,6 +213,58 @@ public class NewHavenFixesVerification : IDisposable
     }
 
     [Fact]
+    public void OnlyItsTraineeMayBandageTheStableHorse()
+    {
+        // cc-P799: pinned's Trammel rule refuses a player's beneficial act on an uncontrolled creature, so a real bandage
+        // never reached Heal, which the fact above calls directly.
+        using var p = new Player(HavenSpots.Stables);
+        using var other = new Player(HavenSpots.Stables, false);
+        var horse = Begin(p, "animals.taming").Horse;
+        Assert.NotNull(horse);
+        AllowBeneficialHandler pinned = (_, _) => false;
+
+        Assert.True(TutorialFarm.AllowBeneficial(p.Pm, horse, pinned));
+        Assert.False(TutorialFarm.AllowBeneficial(other.Pm, horse, pinned));
+
+        var stranger = new Horse();
+        try
+        {
+            Assert.False(TutorialFarm.AllowBeneficial(p.Pm, stranger, pinned));
+        }
+        finally
+        {
+            stranger.Delete();
+        }
+    }
+
+    [Fact]
+    public void TheRealTamingSkillTakesTheHealedHorse()
+    {
+        // cc-P799: the skill itself, as a player uses it, which the fact above skips by setting the master.
+        TutorialStableHorseStore.Kept.Clear();
+        ShardTestClock.Arm();
+        using var p = new Player(HavenSpots.SickStall);
+        var trial = Begin(p, "animals.taming");
+        var horse = trial.Horse!;
+        p.Pm.Location = new Point3D(HavenSpots.SickStall.X, HavenSpots.SickStall.Y + 1, HavenSpots.SickStall.Z);
+        Assert.True(horse.CantWalk);
+        horse.Heal(40, p.Pm);
+        Assert.True(horse.Tamable);
+        Assert.False(horse.CantWalk); // pinned's taming needs a path from the animal to the tamer
+        Assert.Equal(0, horse.RangeHome);
+        Assert.Equal(HavenSpots.SickStall, horse.Home);
+        Assert.True(p.Pm.Skills.AnimalTaming.Value >= 60.0);
+
+        Server.SkillHandlers.AnimalTaming.OnUse(p.Pm);
+        Assert.NotNull(p.Pm.Target);
+        p.Pm.Target.Invoke(p.Pm, horse);
+        for (var i = 0; i < 40 && !horse.Controlled; i++) { ShardTestClock.AdvanceSeconds(1); }
+
+        Assert.True(horse.Controlled, "tamed by the skill");
+        Assert.Equal(p.Pm, horse.ControlMaster);
+    }
+
+    [Fact]
     public void FullFollowerSlotsAreSaidAndTheIslePetNeverFinishesAnimals()
     {
         using var p = new Player(HavenSpots.Stables);
