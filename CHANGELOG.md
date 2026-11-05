@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.05.2
+
+### Added
+- The Drover's Handbook. Animal Trainers sell this book of Herding abilities, cast from the book for a little stamina, with no crook needed. It comes with Corral: a wild animal is easier for your next taming attempt, up to 25 easier at 200 Herding, for a minute. Trainers also sell three pages to drop in the book. Calm stops a wild animal fighting for up to 13 seconds. Herd walks up to 10 wild animals to a spot you pick. Lure walks one wild animal up to 15 tiles away to you, seen or not. Using them on harder animals trains Herding all the way to 200. [Corral, [Calm, [Herd and [Lure work for macros. (Book structure after Hammerhand's druid spell pack.)
+
+### Staff
+- Every Drover's Handbook number is in modernuo.json under clusterf.drover, written with the defaults on first start.
+
 ## 2026.11.04.3
 
 ### Added

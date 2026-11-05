@@ -1,0 +1,19 @@
+--- a/Projects/UOContent/Skills/AnimalTaming.cs	
++++ b/Projects/UOContent/Skills/AnimalTaming.cs	
+@@ -181,7 +181,7 @@
+                     return;
+                 }
+ 
+-                if (!(CheckMastery(from, creature) || from.Skills.AnimalTaming.Value >= creature.CurrentTameSkill)) // Shattered Legacy (cc-P130): a trained pet asks for more (ServUO :184)
++                if (!(CheckMastery(from, creature) || from.Skills.AnimalTaming.Value >= creature.CurrentTameSkill - Server.Spells.Drover.DroverCorral.Bonus(from, creature))) // Shattered Legacy (cc-P130): a trained pet asks for more (ServUO :184); cc-P795: Corral
+                 {
+                     // You have no chance of taming this creature.
+                     creature.PrivateOverheadMessage(MessageType.Regular, 0x3B2, 502806, from.NetState);
+@@ -396,6 +396,7 @@
+                         }
+ 
+                         var minSkill = m_Creature.CurrentTameSkill + m_Creature.Owners.Count * 6.0; // Shattered Legacy (cc-P130): ServUO :402
++                        minSkill -= Server.Spells.Drover.DroverCorral.Spend(m_Tamer, m_Creature); // Shattered Legacy (cc-P795): Corral, used up here
+ 
+                         if (minSkill > -24.9 && CheckMastery(m_Tamer, m_Creature))
+                         {
