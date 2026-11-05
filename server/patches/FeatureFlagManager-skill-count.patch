@@ -1,0 +1,11 @@
+--- a/Projects/UOContent/Engines/FeatureFlags/FeatureFlagManager.cs
++++ b/Projects/UOContent/Engines/FeatureFlags/FeatureFlagManager.cs
+@@ -17,7 +17,7 @@
+     private static readonly Dictionary<Type, GumpBlockEntry> _gumpBlocks = new();
+     private static readonly Dictionary<Type, ItemBlockEntry> _itemBlocks = new();
+     private static readonly SpellBlockEntry[] _spellBlocks = new SpellBlockEntry[SpellRegistry.Types.Length];
+-    private static readonly SkillBlockEntry[] _skillBlocks = new SkillBlockEntry[58];
++    private static readonly SkillBlockEntry[] _skillBlocks = new SkillBlockEntry[SkillInfo.Table.Length]; // Shattered Legacy (cc-P804): 59 with Herbalism
+ 
+     // Fast bailout flags
+     private static bool _hasActiveGumpBlocks;

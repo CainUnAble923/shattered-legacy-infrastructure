@@ -1099,6 +1099,57 @@ Fact 'TheSkillsCopiesCallItemIdentificationAppraisalAndKeepEveryOtherSkill' {
     Assert-True ($r.Said -notmatch 'skill') "nothing said about skills: $($r.Said)"
 }
 
+# cc-P804: slot 58 of a full-size file. Every slot is filled up to 57, then empty to 255, as EA ships it.
+function Write-FullSkills([string]$dir) {
+    $ascii = New-Object Text.ASCIIEncoding
+    $mul = New-Object IO.MemoryStream
+    $idx = New-Object IO.MemoryStream
+    for ($i = 0; $i -lt 256; $i++) {
+        if ($i -lt 58) {
+            $name = $ascii.GetBytes($(if ($i -eq 3) { 'Item Identification' } else { "Skill$i" }))
+            $at = [int]$mul.Position
+            $mul.WriteByte(0)
+            $mul.Write($name, 0, $name.Length)
+            $mul.WriteByte(0)
+            $idx.Write([BitConverter]::GetBytes($at), 0, 4)
+            $idx.Write([BitConverter]::GetBytes($name.Length + 2), 0, 4)
+        } else {
+            $idx.Write([BitConverter]::GetBytes(-1), 0, 4)
+            $idx.Write([BitConverter]::GetBytes(0), 0, 4)
+        }
+        $idx.Write([BitConverter]::GetBytes(0), 0, 4)
+    }
+    [IO.File]::WriteAllBytes((Join-Path $dir 'skills.mul'), $mul.ToArray())
+    [IO.File]::WriteAllBytes((Join-Path $dir 'Skills.idx'), $idx.ToArray())
+}
+
+Fact 'HerbalismIsAddedAtSlot58AndEveryStockSlotIsKept' {
+    $uo = New-UoDir 'skills-add' (New-Tiledata) (New-Animdata)
+    Write-FullSkills $uo
+    $out = Join-Path $work 'skills-add-out'
+    $r = Invoke-BuilderSaying $uo $out
+    Assert-True ($r.Result) "an override list was written ($($r.Said))"
+    $got = @(Read-Skills (Join-Path $out 'skills.mul') (Join-Path $out 'Skills.idx'))
+    Assert-Equal 256 $got.Count 'every slot is still there'
+    Assert-Equal '0:Skill0:0' $got[0] 'the first skill'
+    Assert-Equal '0:Skill57:0' $got[57] 'the last stock skill'
+    Assert-Equal '0:Herbalism:0' $got[58] 'the new skill'
+    Assert-Equal '-' $got[59] 'the next slot stays empty'
+    Assert-True ($r.Said -notmatch 'skill') "nothing said about skills: $($r.Said)"
+}
+
+Fact 'ASlot58TheFilesAlreadyUseIsLeftAloneWithOneLine' {
+    $uo = New-UoDir 'skills-taken' (New-Tiledata) (New-Animdata)
+    Write-FullSkills $uo
+    $idxPath = Join-Path $uo 'Skills.idx'
+    $idx = [IO.File]::ReadAllBytes($idxPath)
+    [Array]::Copy([BitConverter]::GetBytes(0), 0, $idx, 58 * 12, 4)
+    [Array]::Copy([BitConverter]::GetBytes(8), 0, $idx, 58 * 12 + 4, 4)
+    [IO.File]::WriteAllBytes($idxPath, $idx)
+    $r = Invoke-BuilderSaying $uo (Join-Path $work 'skills-taken-out')
+    Assert-True ($r.Said -match 'skill 58 is left alone') "one line says so: $($r.Said)"
+}
+
 Fact 'ASkillThreeTheFilesNoLongerCallItemIdentificationIsLeftAloneWithOneLine' {
     $uo = New-UoDir 'skills-changed' (New-Tiledata) (New-Animdata)
     Write-Skills $uo 'Merchant Lore'

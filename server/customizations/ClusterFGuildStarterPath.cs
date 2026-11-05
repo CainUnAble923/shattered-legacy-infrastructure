@@ -47,7 +47,7 @@ public static class GuildSkillTable
             ["arcane"]     = [SkillName.Magery, SkillName.EvalInt, SkillName.Meditation, SkillName.MagicResist, SkillName.Inscribe, SkillName.Mysticism, SkillName.Spellweaving],
             ["healers"]    = [SkillName.Healing, SkillName.Anatomy], // cc-P77: Alchemy and Taste ID to the Order of the Alembic
             // cc-P77 (F-43): guild 18. Glassblowing follows Alchemy (a book unlock in the Alchemy menu, not a SkillName).
-            [ClusterFAlembicGuild.Key] = [SkillName.Alchemy, SkillName.TasteID],
+            [ClusterFAlembicGuild.Key] = [SkillName.Alchemy, SkillName.TasteID, SkillName.Herbalism], // cc-P804: F-51
             ["rangers"]    = [SkillName.Archery, SkillName.Tracking, SkillName.AnimalTaming, SkillName.AnimalLore, SkillName.Herding, SkillName.Veterinary, SkillName.Camping],
             ["mining"]     = [SkillName.Mining],
             ["smithing"]   = [SkillName.Blacksmith, SkillName.ArmsLore],

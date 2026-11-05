@@ -108,7 +108,7 @@ public class CraftCeilingsVerification
     {
         var pm = new PlayerMobile { Player = true, Race = Race.Human };
         pm.AddItem(new Backpack());
-        pm.Skills.Cap = 58 * 2000;
+        pm.Skills.Cap = SkillInfo.Table.Length * 2000;
         foreach (var name in new[] { SkillName.Blacksmith, SkillName.Tinkering, SkillName.Carpentry, SkillName.Fletching })
         {
             pm.Skills[name].Cap = Cap;

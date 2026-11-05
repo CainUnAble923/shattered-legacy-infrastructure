@@ -1,0 +1,231 @@
+--- a/Projects/UOContent/Engines/Plants/PlantType.cs
++++ b/Projects/UOContent/Engines/Plants/PlantType.cs
+@@ -44,7 +44,14 @@
+         HedgeTall,
+         HopsSouth,
+         SugarCanes,
+-        CocoaTree
++        CocoaTree,
++
++        // Shattered Legacy (cc-P804, F-51): the reagent lane (HerbalLane). They cross only each other.
++        Garlic,
++        Ginseng,
++        Mandrake,
++        Nightshade,
++        BloodMoss
+     }
+ 
+     public enum PlantCategory
+@@ -187,7 +194,12 @@
+                 1080531,
+                 1080533,
+                 1113716
+-            )
++            ),
++            new(0x18E1, 0, 0, PlantType.Garlic, false, false, true, true, PlantCategory.Default),
++            new(0x18E9, 0, 0, PlantType.Ginseng, false, false, true, true, PlantCategory.Default),
++            new(0x18DF, 0, 0, PlantType.Mandrake, false, false, true, true, PlantCategory.Default),
++            new(0x18E5, 0, 0, PlantType.Nightshade, false, false, true, true, PlantCategory.Default),
++            new(0x0C9F, 0, 0, PlantType.BloodMoss, false, false, true, true, PlantCategory.Default),
+         };
+ 
+         private readonly int m_PlantLabelDecorative;
+@@ -383,6 +395,11 @@
+ 
+         public static PlantType Cross(PlantType first, PlantType second)
+         {
++            if (HerbalLane.IsReagent(first) || HerbalLane.IsReagent(second))
++            {
++                return HerbalLane.Cross(first, second); // Shattered Legacy (cc-P804)
++            }
++
+             if (!IsCrossable(first) || !IsCrossable(second))
+             {
+                 return PlantType.CampionFlowers;
+--- a/Projects/UOContent/Engines/Plants/PlantResources.cs
++++ b/Projects/UOContent/Engines/Plants/PlantResources.cs
+@@ -15,7 +15,14 @@
+             new(PlantType.PampasGrass, PlantHue.BrightOrange, typeof(OrangePetals)),
+             new(PlantType.SnakePlant, PlantHue.BrightGreen, typeof(GreenThorns)),
+             new(PlantType.BarrelCactus, PlantHue.BrightGreen, typeof(GreenThorns)),
+-            new(PlantType.CocoaTree, PlantHue.Plain, typeof(CocoaPulp))
++            new(PlantType.CocoaTree, PlantHue.Plain, typeof(CocoaPulp)),
++
++            // Shattered Legacy (cc-P804): the lane. HerbalLane.TryHarvest does the gathering; these rows show the count in the gump.
++            new(PlantType.Garlic, PlantHue.Plain, typeof(RawHerb)),
++            new(PlantType.Ginseng, PlantHue.Plain, typeof(RawHerb)),
++            new(PlantType.Mandrake, PlantHue.Plain, typeof(RawHerb)),
++            new(PlantType.Nightshade, PlantHue.Plain, typeof(RawHerb)),
++            new(PlantType.BloodMoss, PlantHue.Plain, typeof(RawHerb))
+         };
+ 
+         private PlantResourceInfo(PlantType plantType, PlantHue plantHue, Type resourceType)
+--- a/Projects/UOContent/Engines/Plants/PollinateTarget.cs
++++ b/Projects/UOContent/Engines/Plants/PollinateTarget.cs
+@@ -57,12 +57,18 @@
+                     {
+                         targ.LabelTo(from, 1053072); // This plant has already been pollinated!
+                     }
++                    else if (HerbalLane.RefusesPollen(m_Plant, targ))
++                    {
++                        // Shattered Legacy (cc-P804): reagent plants and stock plants do not cross.
++                        targ.LabelTo(from, "These plants will not cross.");
++                    }
+                     else if (targ == m_Plant)
+                     {
+                         targ.PlantSystem.Pollinated = true;
+                         targ.PlantSystem.SeedType = m_Plant.PlantType;
+                         targ.PlantSystem.SeedHue = m_Plant.PlantHue;
+ 
++                        HerbalLane.OnPollinated(from, m_Plant, targ); // Shattered Legacy (cc-P804)
+                         targ.LabelTo(from, 1053071); // You pollinate the plant with its own pollen.
+                     }
+                     else
+@@ -71,6 +77,7 @@
+                         targ.PlantSystem.SeedType = PlantTypeInfo.Cross(m_Plant.PlantType, targ.PlantType);
+                         targ.PlantSystem.SeedHue = PlantHueInfo.Cross(m_Plant.PlantHue, targ.PlantHue);
+ 
++                        HerbalLane.OnPollinated(from, m_Plant, targ); // Shattered Legacy (cc-P804)
+                         targ.LabelTo(from, 1053076); // You successfully cross-pollinate the plant.
+                     }
+                 }
+--- a/Projects/UOContent/Engines/Plants/ReproductionGump.cs
++++ b/Projects/UOContent/Engines/Plants/ReproductionGump.cs
+@@ -214,6 +214,11 @@
+                 }
+             case 7: // Gather resources
+                 {
++                    if (HerbalLane.TryHarvest(from, _plant)) // Shattered Legacy (cc-P804)
++                    {
++                        break;
++                    }
++
+                     var resInfo = PlantResourceInfo.GetInfo(_plant.PlantType, _plant.PlantHue);
+                     var system = _plant.PlantSystem;
+ 
+@@ -265,7 +270,7 @@
+                     }
+                     else
+                     {
+-                        var seed = new Seed(system.SeedType, system.SeedHue, true);
++                        var seed = HerbalLane.NewSeed(_plant, system); // Shattered Legacy (cc-P804)
+ 
+                         if (from.PlaceInBackpack(seed))
+                         {
+--- a/Projects/UOContent/Engines/Plants/PlantItem.cs
++++ b/Projects/UOContent/Engines/Plants/PlantItem.cs
+@@ -255,7 +255,7 @@
+         else if (_plantStatus >= PlantStatus.FullGrownPlant)
+         {
+             ItemID = PlantTypeInfo.GetInfo(_plantType).ItemID;
+-            Hue = PlantHueInfo.GetInfo(_plantHue).Hue;
++            Hue = HerbalLane.PlantHueFor(this, PlantHueInfo.GetInfo(_plantHue).Hue); // Shattered Legacy (cc-P804)
+         }
+         else if (_plantStatus >= PlantStatus.Plant)
+         {
+@@ -421,6 +421,7 @@
+                 typeInfo.GetPlantLabelFullGrown(hueInfo),
+                 $"{health:#}\t{hueInfo.Name:#}\t{typeInfo.Name:#}"
+             );
++            HerbalLane.AddProperties(this, list); // Shattered Legacy (cc-P804)
+             return;
+         }
+ 
+@@ -517,8 +518,10 @@
+         {
+             LabelTo(from, 1061920); // The dirt needs to be softened first.
+         }
+-        else
+-        {
++        else if (HerbalLane.MayPlant(from, seed)) // Shattered Legacy (cc-P804): its own message when not
++        {
++            var strain = (seed as ReagentSeed)?.StrainTier ?? 0;
++
+             PlantType = seed.PlantType;
+             PlantHue = seed.PlantHue;
+             ShowType = seed.ShowType;
+@@ -528,6 +531,7 @@
+             PlantStatus = PlantStatus.Seed;
+ 
+             PlantSystem.Reset(false);
++            HerbalLane.OnPlanted(from, this, strain);
+ 
+             LabelTo(from, OnPlantLocalization); // You plant the seed in the bowl of dirt.
+         }
+@@ -588,6 +592,7 @@
+             PlantSystem.Water++;
+ 
+             from.PlaySound(0x4E);
++            HerbalLane.Tended(from, this); // Shattered Legacy (cc-P804)
+             LabelTo(from, 1061858); // You soften the dirt with water.
+         }
+         else if (item is BasePotion potion)
+@@ -597,6 +602,7 @@
+                 potion.Consume();
+                 from.PlaySound(0x240);
+                 from.AddToBackpack(new Bottle());
++                HerbalLane.Tended(from, this); // Shattered Legacy (cc-P804)
+             }
+ 
+             LabelTo(from, message);
+@@ -613,6 +619,7 @@
+             {
+                 keg.Held--;
+                 from.PlaySound(0x240);
++                HerbalLane.Tended(from, this); // Shattered Legacy (cc-P804)
+             }
+ 
+             LabelTo(from, message);
+--- a/Projects/UOContent/Engines/Plants/PlantSystem.cs
++++ b/Projects/UOContent/Engines/Plants/PlantSystem.cs
+@@ -503,7 +503,7 @@
+                 return;
+             }
+ 
+-            NextGrowth = now + CheckDelay;
++            NextGrowth = now + HerbalLane.GrowthDelay(this); // Shattered Legacy (cc-P804)
+ 
+             if (!Plant.ValidGrowthLocation)
+             {
+@@ -521,6 +521,8 @@
+                 return;
+             }
+ 
++            HerbalLane.OnGrowthCheck(this); // Shattered Legacy (cc-P804): neglect
++
+             ApplyBeneficialEffects();
+ 
+             if (!ApplyMaladiesEffects()) // Dead
+@@ -597,7 +599,8 @@
+         private bool ApplyMaladiesEffects()
+         {
+             // Shattered Legacy (cc-P128): no water or malady damage without upkeep (ServUO PlantSystem.cs:523).
+-            if (!Plant.RequiresUpkeep)
++            // cc-P804: the reagent lane owns its plants' damage (HerbalLane.OnGrowthCheck).
++            if (!Plant.RequiresUpkeep || HerbalLane.SparesDamage(this))
+             {
+                 return true;
+             }
+@@ -666,7 +669,11 @@
+                     AvailableSeeds++;
+                 }
+ 
+-                if (LeftResources > 0 && PlantResourceInfo.GetInfo(Plant.PlantType, Plant.PlantHue) != null)
++                if (HerbalLane.OnMature(this))
++                {
++                    // Shattered Legacy (cc-P804): perennial
++                }
++                else if (LeftResources > 0 && PlantResourceInfo.GetInfo(Plant.PlantType, Plant.PlantHue) != null)
+                 {
+                     LeftResources--;
+                     AvailableResources++;
+@@ -686,7 +693,8 @@
+         private void UpdateMaladies()
+         {
+             // Shattered Legacy (cc-P128): no new maladies without upkeep (ServUO PlantSystem.cs:597).
+-            if (!Plant.RequiresUpkeep)
++            // cc-P804: a reagent bed's rate is a share of a bowl's.
++            if (!Plant.RequiresUpkeep || HerbalLane.SkipsMaladies(this))
+             {
+                 return;
+             }

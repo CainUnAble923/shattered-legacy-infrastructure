@@ -1,0 +1,56 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Thu, 5 Nov 2026 12:00:00 -0600
+Subject: [PATCH] Skills: a skill no group lists goes to Miscellaneous (Shattered Legacy cc-P804)
+
+Both skill windows list only grouped skills, and groups come from the profile's saved
+skillsgroups.xml or from skillgrp.mul, neither of which knows a new skill. Herbalism is the first.
+---
+diff --git a/src/ClassicUO.Client/Game/Managers/SkillsGroupManager.cs b/src/ClassicUO.Client/Game/Managers/SkillsGroupManager.cs
+--- a/src/ClassicUO.Client/Game/Managers/SkillsGroupManager.cs
++++ b/src/ClassicUO.Client/Game/Managers/SkillsGroupManager.cs
+@@ -258,6 +258,35 @@
+                     Add(g);
+                 }
+             }
++
++            AddUnplacedSkills();
++        }
++
++        // Shattered Legacy (cc-P804): a skill no group lists (Herbalism, for a profile saved before it existed, or skillgrp.mul,
++        // which stops at the stock skills) goes to the first group, so both skill windows show it.
++        private void AddUnplacedSkills()
++        {
++            if (Groups.Count == 0)
++            {
++                return;
++            }
++
++            SkillsGroup misc = Groups.Find(g => g.Name == TazLang.Get("miscellaneous")) ?? Groups[0];
++            bool added = false;
++
++            for (int i = 0; i < Client.Game.UO.FileManager.Skills.SkillsCount; i++)
++            {
++                if (!Groups.Exists(g => g.Contains((byte) i)))
++                {
++                    misc.Add((byte) i);
++                    added = true;
++                }
++            }
++
++            if (added)
++            {
++                misc.Sort();
++            }
+         }
+ 
+ 
+@@ -301,6 +330,8 @@
+                 MakeDefaultThieving();
+                 MakeDefaultBard();
+             }
++
++            AddUnplacedSkills();
+ 
+             foreach (SkillsGroup g in Groups)
+             {

@@ -1085,6 +1085,11 @@ apply_patch "$PATCHES/Beekeeper-beekeeping.patch"
 # table private and sized to the file, so writing into it from outside would mean rebuilding it by reflection. Made with
 # diff -u against pinned; pinned by PeacockVerification.
 apply_patch "$PATCHES/ShrinkTable-shard-rows.patch"
+# cc-P804 (F-51): the Herbalism skill and the reagent lane. Last: the lane's context includes the raised bed hooks above.
+apply_patch "$PATCHES/Skills-herbalism.patch"
+apply_patch "$PATCHES/skills-json-herbalism.patch"
+apply_patch "$PATCHES/FeatureFlagManager-skill-count.patch"
+apply_patch "$PATCHES/Plants-herbalism-lane.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
