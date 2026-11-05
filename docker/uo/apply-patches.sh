@@ -740,6 +740,12 @@ apply_patch "$PATCHES/AnimalTaming-pet-training.patch"
 # whose context it is. Alternatives argued in shard-migration/notes/cc-P171-taming-anger-scales.md; pinned by
 # TamingAngerVerification.
 apply_patch "$PATCHES/AnimalTaming-anger-scales.patch"
+# cc-P795: the Drover's Handbook. Spellbook: the book's type and IDs 693-696 for GetTypeForSpell, both inside a closed enum and a
+# static method. AnimalTaming: Corral at the "no chance" gate and the taming roll, after the two patches above, whose context it
+# is. SBAnimalTrainer: the book, in a constructor. Pinned by DroversHandbookVerification.
+apply_patch "$PATCHES/Spellbook-drover-type.patch"
+apply_patch "$PATCHES/AnimalTaming-drover-corral.patch"
+apply_patch "$PATCHES/SBAnimalTrainer-drovers-handbook.patch"
 apply_patch "$PATCHES/AnimalLore-pet-training-gump.patch"
 apply_patch "$PATCHES/SkillCheck-pet-focus-gain.patch"
 # cc-P172 (Chase 2026-10-18): inside pinned's controlled-creature branch of CheckSkill (SkillCheck.cs:140-143, the x2), the

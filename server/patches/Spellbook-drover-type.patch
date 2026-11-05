@@ -1,0 +1,25 @@
+--- a/Projects/UOContent/Items/Skill Items/Magical/Spellbook.cs	
++++ b/Projects/UOContent/Items/Skill Items/Magical/Spellbook.cs	
+@@ -22,7 +22,8 @@
+     Ninja,
+     Samurai,
+     Arcanist,
+-    Mystic
++    Mystic,
++    Drover // Shattered Legacy (cc-P795): the Drover's Handbook, IDs 693-696
+ }
+ 
+ public enum BookQuality
+@@ -380,6 +381,12 @@
+             return SpellbookType.Mystic;
+         }
+ 
++        // Shattered Legacy (cc-P795): the Drover's Handbook
++        if (spellID >= 693 && spellID < 697)
++        {
++            return SpellbookType.Drover;
++        }
++
+         return SpellbookType.Invalid;
+     }
+ 

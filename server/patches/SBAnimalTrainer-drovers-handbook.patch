@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Mobiles/Vendors/SBInfo/SBAnimalTrainer.cs	
++++ b/Projects/UOContent/Mobiles/Vendors/SBInfo/SBAnimalTrainer.cs	
+@@ -18,6 +18,10 @@
+                 Add(new AnimalBuyInfo(1, "a pack horse", typeof(PackHorse), 631, 10, 291, 0));
+                 Add(new AnimalBuyInfo(1, "a pack llama", typeof(PackLlama), 565, 10, 292, 0));
+                 Add(new AnimalBuyInfo(1, "a rabbit", typeof(Rabbit), 106, 10, 205, 0));
++                Add(new GenericBuyInfo(typeof(Server.Items.DroversHandbook), Server.Spells.Drover.DroverSettings.BookPrice, 20, 0x0FEF, 0)); // Shattered Legacy (cc-P795)
++                Add(new GenericBuyInfo(typeof(Server.Items.CalmScroll), Server.Spells.Drover.DroverSettings.CalmScrollPrice, 20, Server.Spells.Drover.DroverSettings.ScrollArt, Server.Spells.Drover.DroverSettings.ScrollHue));
++                Add(new GenericBuyInfo(typeof(Server.Items.HerdScroll), Server.Spells.Drover.DroverSettings.HerdScrollPrice, 20, Server.Spells.Drover.DroverSettings.ScrollArt, Server.Spells.Drover.DroverSettings.ScrollHue));
++                Add(new GenericBuyInfo(typeof(Server.Items.LureScroll), Server.Spells.Drover.DroverSettings.LureScrollPrice, 20, Server.Spells.Drover.DroverSettings.ScrollArt, Server.Spells.Drover.DroverSettings.ScrollHue));
+ 
+                 if (!Core.AOS)
+                 {
