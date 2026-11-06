@@ -331,7 +331,6 @@ public class TutorialTradeTrialVerification : IDisposable
     [Theory]
     [InlineData("housing.basics")]
     [InlineData("travel.wing")]
-    [InlineData("reputation.wing")]
     [InlineData("shard.systems")]
     public void ATourCountsItsStopsInOrderAndFinishesAtTheLast(string key)
     {

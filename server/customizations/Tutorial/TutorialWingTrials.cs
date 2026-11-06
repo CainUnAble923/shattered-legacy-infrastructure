@@ -118,6 +118,11 @@ namespace Server.Tutorial
             public TimerExecutionToken BrawlTimer;
             public TutorialStableHorse? Horse;
             public int ChestResets;
+
+            // cc-P801 (TutorialJail.cs): the staged gray name, the thief, the guard's strike under way.
+            public bool JailGray;
+            public TutorialJailActor? JailThief;
+            public bool JailStriking;
         }
 
         private static readonly Dictionary<Serial, Trial> Active = new();
@@ -142,6 +147,7 @@ namespace Server.Tutorial
             if (_hooked) { return; }
             _hooked = true;
             SkillEvents.SkillUsed += OnSkillUsed;
+            EventSink.Speech += OnJailSpeech; // cc-P801
         }
 
         /// <summary>Loaners left behind by a restart (trials live in memory only) are deleted once the world is up.</summary>
@@ -252,6 +258,13 @@ namespace Server.Tutorial
 
         private static void Show(PlayerMobile pm, Trial trial)
         {
+            if (trial.Key == TutorialJail.Key && trial.Armed) // cc-P801: its own window; no chat lines to miss
+            {
+                pm.CloseGump<TutorialJailGump>();
+                pm.SendGump(new TutorialJailGump(trial));
+                return;
+            }
+
             if (!trial.Armed)
             {
                 ClusterFTutorial.SystemLine(pm, FollowLine(trial.Key));
@@ -577,6 +590,7 @@ namespace Server.Tutorial
             Return(trial);
             if (why != null && !trial.Finished) { ClusterFTutorial.SystemLine(pm, why); }
             pm.CloseGump<TutorialWingTrialGump>();
+            pm.CloseGump<TutorialJailGump>(); // cc-P801
         }
 
         public static void Reset(PlayerMobile pm, TutorialStation station)

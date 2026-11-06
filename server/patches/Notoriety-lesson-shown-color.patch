@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Misc/Notoriety.cs
++++ b/Projects/UOContent/Misc/Notoriety.cs
+@@ -388,6 +388,12 @@
+         /* Must be thread-safe */
+         public static int MobileNotoriety(Mobile source, Mobile target)
+         {
++            // Shattered Legacy (cc-P801): a lesson shows a set name color (the jail's people, the trainee's staged gray).
++            if (Server.Tutorial.TutorialJail.ShownNotoriety(source, target) is { } shown)
++            {
++                return shown;
++            }
++
+             var bcTarg = target as BaseCreature;
+ 
+             if (Core.AOS && (target.Blessed || bcTarg?.IsInvulnerable == true || target is PlayerVendor or TownCrier))
