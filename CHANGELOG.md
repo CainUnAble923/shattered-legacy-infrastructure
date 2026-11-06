@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.06.3
+
+### Fixed
+
+- The stables sign in New Haven now stands clear of the barn's eave.
+
 ## 2026.11.05.5
 
 ### Added
@@ -51,6 +57,12 @@ Example:
 
 ### Staff
 - Every League sash number is in Configuration/league-sash.json, written with the defaults on first start. [LeagueSash lists the steps, [LeagueSash reload reads the file again, and [LeagueSash step <n> sets your own sash.
+## 2026.11.05.3
+
+### Fixed
+- The ankh outside the League building in New Haven now resurrects ghosts. It appears by itself on a world that did not have it.
+- The Animals lesson's injured horse can now be bandaged and tamed; it refused both before.
+- Rook's bench in New Haven is now one whole bench, not two short stubs.
 
 ## 2026.11.05.2
 
