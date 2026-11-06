@@ -525,8 +525,10 @@ public static class LootBoxRoller
             case "@trophy": return Trophy(c.SourceName);
             case "@loopsash":
                 return new BoundCosmeticSash(c.Account, $"Loop {ClusterFLootBoxes.CurrentLoop(pm)}", LootTable.HueOf(t.Grades[5]));
-            case "@leaguecloak":
-                return new BoundCosmeticSash(c.Account, "League", ClusterFLeagueRanks.LabelHue(Math.Max(1, ClusterFLeagueRanks.GetRank(pm))));
+            case "@leaguecloak": // cc-P800: one per character; the box's opening makes it their LeagueSash
+                return LeagueSashSystem.BoxMayGive(pm)
+                    ? new BoundCosmeticSash(c.Account, LeagueSashSystem.OldLabel, Server.Engines.LeagueRewards.LeagueShop.LeagueHue)
+                    : PoolItem(BoxPool.Rare, c, NoSash);
             case "@leaguetitle": return LeagueTitleDeed.ForAccount(pm) ?? PoolItem(BoxPool.Rare, c, NoTitle);
             case "@potion": return Potion(c.Level, AmountOf(e, c));
             case "@magicgear": return MagicGear(c.Level, c.Grade);
@@ -557,6 +559,8 @@ public static class LootBoxRoller
     }
 
     private static bool NoRecursion(PoolEntry e) => !e.Item.Equals("@RarePick", StringComparison.OrdinalIgnoreCase);
+
+    private static bool NoSash(PoolEntry e) => NoRecursion(e) && !e.Item.Equals("@LeagueCloak", StringComparison.OrdinalIgnoreCase);
 
     private static bool NoTitle(PoolEntry e) => NoRecursion(e) && !e.Item.Equals("@LeagueTitle", StringComparison.OrdinalIgnoreCase);
 

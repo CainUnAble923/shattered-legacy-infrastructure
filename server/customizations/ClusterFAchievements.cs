@@ -1454,6 +1454,17 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
         return (live.Count(d => earned.Contains(d.Key)), live.Count);
     }
 
+    // cc-P800: main's helper, for the worn sash's Renown bonus.
+    private static PlayerMobile? OnlineCharacter(IAccount acct)
+    {
+        for (var i = 0; i < acct.Count; i++)
+        {
+            if (acct[i] is PlayerMobile p && p.NetState != null) return p;
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Grant an achievement if not already earned. Returns true on new earn.
     /// Enforces prerequisite chain, updates AP and Renown, spawns any reward
@@ -1474,7 +1485,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
 
         var data = ClusterFAccountPersistence.GetOrCreate(acct);
         data.AchievementPoints += def.AP;
-        data.GrantRenown(def.Renown, RenownSource.Achievement); // and LifetimeRenown (cc-P48)
+        LeagueSashSystem.Earn(data, OnlineCharacter(acct), def.Renown, RenownSource.Achievement); // and LifetimeRenown (cc-P48); cc-P800: the worn sash's bonus
         Server.Engines.LeagueRewards.LeagueTitles.Sync(data); // cc-P229: AP titles unlock as AP is reached, and stay
 
         if (def.RewardItems.Length > 0)

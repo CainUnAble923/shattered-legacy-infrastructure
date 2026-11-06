@@ -29,6 +29,17 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.03.2
+
+### Added
+- The League sash now grows with you. Elara gives every registered citizen one for free, one per character, blessed and bound to that character, and it stays with you through every loop. As your League rank reaches Dull Copper, Bronze, Verite, Blaze, Mythril and Celestial, go back to Elara and pay Renown to raise it a step: each step gives it a new name and metal hue and adds 1% to the Renown you earn from achievements and League jobs while you wear it, up to 6%. Spending Renown never lowers your rank.
+
+### Changed
+- League sashes you already have become your new sash at its first step. A second one stays as an old League keepsake. Loot boxes only give the sash to a character who has none yet.
+
+### Staff
+- Every League sash number is in Configuration/league-sash.json, written with the defaults on first start. [LeagueSash lists the steps, [LeagueSash reload reads the file again, and [LeagueSash step <n> sets your own sash.
+
 ## 2026.11.03.1
 
 ### Changed

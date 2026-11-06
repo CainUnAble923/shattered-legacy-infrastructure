@@ -303,15 +303,18 @@ public static class LeagueShop
 
     /// <summary>
     /// What a box can hold: the cosmetic, decor and convenience rows its AP opens (never a title, never a box), plus the
-    /// League sash (P79's BoundCosmeticSash in the League hue) so the Bronze box has two kinds.
+    /// League sash (P79's BoundCosmeticSash in the League hue) so the Bronze box has two kinds. cc-P800: the sash only for
+    /// a character without theirs (buyer given); opening the box makes it their LeagueSash.
     /// </summary>
-    public static List<Func<PlayerMobile, Item>> BoxPool(BoxTier tier)
+    public static List<Func<PlayerMobile, Item>> BoxPool(BoxTier tier, PlayerMobile buyer = null)
     {
         var maxAp = BoxInfo(tier).MaxAp;
-        var pool = new List<Func<PlayerMobile, Item>>
+        var pool = new List<Func<PlayerMobile, Item>>();
+
+        if (buyer == null || LeagueSashSystem.BoxMayGive(buyer))
         {
-            pm => new BoundCosmeticSash(pm.Account?.Username ?? "", "League", LeagueHue)
-        };
+            pool.Add(pm => new BoundCosmeticSash(pm.Account?.Username ?? "", LeagueSashSystem.OldLabel, LeagueHue));
+        }
 
         foreach (var entry in Stock)
         {
@@ -338,7 +341,7 @@ public static class LeagueShop
     public static LootBox MakeBox(PlayerMobile pm, BoxTier tier)
     {
         var (name, p79Tier, draws, _) = BoxInfo(tier);
-        return MakeBox(pm, name, p79Tier, draws, BoxPool(tier), "the League shop");
+        return MakeBox(pm, name, p79Tier, draws, BoxPool(tier, pm), "the League shop");
     }
 
     /// <summary>cc-P760: a store's box (the League shop's, the Festival store's): P79's bound box, filled from a pool.</summary>

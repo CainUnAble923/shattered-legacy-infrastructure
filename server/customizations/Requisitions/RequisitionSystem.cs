@@ -245,7 +245,7 @@ public static class ClusterFRequisitions
         var gold = AppraiserPricing.Price(item);
         var guildName = ClusterFGuildSystem.GetDef(e.GuildKey)?.Name ?? e.GuildKey;
 
-        ClusterFAccountPersistence.GetOrCreate(acct).GrantRenown(e.Renown, RenownSource.LeagueJob);
+        LeagueSashSystem.Earn(ClusterFAccountPersistence.GetOrCreate(acct), pm, e.Renown, RenownSource.LeagueJob); // cc-P800: the worn sash's bonus
         ClusterFAccountPersistence.GetOrCreateGuild(pm).AddReputation(e.GuildKey, e.Reputation);
         // cc-P760: a member also gets the guild's points, 1 per 10 standing (the guild stores spend them).
         var guildPoints = Server.Engines.RewardStores.GuildPointEarning.OnRequisition(pm, e.GuildKey, e.Reputation);
