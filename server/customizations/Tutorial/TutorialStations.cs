@@ -114,7 +114,7 @@ public static class TutorialStations
             [], "a loaned hatchet", "the trades yard, southeast of the training yard"),
         new("gathering.fishing", TutorialWing.Gathering, "Fishing", ["Fishing"], None, None,
             [], "a loaned fishing pole", "the trades yard, southeast of the training yard"),
-        new("gathering.camping", TutorialWing.Gathering, "Camping", ["Camping"], None, ["Herbalism (not available yet)"],
+        new("gathering.camping", TutorialWing.Gathering, "Camping", ["Camping"], None, ["Herbalism (the wild garlic in the yard)"],
             [], "loaned kindling", "the trades yard, southeast of the training yard"),
 
         // -- Crafting yard, one item each --

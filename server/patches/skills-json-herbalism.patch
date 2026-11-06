@@ -1,0 +1,24 @@
+--- a/Distribution/Data/skills.json
++++ b/Distribution/Data/skills.json
+@@ -926,5 +926,21 @@
+     "ProfessionSkillName": "Throwing",
+     "PrimaryStat": "Dex",
+     "SecondaryStat": "Str"
++  },
++  {
++    "SkillID": 58,
++    "Name": "Herbalism",
++    "Title": "Herbalist",
++    "StrScale": 0,
++    "DexScale": 0.05,
++    "IntScale": 0.05,
++    "StatTotal": 10,
++    "StrGain": 0,
++    "DexGain": 0.5,
++    "IntGain": 0.5,
++    "GainFactor": 1,
++    "ProfessionSkillName": "Herbalism",
++    "PrimaryStat": "Int",
++    "SecondaryStat": "Dex"
+   }
+ ]

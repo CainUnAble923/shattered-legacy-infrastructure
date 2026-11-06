@@ -170,7 +170,7 @@ public class AlembicGuildVerification
     [Fact]
     public void AlchemyAndTasteIdAreTheOrdersAndTheHealersKeepHealingAndAnatomy()
     {
-        Assert.Equal(new[] { SkillName.Alchemy, SkillName.TasteID }, GuildSkillTable.For(ClusterFAlembicGuild.Key));
+        Assert.Equal(new[] { SkillName.Alchemy, SkillName.TasteID, SkillName.Herbalism }, GuildSkillTable.For(ClusterFAlembicGuild.Key));
         Assert.Equal(new[] { SkillName.Healing, SkillName.Anatomy }, GuildSkillTable.For("healers"));
 
         foreach (var skill in new[] { SkillName.Alchemy, SkillName.TasteID })

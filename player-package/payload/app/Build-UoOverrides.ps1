@@ -163,8 +163,11 @@ $AnimEntry   = 68
 $StampFormat = 'uo-overrides 1'
 $ClilocStampFormat = 'uo-cliloc 1'
 $EquipStampFormat = 'uo-equip 1'
-$SkillsStampFormat = 'uo-skills 1'
+$SkillsStampFormat = 'uo-skills 2'
 $MusicStampFormat = 'uo-music 2'   # cc-P456: 2 adds the lines written ("lines ..."), so a restored mp3 rebuilds
+# cc-P804 (F-51): skills we add. TazUO numbers the filled slots in order, so a new one must follow the last filled slot with no gap.
+$SkillAdds = @([pscustomobject]@{ Index = 58; Action = 0; Name = 'Herbalism' })
+
 # cc-P239 (F-14): the skills we rename for everyone. Index (SkillName), the name the player's file must hold, ours.
 $SkillRenames = @(@{ Index = 3; From = 'Item Identification'; To = 'Appraisal' })
 
@@ -763,7 +766,7 @@ function Build-Skills {
     $stampOut = Join-Path $OutDir 'skills-stamp.txt'
     $m = Get-Item -LiteralPath $srcMul
     $x = Get-Item -LiteralPath $srcIdx
-    $renames = ($SkillRenames | ForEach-Object { "$($_.Index) $($_.From) > $($_.To)" }) -join '; '
+    $renames = (@($SkillRenames | ForEach-Object { "$($_.Index) $($_.From) > $($_.To)" }) + @($SkillAdds | ForEach-Object { "$($_.Index) + $($_.Name)" })) -join '; '
     $stamp = "$SkillsStampFormat`nskills.mul $($m.Length) $($m.LastWriteTimeUtc.Ticks)`nSkills.idx $($x.Length) $($x.LastWriteTimeUtc.Ticks)`nrenames $renames"
     $lines = { "skills.mul=$(Join-Path $ListRoot 'skills.mul')"; "skills.idx=$(Join-Path $ListRoot 'Skills.idx')" }
 
@@ -805,6 +808,26 @@ function Build-Skills {
         [Array]::Copy([BitConverter]::GetBytes([int]$packed.Position), 0, $newIdx, $i * 12, 4)
         [Array]::Copy([BitConverter]::GetBytes([int]$entry.Length), 0, $newIdx, $i * 12 + 4, 4)
         $packed.Write($entry, 0, $entry.Length)
+    }
+    foreach ($add in $SkillAdds) {
+        if (($add.Index + 1) * 12 -gt $idx.Length) { continue }    # a small test file with no such slot
+        $at = $add.Index * 12
+        if ([BitConverter]::ToInt32($idx, $at) -ge 0 -and [BitConverter]::ToInt32($idx, $at + 4) -gt 0) {
+            Say-Skip "Shattered Legacy skill names: skill $($add.Index) is left alone: your Ultima Online files already use that slot."
+            continue
+        }
+        if ($add.Index -gt 0 -and ([BitConverter]::ToInt32($idx, $at - 12) -lt 0 -or [BitConverter]::ToInt32($idx, $at - 8) -le 0)) {
+            Say-Skip "Shattered Legacy skill names: $($add.Name) is left out: the slot before it is empty in your Ultima Online files."
+            continue
+        }
+        $name  = $ascii.GetBytes($add.Name)
+        $entry = New-Object byte[] ($name.Length + 2)
+        $entry[0] = [byte]$add.Action
+        [Array]::Copy($name, 0, $entry, 1, $name.Length)
+        [Array]::Copy([BitConverter]::GetBytes([int]$packed.Position), 0, $newIdx, $at, 4)
+        [Array]::Copy([BitConverter]::GetBytes([int]$entry.Length), 0, $newIdx, $at + 4, 4)
+        $packed.Write($entry, 0, $entry.Length)
+        $changed++
     }
     if ($changed -eq 0) { Stop-Step; return }
 

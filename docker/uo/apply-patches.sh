@@ -1020,6 +1020,12 @@ apply_patch "$PATCHES/MLQuestEntry-quest-milestones.patch"
 apply_patch "$PATCHES/Fishing-loot-box-firsts.patch"
 apply_patch "$PATCHES/SetToDecorativeGump-loot-box-herbalist.patch"
 
+
+# cc-P804 (F-51): the Herbalism skill and the reagent lane. Last: the lane's context includes the raised bed hooks above.
+apply_patch "$PATCHES/Skills-herbalism.patch"
+apply_patch "$PATCHES/skills-json-herbalism.patch"
+apply_patch "$PATCHES/FeatureFlagManager-skill-count.patch"
+apply_patch "$PATCHES/Plants-herbalism-lane.patch"
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

@@ -26,7 +26,8 @@ public partial class RaisedGardenPlantItem : PlantItem
         ItemID = BowlOfDirtID;
     }
 
-    public override bool RequiresUpkeep => false;
+    // cc-P804: a reagent mound is tended like a bowl (HerbalLane); a stock mound stays carefree.
+    public override bool RequiresUpkeep => HerbalLane.IsReagent(this);
     public override int BowlOfDirtID => 2323;
     public override int GreenBowlID => PlantStatus <= PlantStatus.Stage3 ? 0xC7E : 0xC62;
 

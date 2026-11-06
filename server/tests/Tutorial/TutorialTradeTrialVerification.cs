@@ -142,7 +142,7 @@ public class TutorialTradeTrialVerification : IDisposable
     [InlineData("gathering.mining", SkillName.Mining, typeof(Pickaxe), 1)]
     [InlineData("gathering.lumberjacking", SkillName.Lumberjacking, typeof(Hatchet), 2)]
     [InlineData("gathering.fishing", SkillName.Fishing, typeof(FishingPole), 4)]
-    [InlineData("gathering.camping", SkillName.Camping, typeof(Kindling), 0)]
+    [InlineData("gathering.camping", SkillName.Camping, typeof(Kindling), 1)] // cc-P804: the wild garlic
     public void AHarvestFinishesGatheringAndTheToolAndPropsGoBack(string key, SkillName skill, Type tool, int props)
     {
         using var p = new Player(TutorialWingTrials.TradesYard);
@@ -162,6 +162,13 @@ public class TutorialTradeTrialVerification : IDisposable
         var ore = new IronOre(3);                // what the harvest gave stays the trainee's
         p.Pm.AddToBackpack(ore);
         Roll(p, skill);
+        if (key == "gathering.camping")
+        {
+            Assert.DoesNotContain(key, p.Record.StationsDone); // cc-P804: the garlic is still to pick
+            Assert.True(p.Pm.Skills[SkillName.Herbalism].Value >= 30.0);
+            Roll(p, SkillName.Herbalism);
+        }
+
         Assert.Contains(key, p.Record.StationsDone);
         AssertAllReturned(p, trial, loaners, placed, trial.Creatures.ToList());
         Assert.False(ore.Deleted);

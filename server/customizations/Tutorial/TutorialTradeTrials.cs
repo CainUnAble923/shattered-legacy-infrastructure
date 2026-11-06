@@ -17,7 +17,7 @@
 // PropPrefix and, like loaners, any left by a restart are deleted when the world loads.
 //
 // Covered and explained skills: Blacksmithy also rolls Arms Lore (on the dagger), Tinkering Item Identification (on a
-// curio), Alchemy Taste Identification (on an apple). Camping explains Herbalism, Blacksmithy Imbuing, thieving Forensic
+// curio), Alchemy Taste Identification (on an apple). Camping picks wild garlic (cc-P804), Blacksmithy Imbuing, thieving Forensic
 // Evaluation (one line each). Stealth needs a Hiding base of 30 (pinned Stealth.cs:77), which a skill mod cannot give, so
 // the thieving trial lifts the Hiding base to 30 for the lesson and puts it back at the end, keeping any gain made.
 
@@ -67,7 +67,7 @@ namespace Server.Tutorial
         private static (string, string) S(SkillName skill, string label) => (skill.ToString(), label);
 
         public const string HerbalismLine =
-            "Herbalism is not available yet. In this lesson, double-click kindling to light a campfire.";
+            "Herbalism is taught by the Order of the Alembic. Pick the wild garlic beside you, then double-click kindling to light a campfire.";
         public const string ImbuingLine =
             "Imbuing adds magical properties to equipment at a soul forge. This tutorial does not teach it.";
         public const string ForensicLine =
@@ -86,8 +86,8 @@ namespace Server.Tutorial
                 [S(SkillName.Fishing, "Fishing: catch something in the small practice pond")],
                 "Double-click the loaned fishing pole in your backpack, then click the water in the small practice pond. Repeat until you catch something, which you can keep."),
             new("gathering.camping", AtYard, TradesYard,
-                [S(SkillName.Camping, "Camping: light a campfire with kindling")],
-                "Double-click the loaned kindling in your backpack to light a campfire beside you.",
+                [S(SkillName.Camping, "Camping: light a campfire with kindling"), S(SkillName.Herbalism, "Herbalism: pick the wild garlic beside you")],
+                "Double-click the wild garlic beside you to pick it. Double-click the loaned kindling in your backpack to light a campfire beside you.",
                 HerbalismLine),
 
             // -- The crafting yard --
@@ -334,6 +334,8 @@ namespace Server.Tutorial
                 case "gathering.camping":
                     Lend(trial, new Kindling(3));
                     LendSkill(trial, SkillName.Camping, 60);
+                    LendSkill(trial, SkillName.Herbalism, 30); // cc-P804: F-51 is built
+                    Prop(trial, new Server.Engines.Plants.HerbPatch("Garlic", ""), Ground(work.X + 1, work.Y), "wild garlic");
                     break;
                 case "crafting.blacksmithy":
                     Lend(trial, new SmithHammer());

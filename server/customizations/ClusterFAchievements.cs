@@ -126,6 +126,7 @@ public enum TriggerKind
     // claimed (ClusterFQuestMilestones.cs). Last, so no saved value moves.
     TutorialLesson,
     FirstQuest,
+    FirstHarvest, // cc-P804: granted by name
 }
 
 public sealed class AchievementTrigger
@@ -199,6 +200,7 @@ public sealed class AchievementTrigger
             TriggerKind.NewHavenQuests     => n == 1 ? "finished a New Haven trainer quest" : $"finished {n:N0} New Haven trainer quests",
             TriggerKind.AchievementPoints  => $"reached {n:N0} Achievement Points",
             TriggerKind.Renown             => $"reached {n:N0} Renown",
+            TriggerKind.FirstHarvest       => "harvested your first herbs",
             TriggerKind.Logins             => $"logged in {n:N0} times",
             TriggerKind.TutorialSkipped    => "skipped the New Haven tutorial",
             TriggerKind.TutorialRemedial   => "completed the tutorial after skipping it",
@@ -910,6 +912,15 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             trigger:          T.Event(TriggerKind.MineColoredOre),
             flavor:          "Step one of a very long relationship with rocks.",
             itemGumpId:      0x0E86);
+
+        // cc-P804 (F-51): granted by HerbalLane.TryHarvest.
+        Reg(Server.Engines.Plants.HerbalLane.FirstHarvestAchievement,
+            "Green Thumb",
+            "Harvest herbs you grew yourself. The System notes that you kept something alive.",
+            AchievementCategory.Skills, ap: 10, renown: 25,
+            trigger:          T.Event(TriggerKind.FirstHarvest),
+            flavor:          "It lived. The bar was low. You cleared it.",
+            itemGumpId:      0x18E1);
 
         Reg("mining.prospector",
             "Certified Rock Enthusiast",
