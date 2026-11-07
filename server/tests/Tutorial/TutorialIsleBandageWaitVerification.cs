@@ -366,7 +366,7 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         Assert.True(TutorialWorld.IsOnIsle(p.Pm));
         Assert.True(TutorialWake.IsLying(p.Pm));
         Assert.False(p.Pm.Frozen); // cc-P732: held down by refusing their moves, not frozen
-        Assert.True(TutorialWake.LightOf(p.Pm) > 10); // dark
+        Assert.Equal(TutorialWake.DarkLight, TutorialWake.LightOf(p.Pm)); // the wake's shade (cc-P817)
 
         TutorialWake.Advance(p.Pm, 10);
         Assert.True(TutorialWake.IsLying(p.Pm)); // still down

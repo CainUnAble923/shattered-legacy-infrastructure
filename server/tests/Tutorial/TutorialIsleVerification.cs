@@ -186,8 +186,9 @@ public class TutorialIsleVerification : IDisposable
     public void TheCoreRunsWestToEastWithTheFarmAndTravelLast()
     {
         Assert.Equal(
-            ["core.movement", "core.backpack", "core.paperdoll", "core.chat", "core.farm", "core.healing", "core.death", "core.banking",
-             "core.league", "core.loop", "core.travel"],
+            // cc-P817: the farm (with the pet pick) moved to last before the moongate; healing stays after chat.
+            ["core.movement", "core.backpack", "core.paperdoll", "core.chat", "core.healing", "core.death", "core.banking",
+             "core.league", "core.loop", "core.farm", "core.travel"],
             TutorialStations.Core.Select(s => s.Key).ToArray());
 
         using var t = new Trainees();
@@ -205,13 +206,13 @@ public class TutorialIsleVerification : IDisposable
         ClusterFTutorial.RunStation(pm, TutorialStations.Find("core.farm")!);
         Assert.Null(TutorialCoreTrials.Current(pm));
 
-        foreach (var key in new[] { "core.chat", "core.farm", "core.healing", "core.death", "core.banking", "core.league" })
+        foreach (var key in new[] { "core.chat", "core.healing", "core.death", "core.banking", "core.league", "core.loop" })
         {
             Play(pm, key);
             Assert.False(ClusterFTutorial.CoreDone(t.Record));
         }
 
-        Play(pm, "core.loop");
+        Play(pm, "core.farm"); // cc-P817: the farm last before the moongate
         // The old travel key counts now that the rest are done: no lesson repeated, the core finished.
         Assert.True(ClusterFTutorial.IsDone(t.Record, "core.travel"));
         Assert.True(ClusterFTutorial.CoreDone(t.Record));
@@ -671,14 +672,62 @@ public class TutorialIsleVerification : IDisposable
     // ---------------------------------------------------------------- cc-P762: the new-character lockdown
 
     [Fact]
-    public void P762_APlayerAccountSeesNewHavenLockedWithItsOneLine()
+    public void P762_APlayerAccountSeesOnlyTheIsle()
     {
+        // cc-P817 (Chase: "I also want New Haven removed from map start"): P762 showed New Haven locked; now the isle alone.
         using var locked = new Switches();
         using var t = new Trainees();
         var cities = Server.Engines.CharacterCreation.CharacterCreation.GetStartingCities(t.Account);
-        Assert.Equal([TutorialStart.IsleCity, TutorialStart.LockedHavenCity], cities.Select(c => c.City).ToArray());
-        Assert.Equal([ShardClilocs.TutorialIslandCity, ShardClilocs.NewHavenLockedCity], cities.Select(c => c.Description).ToArray());
-        Assert.Equal(TutorialStart.Choice.Isle, TutorialStart.ChoiceOf(cities[1])); // the locked entry is the isle
+        Assert.Equal([TutorialStart.IsleCity], cities.Select(c => c.City).ToArray());
+        Assert.Equal([ShardClilocs.TutorialIslandCity], cities.Select(c => c.Description).ToArray());
+        // An old list's locked entry still reads as the isle, should one come back.
+        Assert.Equal(TutorialStart.Choice.Isle, TutorialStart.ChoiceOf(new CityInfo(TutorialStart.LockedHavenCity, "", 0, 0, 0, 0, Map.Trammel)));
+    }
+
+    // ---------------------------------------------------------------- cc-P817: creation (Chase 11-07, update 11)
+
+    // Item 3: the start map is the isle alone for a player account; staff still see New Haven as well.
+    [Fact]
+    public void P817_TheStartMapIsTutorialIslandAloneAndStaffKeepBoth()
+    {
+        using var locked = new Switches();
+        using var t = new Trainees();
+        Assert.Equal(["Tutorial Island"], CityNames(t.Account));
+
+        var staff = new Account($"p817s{Guid.NewGuid():N}"[..16], "p817-test-only") { AccessLevel = AccessLevel.GameMaster };
+        try
+        {
+            Assert.Equal(["Tutorial Island", "New Haven"], CityNames(staff));
+        }
+        finally
+        {
+            staff.Delete();
+        }
+    }
+
+    // Item 1: an old or third-party client that asks for an elf or a gargoyle gets a Human, and is told.
+    [Theory]
+    [InlineData("Elf")]
+    [InlineData("Gargoyle")]
+    public void P817_AnElfOrGargoyleAskedForIsMadeHuman(string asked)
+    {
+        using var locked = new Switches();
+        using var t = new Trainees();
+        var race = asked == "Elf" ? Race.Elf : Race.Gargoyle;
+        Assert.Same(Race.Human, NewCharacterRules.RaceFor(t.Account, race, out var refused));
+        Assert.True(refused);
+        Assert.Same(Race.Human, NewCharacterRules.RaceFor(t.Account, Race.Human, out refused));
+        Assert.False(refused);
+    }
+
+    // Item 2: the trade choice (the client's Blacksmith, the shard's Maker template, profession 3) makes no character.
+    [Fact]
+    public void P817_TheTradeProfessionIsRefused()
+    {
+        Assert.Null(ClusterFStartChoices.Resolve(3, [], [60, 15, 15], Race.Human, true, out var why));
+        Assert.Contains("no longer offered", why);
+        Assert.NotNull(ClusterFStartChoices.Resolve(1, [], [45, 35, 10], Race.Human, true, out _)); // the Fighter still is
+        Assert.NotNull(ClusterFStartChoices.Resolve(2, [], [25, 20, 45], Race.Human, true, out _)); // and the Mage
     }
 
     [Fact]
@@ -744,7 +793,7 @@ public class TutorialIsleVerification : IDisposable
         // [ResetMyAccount and [ClusterFReset both run ExecuteReset; its "account flags" box clears the tutorial record too.
         ClusterFDevTools.ExecuteReset(first, first, t.Account, new ResetOptions { Flags = true });
         Assert.Equal(TutorialState.NotStarted, t.Record.State);
-        Assert.Equal([TutorialStart.IsleCity, TutorialStart.LockedHavenCity], CityNames(t.Account));
+        Assert.Equal([TutorialStart.IsleCity], CityNames(t.Account)); // cc-P817: the isle alone
 
         var next = t.Add();
         Create(next, TutorialStart.Choice.Haven);
@@ -819,7 +868,7 @@ public class TutorialIsleVerification : IDisposable
 
         using (new Switches(races: "Human, Elf"))
         {
-            Assert.Equal([TutorialStart.IsleCity, TutorialStart.LockedHavenCity], CityNames(t.Account));
+            Assert.Equal([TutorialStart.IsleCity], CityNames(t.Account)); // cc-P817: the isle alone
             Assert.Same(Race.Elf, NewCharacterRules.RaceFor(t.Account, Race.Elf, out var refused));
             Assert.False(refused);
             Assert.Same(Race.Human, NewCharacterRules.RaceFor(t.Account, Race.Gargoyle, out _));

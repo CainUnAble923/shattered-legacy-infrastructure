@@ -61,8 +61,13 @@ public static class TutorialWake
     public const int HoldEverySeconds = 20;
     // cc-P740: a dusk the trainee and the sand show in (P732's 24 was near night). Picked from TazUO shots of a new
     // character (notes/cc-P740-isle-wake-visible.md).
-    public const int DarkLight = 16;     // 0 day, 30 near black
-    public static readonly int[] DawnLight = [10, 5]; // after the get-up, one a second
+    // cc-P817 (Chase 11-07, a fresh tester on update 11: "too dark on startup", his shot dim and gray): P740's 16 kept the
+    // whole lie dim, up to SafetySeconds when the trainee does not know to step yet, so the first minute read as night.
+    // Now only a touch of early-morning shade (BrightestWake at most), and one short dawn step; the isle itself is always
+    // day (FoldRegion.AlterLightLevel: LightCycle.DayLevel, whatever the shard clock says). Light elsewhere is untouched.
+    public const int DarkLight = 6;      // 0 day, 30 near black
+    public const int BrightestWake = 8;  // cc-P817: the wake is never darker than this
+    public static readonly int[] DawnLight = [3]; // after the get-up, one a second
     // cc-P740: the get-up, the same animation backward from the ground at a slow pace (TazUO: 80 ms x (delay + 1) a
     // frame, five frames, so about 2.4 s), sent again GetUpResend later (ClassicUO), and the seconds it is given before
     // the dawn (moves refused meanwhile; the second-long tick makes it GetUpSeconds - 1 to GetUpSeconds).

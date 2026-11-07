@@ -129,6 +129,12 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         "core.paperdoll" => [TutorialAction.Equipped],
         "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag],
         "core.chat" => [TutorialAction.SaidPhrase],
+        // cc-P817: the farm comes last before the moongate now, so playing up to it plays these too.
+        "core.healing" => [TutorialAction.Healed],
+        "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
+        "core.banking" => [TutorialAction.Deposited],
+        "core.league" => [TutorialAction.TalkedToLeague],
+        "core.loop" => [TutorialAction.VisionStarted, TutorialAction.VisionFinished],
         _ => throw new InvalidOperationException(key)
     };
 
@@ -215,12 +221,12 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         TutorialTestStart.Begin(p.Pm);
         Assert.True(TutorialWake.IsLying(p.Pm));
         Assert.False(p.Pm.Frozen); // cc-P732: not frozen, so the real client sends the move that gets them up
-        Assert.True(TutorialWake.LightOf(p.Pm) > 10); // dark
+        Assert.Equal(TutorialWake.DarkLight, TutorialWake.LightOf(p.Pm)); // the wake's shade (cc-P817: light, not dark)
         Assert.Equal(1, TutorialWake.PosesSent(p.Pm)); // cc-P732: the lying pose
 
         TutorialWake.Advance(p.Pm, TutorialWake.HintSeconds);
         Assert.True(TutorialWake.IsLying(p.Pm));
-        Assert.True(TutorialWake.LightOf(p.Pm) > 10); // cc-P732: still dark while they lie
+        Assert.Equal(TutorialWake.DarkLight, TutorialWake.LightOf(p.Pm)); // cc-P732: the same while they lie
         Assert.Equal(2, TutorialWake.PosesSent(p.Pm)); // and the pose again a second in
         Assert.Contains("get up", TutorialWake.MoveHintLine); // cc-P769: it says how, too (PlaytesterNotesVerification)
         TutorialWake.Advance(p.Pm, 30);
@@ -302,7 +308,8 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
     [Fact]
     public void TheDuskShowsThemLyingAndTheGetUpPlaysBeforeTheLightAndTheWindows()
     {
-        Assert.InRange(TutorialWake.DarkLight, 12, 18); // a dusk (P732's 24 hid the trainee in TazUO)
+        // cc-P817 (Chase 11-07: "too dark on startup"): P740's dusk of 12-18 read as night; a light shade now.
+        Assert.InRange(TutorialWake.DarkLight, 1, TutorialWake.BrightestWake);
         Assert.True(TutorialWake.DawnLight[0] < TutorialWake.DarkLight);
         Assert.InRange(5 * 80 * (TutorialWake.GetUpDelay + 1), 2000, 3000); // TazUO: five frames up, 2 to 3 s
         // The dawn waits for it, sent again GetUpResend later (ClassicUO): the rise lasts at least GetUpSeconds - 1 s.
