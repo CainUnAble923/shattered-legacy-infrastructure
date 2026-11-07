@@ -1,6 +1,7 @@
 // cc-P229 (F-13): the League shop's window, its confirm step, and the title picker.
 //
-// LeagueShopGump      shaped like CleanUpBritanniaRewardGump (Services/CleanUpBritannia/CleanUpBritanniaRewards.cs) so the
+// LeagueShopGump      cc-P813: drawn on Chase's Claude Design store window (DesignGumpArt), tabs for Titles and Hall, five
+//                     rows a page as before. Until then it was shaped like CleanUpBritanniaRewardGump (Services/CleanUpBritannia/CleanUpBritanniaRewards.cs) so the
 //                     shard's stores feel alike: the same scroll frame, five rows a page, the item art greyed until it can
 //                     be bought. Each row shows its Renown price and its AP; a locked row reads "Requires 500 AP". Prices
 //                     and AP use cc-P169's requirement colours (RequirementStyle): green when met, red when not.
@@ -31,6 +32,11 @@ public class LeagueShopGump : Gump
     // Item art drawn in this hue on a locked row (CleanUpBritanniaRewardGump's grey, ServUO GetItemHue).
     public const int LockedArtHue = 0x3E9;
 
+    // cc-P813: rows on Chase's Claude Design store window (DesignGumpArt.StoreBackground, 560 x 420): the design's
+    // grid, name | requirement | price | Buy, under the header rule and the tabs.
+    public const int RowTop = 112;
+    public const int DesignRowHeight = 49;
+
     public LeagueShopGump(PlayerMobile pm) : base(50, 50)
     {
         pm.CloseGump<LeagueShopGump>();
@@ -44,29 +50,22 @@ public class LeagueShopGump : Gump
 
         AddPage(0);
 
-        AddImage(0, 0, 0x1F40);
-        AddImageTiled(20, 37, 300, 308, 0x1F42);
-        AddImage(20, 325, 0x1F43);
-        AddImage(35, 8, 0x39);
-        AddImageTiled(65, 8, 257, 10, 0x3A);
-        AddImage(290, 8, 0x3B);
-        AddImage(32, 33, 0x2635);
-        AddImageTiled(70, 55, 230, 2, 0x23C5);
+        // cc-P813: the design's window. Every word is drawn here; the art holds none.
+        AddImage(0, 0, DesignGumpArt.StoreBackground);
+        AddHtml(20, 18, 260, 26, $"<BIG>{DesignGumpArt.Color(DesignGumpArt.Tan, "The League Shop")}</BIG>", false, false);
+        AddHtml(
+            280, 22, 260, 20,
+            $"<DIV ALIGN=RIGHT>{DesignGumpArt.Color(DesignGumpArt.Grey, "Renown")} {DesignGumpArt.Color(DesignGumpArt.Cream, data.Renown.ToString("N0"))}" +
+            $"   {DesignGumpArt.Color(DesignGumpArt.Grey, "AP")} {DesignGumpArt.Color(DesignGumpArt.Cream, data.AchievementPoints.ToString("N0"))}</DIV>",
+            false, false
+        );
 
-        // Dark text on the scroll, as the Clean Up store's cliloc lines (colour 0x1): cc-P169's ice white heading is for
-        // the dark panels and would not read on parchment.
-        AddLabel(70, 35, 0, "The League Shop");
-        AddLabel(50, 65, 0, "Renown:");
-        AddLabel(110, 65, 0x64, data.Renown.ToString("N0"));
-        AddLabel(180, 65, 0, "AP:");
-        AddLabel(210, 65, 0x64, data.AchievementPoints.ToString("N0"));
-        AddImageTiled(35, 85, 270, 2, 0x23C5);
-        AddLabel(35, 90, 0, "AP opens a row for good. Renown buys.");
+        // The tabs: this page (the active tab, not a button), then Titles and Hall.
+        AddTab(21, "Shop", 0);
+        AddTab(133, "Titles", BtnTitles);
+        AddTab(245, "Hall", BtnHall);
 
-        AddButton(35, 337, 4011, 4012, BtnTitles);
-        AddLabel(69, 337, 0, "Titles");
-        AddButton(105, 337, 4011, 4012, BtnHall);
-        AddLabel(139, 337, 0, "Hall");
+        AddHtml(20, 392, 300, 20, DesignGumpArt.Color(DesignGumpArt.Grey, "AP opens a row for good. Renown buys."), false, false);
 
         var stock = LeagueShop.Stock;
         var pages = (stock.Length + RowsPerPage - 1) / RowsPerPage;
@@ -75,38 +74,55 @@ public class LeagueShopGump : Gump
         {
             AddPage(page + 1);
 
-            var offset = 110;
+            var top = RowTop;
 
             for (var i = page * RowsPerPage; i < Math.Min(stock.Length, (page + 1) * RowsPerPage); i++)
             {
                 var entry = stock[i];
                 var row = Row.Of(data, entry);
 
+                AddItem(24, top + 4, entry.ItemID, row.Unlocked ? entry.Hue : LockedArtHue);
+                AddLabel(80, top + 4, row.Unlocked ? DesignGumpArt.HueDesignBody : RequirementStyle.DisabledHue, entry.Label);
+                AddLabel(80, top + 24, row.PriceHue, $"{entry.Renown:N0} Renown");
+                // The AP text beside the price, so a long name has the row to the Buy button (cc-P813 shot 1).
+                AddLabel(200, top + 24, row.ApHue, row.ApText);
+
                 if (row.CanBuy)
                 {
-                    AddButton(35, offset + RowHeight / 2 - 5, 0x837, 0x838, BtnRowBase + i);
+                    AddButton(467, top + 10, DesignGumpArt.StoreBuy, DesignGumpArt.StoreBuyPressed, BtnRowBase + i);
+                    AddLabel(DesignGumpArt.CenterX(467, DesignGumpArt.StoreBuyWidth, "Buy"), top + 14, DesignGumpArt.HueDesignCream, "Buy");
                 }
 
-                AddItem(55, offset + 4, entry.ItemID, row.Unlocked ? entry.Hue : LockedArtHue);
-                AddLabel(110, offset + 2, row.Unlocked ? 0 : RequirementStyle.DisabledHue, entry.Label);
-                AddLabel(110, offset + 20, row.PriceHue, $"{entry.Renown:N0} Renown");
-                AddLabel(200, offset + 20, row.ApHue, row.ApText);
-
-                offset += RowHeight + 2;
+                AddImageTiled(21, top + DesignRowHeight - 1, 518, 1, DesignGumpArt.StoreRowRule);
+                top += DesignRowHeight;
             }
 
             if (page > 0)
             {
-                AddButton(150, 335, 0x15E3, 0x15E7, 0, GumpButtonType.Page, page);
-                AddHtmlLocalized(170, 335, 60, 20, 1074880, 0x1); // Previous
+                AddButton(320, 382, DesignGumpArt.StoreTab, DesignGumpArt.StoreTabActive, 0, GumpButtonType.Page, page);
+                AddLabel(DesignGumpArt.CenterX(320, DesignGumpArt.StoreTabWidth, "Previous"), 388, DesignGumpArt.HueDesignCream, "Previous");
             }
 
             if (page < pages - 1)
             {
-                AddButton(300, 335, 0x15E1, 0x15E5, 0, GumpButtonType.Page, page + 2);
-                AddHtmlLocalized(240, 335, 60, 20, 1072854, 0x1); // <div align=right>Next</div>
+                AddButton(435, 382, DesignGumpArt.StoreTab, DesignGumpArt.StoreTabActive, 0, GumpButtonType.Page, page + 2);
+                AddLabel(DesignGumpArt.CenterX(435, DesignGumpArt.StoreTabWidth, "Next"), 388, DesignGumpArt.HueDesignCream, "Next");
             }
         }
+    }
+
+    /// <summary>cc-P813: a tab on the design's tab row; button 0 is the page you are on (drawn active, not a button).</summary>
+    private void AddTab(int x, string text, int button)
+    {
+        if (button == 0)
+        {
+            AddImage(x, 68, DesignGumpArt.StoreTabActive);
+            AddLabel(DesignGumpArt.CenterX(x, DesignGumpArt.StoreTabWidth, text), 74, DesignGumpArt.HueDesignWhite, text);
+            return;
+        }
+
+        AddButton(x, 68, DesignGumpArt.StoreTab, DesignGumpArt.StoreTabActive, button);
+        AddLabel(DesignGumpArt.CenterX(x, DesignGumpArt.StoreTabWidth, text), 74, DesignGumpArt.HueDesignCream, text);
     }
 
     /// <summary>How one row draws for this account: open or locked, the price's and the AP's words and colours.</summary>

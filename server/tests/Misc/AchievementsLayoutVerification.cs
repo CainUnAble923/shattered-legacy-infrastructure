@@ -249,7 +249,9 @@ public class AchievementsLayoutVerification
         foreach (var def in ClusterFAchievementSystem.Definitions.Values)
         {
             var popup = new AchievementEarnedGump(p.Pm, def);
-            var block = Assert.Single(popup.Entries.OfType<GumpHtml>());
+            // cc-P813: the designed popup (Didn't Read the Sign) draws its heading, title and footer as html blocks of
+            // their own; the body is the block with the earned line, on every popup.
+            var block = Assert.Single(popup.Entries.OfType<GumpHtml>(), h => h.Text.Contains(def.EarnedLine));
             var lines = GumpTextWidth.Lines(Plain(block.Text), block.Width);
             if (lines > worst.Lines)
             {

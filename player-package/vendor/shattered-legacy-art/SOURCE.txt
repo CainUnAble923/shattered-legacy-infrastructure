@@ -650,3 +650,28 @@ broken sword, 23210 the League crest (a ring of stones round a broken sword). Ea
 label, made by shard-migration notes\cc-P665-tools\make_placeholders.py. The server shows them only when
 clusterf.tutorial.visionPanels is on (off by default), so the loop vision runs without them. Ours; no third-party
 content.
+
+Claude Design gump art and the Hall of Finishers banner: gumps 23211-23222 (0x5AAB-0x5AB6), art 46710 (0xB676) (cc-P813)
+--------------------------------------------------------------------------------------------------------------------------
+Author:      Chase, made with Claude Design in the Shattered Legacy design system: canvas "Shattered Legacy gump art"
+             (https://claude.ai/artifact/8vPhbPHmE6xoJ8nq5YVXgm), made 2026-11-01, approved by Chase 2026-11-05. Ours.
+Sources:     the canvas's boards as plain HTML at true size, kept with the renders in shard-migration
+             notes\cc-P813-tools\source and renders (and beside the overseer's copies in D:\UO\overseer\gump-art-20261105).
+Made by:     notes\cc-P813-tools\render_gump_art.py in shard-migration: headless Edge renders each window at the size in
+             its file name, transparent outside the panel, then renders it again with the text hidden (and for a window
+             background, its buttons and rows hidden too) and cuts each piece out by the element's own rectangle. No
+             text is baked into any gump: the server draws every word, price and button label on top.
+  23211        pet choice scroll background, 340 x 280         (PetChoiceGump)
+  23212/23213  Dog tile with its icon, normal and pressed       (143 x 96, the tile's button)
+  23214/23215  Cat tile with its icon, normal and pressed
+  23216        moongate skip achievement background, 400 x 136 (AchievementEarnedGump for "Didn't Read the Sign")
+  23217        reward store window background, 560 x 420       (LeagueShopGump)
+  23218        the store's row rule, 8 x 1, tiled
+  23219/23220  a store tab, inactive and active (104 x 32; one width for every label)
+  23221/23222  the store's Buy button, normal and pressed (72 x 28)
+  The pressed looks are the design's own colours one step darker (tile #ddcfa6 with border #5c4110; Buy #2a2317); the
+  active tab is the design's own "Gear" tab.
+  46710        the Hall of Finishers banner, 44 x 88: the overseer's true-size export finishers-banner-44x88.png, unchanged
+               (it matches the 4x preview pixel for pixel but for 2 of its 2,044 opaque pixels, at nearest-neighbour).
+Records (records.json): 46710 only, OSI's hanging banner 0x1586's own tiledata read from the client's tiledata.mul:
+"banner", 0x00044000 (ArticleA | PartialHue), weight 255, height 0. Server copy: FinishersBannerArt.

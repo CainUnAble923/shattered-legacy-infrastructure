@@ -69,6 +69,9 @@ namespace Server
 
             // cc-P632: the scoring archery butte's hit pictures (ScoringArcheryButteArt.Records).
             Items.ScoringArcheryButteArt.Apply();
+
+            // cc-P813: the Hall of Finishers banner (FinishersBannerArt).
+            Items.FinishersBannerArt.Apply();
         }
     }
 }
