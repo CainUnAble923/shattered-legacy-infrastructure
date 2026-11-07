@@ -213,6 +213,58 @@ public class NewHavenFixesVerification : IDisposable
     }
 
     [Fact]
+    public void OnlyItsTraineeMayBandageTheStableHorse()
+    {
+        // cc-P799: pinned's Trammel rule refuses a player's beneficial act on an uncontrolled creature, so a real bandage
+        // never reached Heal, which the fact above calls directly.
+        using var p = new Player(HavenSpots.Stables);
+        using var other = new Player(HavenSpots.Stables, false);
+        var horse = Begin(p, "animals.taming").Horse;
+        Assert.NotNull(horse);
+        AllowBeneficialHandler pinned = (_, _) => false;
+
+        Assert.True(TutorialFarm.AllowBeneficial(p.Pm, horse, pinned));
+        Assert.False(TutorialFarm.AllowBeneficial(other.Pm, horse, pinned));
+
+        var stranger = new Horse();
+        try
+        {
+            Assert.False(TutorialFarm.AllowBeneficial(p.Pm, stranger, pinned));
+        }
+        finally
+        {
+            stranger.Delete();
+        }
+    }
+
+    [Fact]
+    public void TheRealTamingSkillTakesTheHealedHorse()
+    {
+        // cc-P799: the skill itself, as a player uses it, which the fact above skips by setting the master.
+        TutorialStableHorseStore.Kept.Clear();
+        ShardTestClock.Arm();
+        using var p = new Player(HavenSpots.SickStall);
+        var trial = Begin(p, "animals.taming");
+        var horse = trial.Horse!;
+        p.Pm.Location = new Point3D(HavenSpots.SickStall.X, HavenSpots.SickStall.Y + 1, HavenSpots.SickStall.Z);
+        Assert.True(horse.CantWalk);
+        horse.Heal(40, p.Pm);
+        Assert.True(horse.Tamable);
+        Assert.False(horse.CantWalk); // pinned's taming needs a path from the animal to the tamer
+        Assert.Equal(0, horse.RangeHome);
+        Assert.Equal(HavenSpots.SickStall, horse.Home);
+        Assert.True(p.Pm.Skills.AnimalTaming.Value >= 60.0);
+
+        Server.SkillHandlers.AnimalTaming.OnUse(p.Pm);
+        Assert.NotNull(p.Pm.Target);
+        p.Pm.Target.Invoke(p.Pm, horse);
+        for (var i = 0; i < 40 && !horse.Controlled; i++) { ShardTestClock.AdvanceSeconds(1); }
+
+        Assert.True(horse.Controlled, "tamed by the skill");
+        Assert.Equal(p.Pm, horse.ControlMaster);
+    }
+
+    [Fact]
     public void FullFollowerSlotsAreSaidAndTheIslePetNeverFinishesAnimals()
     {
         using var p = new Player(HavenSpots.Stables);
@@ -265,6 +317,48 @@ public class NewHavenFixesVerification : IDisposable
 
     // ---------------------------------------------------------------- 6
 
+    // cc-P806 (P805 build review, fixes 1 and 2): a world seeded with the crosswise bench and a Rook sat the wrong way.
+    [Fact]
+    public void ASeededWorldGetsTheJoinedBenchAndRookTurnsToTheSquare()
+    {
+        var map = HavenSpots.Map;
+        var wrong = HavenSpots.RookFacing == Direction.South ? Direction.North : Direction.South;
+        var rook = new TutorialRecruiter { Direction = wrong };
+        rook.MoveToWorld(HavenSpots.Rook, map);
+        var crosswise = HavenSpots.RookBench.Select(spot =>
+        {
+            var old = new Static(0x0B2C) { Name = "wooden bench" };
+            old.MoveToWorld(spot, map);
+            return old;
+        }).ToArray();
+        try
+        {
+            Assert.False(TutorialWingTrials.MoveRook(false)); // he is on the bench already: only the turn reaches him
+            TutorialWingTrials.SeedHaven(false);
+            Assert.All(crosswise, old => Assert.True(old.Deleted));
+            Assert.Equal(HavenSpots.RookFacing, rook.Direction & Direction.Mask);
+            foreach (var spot in HavenSpots.RookBench)
+            {
+                var at = new List<Item>();
+                foreach (var item in map.GetItemsAt(spot.X, spot.Y)) { at.Add(item); }
+                Assert.Single(at, i => i.ItemID == 0x0B2D);
+            }
+
+            Assert.Contains("placed 0 pieces (took away 0", TutorialWingTrials.SeedHaven(false));
+        }
+        finally
+        {
+            rook.Delete();
+            foreach (var old in crosswise) { old.Delete(); }
+            foreach (var piece in TutorialWingTrials.HavenPieces)
+            {
+                var left = new List<Item>();
+                foreach (var item in map.GetItemsAt(piece.At.X, piece.At.Y)) { left.Add(item); }
+                foreach (var item in left.Where(i => i.ItemID == piece.Id && i.Name == piece.Name)) { item.Delete(); }
+            }
+        }
+    }
+
     [Fact]
     public void AnOlderWorldsRookMovesToHisBenchByTheTavern()
     {
@@ -274,11 +368,12 @@ public class NewHavenFixesVerification : IDisposable
             old.MoveToWorld(HavenSpots.OldRook, HavenSpots.Map);
             Assert.True(TutorialWingTrials.MoveRook(false));
             Assert.Equal(HavenSpots.Rook, old.Location);
-            Assert.Equal(Direction.North, old.Direction & Direction.Mask);
+            Assert.Equal(Direction.North, old.Direction & Direction.Mask); // cc-P806: toward the square, on this branch's town
             Assert.False(TutorialWingTrials.MoveRook(false));
             Assert.Same(old, TutorialRecruiter.Find());
-            Assert.Equal(2, TutorialWingTrials.HavenPieces.Count(x => x.Id == 0x0B2C));
-            Assert.Equal(HavenSpots.Rook, TutorialWingTrials.HavenPieces.First(x => x.Id == 0x0B2C).At);
+            Assert.Equal(2, TutorialWingTrials.HavenPieces.Count(x => x.Id == 0x0B2D));
+            Assert.Equal(HavenSpots.Rook, TutorialWingTrials.HavenPieces.First(x => x.Id == 0x0B2D).At);
+            Assert.DoesNotContain(TutorialWingTrials.HavenPieces, x => x.Id == 0x0B2C);
         }
         finally
         {
@@ -366,11 +461,11 @@ public class NewHavenFixesVerification : IDisposable
             var here = new List<Item>();
             foreach (var item in map.GetItemsAt(sign.At.X, sign.At.Y)) { here.Add(item); }
             Assert.Contains(here, i => i.ItemID == sign.Id && i.Name == sign.Name);
-            foreach (var bench in TutorialWingTrials.HavenPieces.Where(x => x.Id == 0x0B2C))
+            foreach (var bench in TutorialWingTrials.HavenPieces.Where(x => x.Id == 0x0B2D))
             {
                 var at = new List<Item>();
                 foreach (var item in map.GetItemsAt(bench.At.X, bench.At.Y)) { at.Add(item); }
-                Assert.Single(at, i => i.ItemID == 0x0B2C);
+                Assert.Single(at, i => i.ItemID == 0x0B2D);
             }
 
             Assert.Contains("placed 0 pieces (took away 0", TutorialWingTrials.SeedHaven(false));
@@ -420,7 +515,7 @@ public class NewHavenFixesVerification : IDisposable
         // the first grass tile north of the dirt road where the mountain path leaves the shore road (it stood in the road at 3702,2745)
         Assert.Equal((3702, 2742), (mountain.At.X, mountain.At.Y));
         // the barn's porch strip by the hitching posts, north of the door path (it stood in the dirt lane at 3610,2613)
-        Assert.Equal((3608, 2614), (stables.At.X, stables.At.Y));
+        Assert.Equal((3609, 2614), (stables.At.X, stables.At.Y)); // cc-P814: clear of the eave at 3608,2614
         // and neither stands on the barn door's approach line (the door is 3607,2615-2616, opening east)
         Assert.DoesNotContain(TutorialWingTrials.HavenPieces, x => x.Id == 0xA854 && x.At.X is (3608 or 3609) && x.At.Y is (2615 or 2616));
     }

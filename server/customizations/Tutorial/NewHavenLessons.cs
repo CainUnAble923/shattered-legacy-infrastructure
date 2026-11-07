@@ -337,16 +337,22 @@ namespace Server.Tutorial
 
         public sealed record HavenPiece(int Id, Point3D At, string Name);
 
+        /// <summary>The bench piece that runs east-west, so two side by side join into one bench (cc-P806).</summary>
+        public const int RookBenchId = 0x0B2D;
+
+        /// <summary>The piece P743 laid there, which runs north-south and drew as two crosswise stubs.</summary>
+        public const int OldRookBenchId = 0x0B2C;
+
         /// <summary>The fixed pieces this prompt adds to New Haven. Each sign stands north of its path, beside it.</summary>
         /// <remarks>cc-P755 (P754 review): the mountain-path sign moved off the dirt road to the first grass tile north of
         /// it (3702,2742); the stables sign moved out of the dirt lane east of the barn to the porch strip by the hitching
         /// posts, just north of the door path (3608,2614).</remarks>
         public static readonly HavenPiece[] HavenPieces =
         [
-            new(0x0B2C, HavenSpots.RookBench[0], "wooden bench"),
-            new(0x0B2C, HavenSpots.RookBench[1], "wooden bench"),
+            new(RookBenchId, HavenSpots.RookBench[0], "wooden bench"),
+            new(RookBenchId, HavenSpots.RookBench[1], "wooden bench"),
             new(0xA854, new Point3D(3702, 2742, 0), "The mountain path: the mining lesson's cave is west, round the hill"),
-            new(0xA854, new Point3D(3608, 2614, 0), "The stables: the sick-bay stall is inside, on the left"),
+            new(0xA854, new Point3D(3609, 2614, 0), "The stables: the sick-bay stall is inside, on the left"), // cc-P814: 3608,2614 is under the barn's eave
             new(0x0FFA, new Point3D(3605, 2620, 0), "bucket of water"),
             new(0x1036, new Point3D(3606, 2619, 0), "clean straw"),
             new(0x0F34, new Point3D(3605, 2619, 0), "clean straw"),
@@ -362,7 +368,7 @@ namespace Server.Tutorial
         {
             var map = HavenSpots.Map;
             var placed = 0;
-            var moved = MoveRook(dryRun) ? 1 : 0;
+            var moved = MoveRook(dryRun) || TurnRook(dryRun) ? 1 : 0;
             // Upgrade in place (the building guide, section 7): a named piece found anywhere but its spot is taken away.
             var moved743 = 0;
             foreach (var piece in HavenPieces)
@@ -373,6 +379,8 @@ namespace Server.Tutorial
                     if (!dryRun) { item.Delete(); }
                 }
             }
+
+            moved743 += TakeAwayOldBench(map, dryRun);
 
             foreach (var piece in HavenPieces)
             {
@@ -388,6 +396,23 @@ namespace Server.Tutorial
 
             var farm = TutorialFarm.ClearHaven(dryRun);
             return $"New Haven (cc-P743){(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {placed} pieces (took away {moved743} from old spots), moved {moved} Rook, {farm}";
+        }
+
+        /// <summary>cc-P806: a world seeded with the crosswise pieces loses them, or they would stay under the new bench.</summary>
+        private static int TakeAwayOldBench(Map map, bool dryRun)
+        {
+            var old = new List<Item>();
+            foreach (var spot in HavenSpots.RookBench)
+            {
+                foreach (var item in map.GetItemsAt(spot.X, spot.Y))
+                {
+                    if (item is Static && item.ItemID == OldRookBenchId && item.Name == "wooden bench") { old.Add(item); }
+                }
+            }
+
+            if (!dryRun) { old.ForEach(item => item.Delete()); }
+
+            return old.Count;
         }
 
         private static List<Item> StrayPieces(Map map, HavenPiece piece)
@@ -427,8 +452,22 @@ namespace Server.Tutorial
             {
                 rook.MoveToWorld(HavenSpots.Rook, HavenSpots.Map);
                 rook.Home = HavenSpots.Rook;
-                rook.Direction = Direction.North;
+                rook.Direction = HavenSpots.RookFacing;
             }
+
+            return true;
+        }
+
+        /// <summary>cc-P806: a Rook already on his bench but facing the wrong way turns round (FindOldRook skips him).</summary>
+        public static bool TurnRook(bool dryRun)
+        {
+            if (TutorialRecruiter.Find() is not { } rook || rook.Location != HavenSpots.Rook ||
+                (rook.Direction & Direction.Mask) == HavenSpots.RookFacing)
+            {
+                return false;
+            }
+
+            if (!dryRun) { rook.Direction = HavenSpots.RookFacing; }
 
             return true;
         }
@@ -571,6 +610,11 @@ namespace Server.Mobiles
             {
                 Healed = true;
                 Tamable = true;
+                // cc-P799: pinned's taming stops ("You do not have a clear path") unless the animal can walk to the tamer,
+                // and this one could not. It stays in its stall by its home range.
+                CantWalk = false;
+                Home = Location;
+                RangeHome = 0;
                 Name = "a calmer horse";
                 if (Trainee != null) { TutorialWingTrials.Line(Trainee, TutorialWingTrials.HorseHealedLine); }
             }

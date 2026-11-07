@@ -313,7 +313,7 @@ public static class TutorialCorePlacement
             { new TutorialStationMarker(station.Key).MoveToWorld(TutorialWorld.Ground(map, SignPoint(station.Key)), map); }
             foreach (var row in mobiles)
             { Place(row.Make(), row.Spot, map); }
-            if (rookMissing) { Place(new TutorialRecruiter { Direction = Direction.North }, HavenSpots.Rook, haven); } // cc-P743: seated, facing the square
+            if (rookMissing) { Place(new TutorialRecruiter { Direction = HavenSpots.RookFacing }, HavenSpots.Rook, haven); } // cc-P743: seated; cc-P806: facing the square
             if (townVetMissing) { Place(new TutorialVeterinarian(), HavenSpots.VetSpot, haven); }
             if (gateMissing) { new TutorialTravelGate().MoveToWorld(GateSpot, map); }
             if (blueMissing) { new TutorialBlueWalkTile().MoveToWorld(FirstMark, map); }
