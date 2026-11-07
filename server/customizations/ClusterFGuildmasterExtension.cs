@@ -28,6 +28,9 @@ public abstract partial class BaseGuildmaster
         // Maritime Brotherhood) shows Bulk Order Info to its members; pinned shows it only at a selling vendor.
         BulkOrderGivers.AddGuildmasterEntries(this, from, ref list);
 
+        // cc-P808: the Tinkers' Union's Clockwork Scavenger build quest (Quest Conversation, members only).
+        ClockworkScavengerQuest.AddEntry(this, from, ref list);
+
         if (from is not PlayerMobile pm) return;
         if (pm.Account is not IAccount acct) return;
 
@@ -40,6 +43,13 @@ public abstract partial class BaseGuildmaster
     protected partial bool OnCustomSpeech(PlayerMobile pm, SpeechEventArgs e)
     {
         var speech = e.Speech;
+
+        // cc-P808: "scavenger" at a Tinker guildmaster: the Clockwork Scavenger build quest.
+        if (this is TinkerGuildmaster && speech.Contains("scavenger", StringComparison.OrdinalIgnoreCase))
+        {
+            ClockworkScavengerQuest.Talk(pm, this);
+            return true;
+        }
 
         // cc-P760: "guild store" opens the guild's store for a member here (RewardStores/GuildStores.cs).
         if (speech.Contains("guild store", StringComparison.OrdinalIgnoreCase) &&
