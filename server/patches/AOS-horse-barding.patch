@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Misc/AOS.cs
++++ b/Projects/UOContent/Misc/AOS.cs
+@@ -196,6 +196,10 @@
+                 }
+             }
+ 
++            // Shattered Legacy (cc-P809): crafted horse barding, beside the swamp dragon's and on its rules (monsters only,
++            // the rider only). Weaker, as a horse is far easier to tame; the numbers are in Configuration/horse-barding.json.
++            HorseBarding.Absorb(from, m, ref totalDamage);
++
+             if (keepAlive && totalDamage > m.Hits)
+             {
+                 totalDamage = m.Hits;
