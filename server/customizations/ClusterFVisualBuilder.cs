@@ -411,8 +411,8 @@ public static class ClusterFVisualBuilder
 
     // -- the command -----------------------------------------------------------------------------------------------
 
-    [Usage("VBuild [status | undo | nudge <dx> <dy> [dz] | world on | world off | forget]")]
-    [Description("cc-P100: opens the Visual Builder palette (after Kamras): search tile data, then paint, fill a box (20 x 20 at most), erase, wipe a box (50 x 50), hue and nudge, as plain statics. Erase and wipe record what they delete, so undo puts it back; the undo history is saved with the world. World mode, which lets erase and wipe touch statics the builder did not place, is Administrator only and off by default.")]
+    [Usage("VBuild [status | undo | nudge <dx> <dy> [dz] | world on | world off | forget | capture <name> [build|world]]")]
+    [Description("cc-P100: opens the Visual Builder palette (after Kamras): search tile data, then paint, fill a box (20 x 20 at most), erase, wipe a box (50 x 50), hue and nudge, as plain statics. Erase and wipe record what they delete, so undo puts it back; the undo history is saved with the world. World mode, which lets erase and wipe touch statics the builder did not place, is Administrator only and off by default. cc-P812: capture <name> [build|world] targets two corners and writes the pieces in the box as decoration data ([Decorate text) for a seed or [PlaceBuild; it places and deletes nothing.")]
     [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "status",
         Summary = "Opens the staff art palette. Opening it places nothing; what you paint, fill or wipe with it is one undo step each.")]
     private static void OnCommand(CommandEventArgs e)
@@ -470,6 +470,19 @@ public static class ClusterFVisualBuilder
                         : "World mode off: erase and wipe only touch what this session placed.");
                     return;
                 }
+            case "capture":
+                {
+                    // cc-P812: the decor capture (DecorCapture.cs).
+                    if (e.Length < 2)
+                    {
+                        from.SendMessage(0x22, "Usage: [VBuild capture <name> [build|world]");
+                        return;
+                    }
+
+                    var world = e.Length > 2 && e.GetString(2).Equals("world", StringComparison.OrdinalIgnoreCase);
+                    DecorCapture.Begin(from, e.GetString(1), !world);
+                    return;
+                }
             case "forget":
                 {
                     _sessions.Remove(from.Serial);
@@ -478,7 +491,7 @@ public static class ClusterFVisualBuilder
                 }
             default:
                 {
-                    from.SendMessage(0x22, "Usage: [VBuild [status | undo | nudge <dx> <dy> [dz] | world on | world off | forget]");
+                    from.SendMessage(0x22, "Usage: [VBuild [status | undo | nudge <dx> <dy> [dz] | world on | world off | forget | capture <name> [build|world]]");
                     return;
                 }
         }

@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07.7
+
+### Staff
+- [VBuild capture <name> saves what you decorated: target two corners, and every piece in the box (its art, place, hue and name, and a door's facing) is written as decoration data to decor-captures/<name>.cfg beside the saves. The default build form is relative to the box's corner, so the file can go into the builds folder and be placed anywhere with [PlaceBuild. Add world to keep map coordinates for the facet decoration folders. Pieces that can't be remade as their own type (addon parts, for example) are kept as plain statics of the same art, and the capture says how many.
+- [AnimLocate shows what each animation of a body does. Pick one of our bodies from the list (or type its number) and a frozen stand of it plays every action in turn, with the action number over its head. [AnimLocate target plays them on any creature you pick, and [AnimLocate stop ends it. The pace and the number of actions per kind of body are in Configuration/staff-build-tools.json.
+
 ## 2026.11.07.6
 
 ### Added
