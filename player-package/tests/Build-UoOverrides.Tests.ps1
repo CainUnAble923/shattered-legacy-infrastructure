@@ -261,7 +261,8 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P277: the dragons' mount items (28295-28296), checked by their own fact.
     # cc-P365: the reward mounts' mount items (46672-46689), checked by their own fact.
     # cc-P632: the scoring archery butte's hit pictures (46690-46709), checked by their own fact.
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28296) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) -and ([int]$_.id -lt 46672 -or [int]$_.id -gt 46689) -and ([int]$_.id -lt 46690 -or [int]$_.id -gt 46709) })
+    # cc-P813: the Hall of Finishers banner (46710), checked by its own fact.
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28296) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) -and ([int]$_.id -lt 46672 -or [int]$_.id -gt 46689) -and ([int]$_.id -lt 46690 -or [int]$_.id -gt 46709) -and [int]$_.id -ne 46710 })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -306,11 +307,12 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469; cc-P364 the 14 League
     # bestiary bodies (2072-2085); cc-P362 the 29 UI skin gumps (23052-23080) and 64 scroll skin art IDs (13049-13112); cc-P365 the 34 mount and evo bodies (2088-2133)
     # and 18 mount items (46672-46689); cc-P436 the nine guild and League frame gumps (23200-23208).
-    # cc-P665 the two vision panel gumps (23209-23210), fixed in cc-P674.
-    Assert-Equal 803 $reg.Count 'registry rows'   # cc-P665: + 2 gumps (the vision panels); cc-P632: + 20 art; cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art; cc-P436: + 9 gumps
+    # cc-P665 the two vision panel gumps (23209-23210), fixed in cc-P674; cc-P813 the twelve Claude Design gumps
+    # (23211-23222) and the Finishers banner art 46710.
+    Assert-Equal 816 $reg.Count 'registry rows'   # cc-P813: + 12 gumps + 1 art; cc-P665: + 2 gumps (the vision panels); cc-P632: + 20 art; cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art; cc-P436: + 9 gumps
     Assert-Equal 74 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364), 2086-2087 (cc-P277), 34 of 2088-2133 (cc-P365)'
-    Assert-Equal 56 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469, 23052-23080 (cc-P362), 23200-23208 (cc-P436) and 23209-23210 (cc-P665)'
-    Assert-Equal 672 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows (cc-P632: + 20 butte pictures)'
+    Assert-Equal 68 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469, 23052-23080 (cc-P362), 23200-23208 (cc-P436), 23209-23210 (cc-P665) and 23211-23222 (cc-P813)'
+    Assert-Equal 673 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows (cc-P632: + 20 butte pictures; cc-P813: + the Finishers banner)'
 }
 
 Fact 'TheScoringButteRecordsAreTheServersTableAndEveryPictureIsThere' {
@@ -1210,6 +1212,63 @@ Fact 'TheGuildFrameIsNineRegisteredCreditedPngsTheServerDraws' {
     Assert-True ($source -match 'gumps 23200-23208' -and $source -match 'Credit Erachiro') 'SOURCE.txt credits the frame'
     $style = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\GuildStyle.cs'))
     Assert-True ($style -match 'public const int Frame = 23200;') 'the server draws gump 23200'
+}
+
+Fact 'TheClaudeDesignGumpsAndTheFinishersBannerAreRegisteredOursAndTheServersDrawThem' {
+    # cc-P813: Chase's Claude Design gump art is gumps 23211-23222 (no text in any: the server draws it), each registered
+    # once as a gump credited to Chase and Claude Design with its PNG at the cut's size, RGBA; the Hall of Finishers
+    # banner is art 46710, 44 x 88, with OSI's banner 0x1586's record, the same in records.json and FinishersBanner.cs.
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $sizes = @('340x280', '143x96', '143x96', '143x96', '143x96', '400x136', '560x420', '8x1', '104x32', '104x32', '72x28', '72x28', '44x88')
+    $pieces = @(@(23211..23222 | ForEach-Object { @{ Id = $_; Kind = 'gump'; Dir = 'gumps' } }) + @(@{ Id = 46710; Kind = 'art'; Dir = 'art' }))
+    Assert-Equal 13 $pieces.Count 'twelve gumps and the banner'
+    for ($i = 0; $i -lt $pieces.Count; $i++) {
+        $id = $pieces[$i].Id
+        $rows = @($reg | Where-Object { [int]$_.id -eq $id })
+        Assert-Equal 1 $rows.Count "$id registered once"
+        Assert-Equal $pieces[$i].Kind $rows[0].kind "$id kind"
+        Assert-True ($rows[0].source -like 'Chase (Shattered Legacy), made with Claude Design*') "$id credits Chase and Claude Design: $($rows[0].source)"
+        Assert-Equal 'ours' $rows[0].license "$id license"
+        $png = Join-Path $pkg "vendor\shattered-legacy-art\$($pieces[$i].Dir)\$id.png"
+        Assert-True (Test-Path -LiteralPath $png) "PNG for $id"
+        $b = [IO.File]::ReadAllBytes($png)
+        $w = ([int]$b[16] -shl 24) -bor ([int]$b[17] -shl 16) -bor ([int]$b[18] -shl 8) -bor [int]$b[19]
+        $h = ([int]$b[20] -shl 24) -bor ([int]$b[21] -shl 16) -bor ([int]$b[22] -shl 8) -bor [int]$b[23]
+        Assert-Equal $sizes[$i] "${w}x${h}" "size of $id.png"
+        Assert-Equal 6 ([int]$b[25]) "$id.png is RGBA (PNG colour type 6)"
+    }
+    $source = [IO.File]::ReadAllText((Join-Path $pkg 'vendor\shattered-legacy-art\SOURCE.txt'))
+    Assert-True ($source -match 'gumps 23211-23222' -and $source -match 'art 46710') 'SOURCE.txt describes the pieces'
+
+    # The server draws each piece: the IDs in DesignGumpArt.cs, and the gumps that use them.
+    $srv = Join-Path (Split-Path $pkg -Parent) 'server\customizations'
+    $art = [IO.File]::ReadAllText((Join-Path $srv 'DesignGumpArt.cs'))
+    $ids = @([regex]::Matches($art, 'public const int \w+ = (232\d\d);') | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object)
+    Assert-Equal ((23211..23222) -join ',') ($ids -join ',') 'DesignGumpArt names every gump once'
+    Assert-True ([IO.File]::ReadAllText((Join-Path $srv 'Tutorial\TutorialGateSkip.cs')) -match 'DesignGumpArt\.PetScrollBackground') 'the pet scroll draws its background'
+    Assert-True ([IO.File]::ReadAllText((Join-Path $srv 'ClusterFAchievements.cs')) -match 'DesignGumpArt\.SkipPopupBackground') 'the skip popup draws its panel'
+    Assert-True ([IO.File]::ReadAllText((Join-Path $srv 'LeagueShop\LeagueShopGumps.cs')) -match 'DesignGumpArt\.StoreBackground') 'the League shop draws the store window'
+
+    # The banner's record: records.json and FinishersBanner.cs, and OSI's banner 0x1586's values.
+    $cs = [IO.File]::ReadAllText((Join-Path $srv 'Items\FinishersBanner.cs'))
+    $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $j = @($rec.tiledata | Where-Object { [int]$_.id -eq 46710 })
+    Assert-Equal 1 $j.Count 'one record for 46710'
+    $j = $j[0]
+    Assert-Equal 46710 ([int][regex]::Match($cs, 'ItemIdValue = (\d+);').Groups[1].Value) 'item ID in C#'
+    $flagValue = @{ ArticleA = 0x4000; PartialHue = 0x40000 }
+    $v = 0
+    foreach ($nm in ([regex]::Match($cs, 'TileFlags = ([^;]+);').Groups[1].Value -split '\|' | ForEach-Object { $_.Trim() -replace '^TileFlag\.', '' })) {
+        if (-not $flagValue.ContainsKey($nm)) { throw "unknown flag $nm in C#" }
+        $v = $v -bor $flagValue[$nm]
+    }
+    Assert-Equal 0x44000 $v 'C# flags are OSI banner 0x1586 flags'
+    Assert-Equal $v ([Convert]::ToInt32(($j.flags -replace '^0x', ''), 16)) 'records.json flags'
+    Assert-Equal ([regex]::Match($cs, 'TileName = "([^"]+)";').Groups[1].Value) $j.name 'name'
+    Assert-Equal ([int][regex]::Match($cs, 'TileWeight = (\d+);').Groups[1].Value) ([int]$j.weight) 'weight'
+    Assert-Equal ([int][regex]::Match($cs, 'TileHeight = (\d+);').Groups[1].Value) ([int]$j.height) 'height'
+    foreach ($f in 'layer', 'count', 'animId', 'hue', 'light') { Assert-Equal 0 ([int]$j.$f) "$f of 46710" }
+    Assert-Equal 0 @($rec.animdata | Where-Object { [int]$_.id -eq 46710 }).Count 'no animdata for the banner'
 }
 
 Fact 'EveryRegistryRowsHexIsItsId' {

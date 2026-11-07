@@ -2069,10 +2069,22 @@ public class ClusterFAchievementPersistence : Item
 /// </summary>
 public class AchievementEarnedGump : Gump
 {
+    /// <summary>
+    /// cc-P813: the achievement whose popup Chase had designed in Claude Design (P762's moongate skip, "Didn't Read the
+    /// Sign"): drawn on that panel (DesignGumpArt.SkipPopupBackground), the text drawn here as for every popup.
+    /// </summary>
+    public const string DesignedPopupKey = "tutorial.gateSkip";
+
     public AchievementEarnedGump(Mobile m, AchievementDef def) : base(320, 185)
     {
         Closable   = true;
         Disposable = true;
+
+        if (def.Key == DesignedPopupKey)
+        {
+            AddDesignedPopup(def);
+            return;
+        }
 
         const int W = 420;
         const int H = 156; // cc-P55 Part F: 20 taller for the Earned line
@@ -2119,6 +2131,36 @@ public class AchievementEarnedGump : Gump
         AddButton(W - 28, H - 30, 4017, 4018, 1);
 
         AddImageTiled(4, H - 4, W - 8, 2, 9304);
+    }
+
+    /// <summary>
+    /// cc-P813: the design's popup, 400 x 136: "ACHIEVEMENT UNLOCKED" and "SYSTEM" across the top, the title, the System's
+    /// flavor and the earned line, then the category and rewards, as the standard popup has them.
+    /// </summary>
+    private void AddDesignedPopup(AchievementDef def)
+    {
+        const int W = DesignGumpArt.SkipPopupWidth;
+        const int H = DesignGumpArt.SkipPopupHeight;
+
+        AddImage(0, 0, DesignGumpArt.SkipPopupBackground);
+        AddHtml(18, 10, 220, 18, DesignGumpArt.Color(DesignGumpArt.Alarm, "ACHIEVEMENT UNLOCKED"), false, false);
+        AddHtml(W - 118, 10, 100, 18, $"<DIV ALIGN=RIGHT>{DesignGumpArt.Color(DesignGumpArt.Teal, "SYSTEM")}</DIV>", false, false);
+        AddHtml(18, 28, W - 36, 24, $"<BIG>{DesignGumpArt.Color(DesignGumpArt.Cream, def.Title)}</BIG>", false, false);
+
+        var bodyText = string.IsNullOrWhiteSpace(def.FlavorText) ? def.Description : def.FlavorText;
+        AddHtml(
+            18, 52, W - 36, 56,
+            $"{DesignGumpArt.Color(DesignGumpArt.Body, bodyText)} {DesignGumpArt.Color(DesignGumpArt.Teal, def.EarnedLine)}",
+            false, false
+        );
+
+        var catLabel = def.Hidden ? $"[{def.Category}] [Secret]" : $"[{def.Category}]";
+        AddHtml(18, H - 26, 160, 18, DesignGumpArt.Color(DesignGumpArt.Grey, catLabel), false, false);
+        AddHtml(
+            W - 218, H - 26, 200, 18,
+            $"<DIV ALIGN=RIGHT>{DesignGumpArt.Color(DesignGumpArt.Cream, $"+{def.AP} AP")}  {DesignGumpArt.Color(DesignGumpArt.Grey, $"+{def.Renown} Renown")}</DIV>",
+            false, false
+        );
     }
 
     public override void OnResponse(NetState sender, in RelayInfo info) { }

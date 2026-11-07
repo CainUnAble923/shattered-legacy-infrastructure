@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07.7
+
+### Changed
+- The pet choice scroll, the "Didn't Read the Sign" achievement and the League shop have new windows: a parchment scroll with Dog and Cat tiles, a dark System panel, and a dark shop with tabs for Titles and the Hall and a Buy button on every row you can buy. Get the new player package to see them.
+
+### Staff
+- [add FinishersBanner places the Hall of Finishers banner, a dark hanging banner with a broken sword (new art in the player package).
+
 ## 2026.11.07.6
 
 ### Added
