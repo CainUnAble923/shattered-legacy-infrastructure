@@ -68,8 +68,7 @@ namespace Server.Mobiles
                 new[] { "+50 items in the pack", "+100 items", "+150 items" }, MuleModuleState.Built),
             new(MuleModuleId.ClockworkLoadHarness, "tinkers", "Tinkers' Union", "Clockwork Load Harness", 0x1053, new[] { 10, 20, 30 },
                 new[] { "+10% pack weight", "+20% pack weight, and sorts the pack into bags",
-                        "+30%, and the Clockwork Scavenger carries its loot to the mule" }, MuleModuleState.Partial,
-                "III: the Clockwork Scavenger (the League's auto-loot reward) is not built; the redirect hook is"),
+                        "+30%, and the Clockwork Scavenger carries its loot to the mule" }, MuleModuleState.Built), // cc-P808: ClockworkScavenger.Scavenge
 
             // --- 2. Survival --------------------------------------------------------------------------------------------
             new(MuleModuleId.TrailwiseTack, "rangers", "Rangers' League", "Trailwise Tack", 0x1079, new[] { 20, 20, 20 },

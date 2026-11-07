@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07
+
+### Added
+- The Clockwork Scavenger: reach Journeyman in the Tinkers' Union and ask a Tinker guildmaster about the "scavenger". Gather the parts (gears, springs, clock parts, an axle with gears and iron ingots), use the frame, and a little brass crawler follows you and picks gold, gems and reagents from the monsters you kill. Choose what it collects in its Options. It takes only what you could loot yourself, never from players. With a Clockwork Load Harness III on your mule, it carries the loot to the mule instead. One per character.
+
+### Staff
+- The Scavenger's parts, look, reach and pace are in Configuration/clockwork-scavenger.json, written with the defaults on first start.
+
 ## 2026.11.05.5
 
 ### Added
