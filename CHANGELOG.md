@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07.4
+
+### Added
+- Egg hunts: when staff start one, everyone on that facet gets an arrow pointing to a hidden egg. The first player to reach it and double-click it wins 25 Festival Tokens, and the whole shard hears who found it.
+- Mine mazes: staff can open a field of hidden mines. Walk in over the start row and find the safe way across. Step on a mine and you die, but you keep everything you carry and rise at the start a few seconds later. The first three across win Festival Tokens. When staff reset the maze, the mines move and the prizes open again. Young characters can't enter, and no one can recall, gate or teleport in or out.
+
+### Staff
+- The Staff Hub's Events tab has a new "Egg hunt, maze" button (or type [StaffEvents). From there you can hide the egg here or by target, end the hunt, mark the maze's two corners, lay it, reset it or remove it. The start row is the end nearest your first corner. All the numbers, including the maze prize (Tokens or LootBox), are in Configuration/staff-events.json, written with the defaults on first start. [StaffEvents reload reads it again.
+
 ## 2026.11.07.2
 
 ### Added
