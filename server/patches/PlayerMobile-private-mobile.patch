@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs	2026-10-31 00:00:00.000000000 -0500
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs	2026-10-31 00:00:00.000000000 -0500
+@@ -3313,6 +3313,12 @@
+                 return true;
+             }
+ 
++            // cc-P743: a creature kept for one player (the New Haven stable horse) shows to that player and staff only.
++            if (m is Server.Tutorial.IPrivateMobile own && AccessLevel == AccessLevel.Player && !own.ShowsTo(this))
++            {
++                return false;
++            }
++
+             if (DuelContext?.Finished == false && DuelContext.m_Tournament != null && m_DuelPlayer?.Eliminated == false)
+             {
+                 var owner = m;

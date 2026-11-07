@@ -29,6 +29,22 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07.1
+
+### Changed
+- New Haven's music lessons now happen in the theater, with the echoes on its stage.
+- The mining lesson now takes you to the mine in the mountains south of town, by Jacob Waltz's camp, and has you dig the rock wall. A signpost south of the gate points the way.
+- The Animals lesson now happens at the stables east of the square: bandage an injured horse, then tame it and keep it. Reaching New Haven no longer marks it done.
+- Sparring now happens in the Warrior Guild's yard, and the magery lesson in the Magery School, where a mage echo shows Magic Arrow before you cast it.
+- Provoked echoes in the bard lesson now fight each other for a while.
+- Rook now sits on a bench by the Bountiful Harvest Inn, north of the square, and the isle's moongate sets you down in front of him.
+- The housing lesson now has three clear stops, each with a signpost.
+
+### Fixed
+- The ankh outside the League building in New Haven now resurrects ghosts.
+- The thieving lesson can always be finished: opening the practice chest no longer leaves Remove Trap stuck.
+- The sign for the first housing stop in New Haven no longer stands through a park bench.
+
 ## 2026.11.06.1
 
 ### Added

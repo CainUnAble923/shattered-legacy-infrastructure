@@ -270,7 +270,8 @@ public static class TutorialCorePlacement
             (typeof(LeagueRegistrar), ElaraSpot, () => new LeagueRegistrar { CantWalk = true }),
             (typeof(TutorialVeterinarian), FarmVetSpot, () => new TutorialVeterinarian { Name = "Tobin", Direction = Direction.East })
         }.Where(row => FindMobile(map, row.Type, row.Spot) == null).ToList();
-        var rookMissing = withHaven && TutorialRecruiter.Find() == null;
+        // cc-P743: an older world's Rook (elsewhere in town) is moved to his bench below, not doubled.
+        var rookMissing = withHaven && TutorialRecruiter.Find() == null && TutorialWingTrials.FindOldRook() == null;
         // New Haven's own vet, when the town has none (pinned's spawn data has none there).
         var townVetMissing = withHaven && FindTownVet() == null;
         var gateMissing = !HasItem<TutorialTravelGate>(map, GateSpot);
@@ -301,6 +302,9 @@ public static class TutorialCorePlacement
         }
         var farm = TutorialFarm.Seed(map, dryRun);
         if (farm.Refused) { return farm.Message; }
+        // cc-P743: New Haven's own pieces (Rook moved to his bench, the bench, signs, the stall; the old farm away), once
+        // nothing has refused.
+        var haven743 = withHaven ? TutorialWingTrials.SeedHaven(dryRun) : "";
         string addons;
         if (!dryRun)
         {
@@ -309,7 +313,7 @@ public static class TutorialCorePlacement
             { new TutorialStationMarker(station.Key).MoveToWorld(TutorialWorld.Ground(map, SignPoint(station.Key)), map); }
             foreach (var row in mobiles)
             { Place(row.Make(), row.Spot, map); }
-            if (rookMissing) { Place(new TutorialRecruiter(), HavenSpots.Rook, haven); }
+            if (rookMissing) { Place(new TutorialRecruiter { Direction = HavenSpots.RookFacing }, HavenSpots.Rook, haven); } // cc-P743: seated; cc-P806: facing the square
             if (townVetMissing) { Place(new TutorialVeterinarian(), HavenSpots.VetSpot, haven); }
             if (gateMissing) { new TutorialTravelGate().MoveToWorld(GateSpot, map); }
             if (blueMissing) { new TutorialBlueWalkTile().MoveToWorld(FirstMark, map); }
@@ -324,7 +328,7 @@ public static class TutorialCorePlacement
         else { addons = TutorialIsleAddons.Seed(map, true); }
         var tiles = (blueMissing ? 1 : 0) + (goldMissing ? 1 : 0);
         var npcs = mobiles.Count + (rookMissing ? 1 : 0) + (townVetMissing ? 1 : 0);
-        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {npcs} NPCs/echo/vets, {(gateMissing ? 1 : 0)} moongate, {tiles} walking tiles, {doors.Length} doors, {props.Length + (boardMissing ? 1 : 0)} props. {farm.Message} {addons}";
+        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {npcs} NPCs/echo/vets, {(gateMissing ? 1 : 0)} moongate, {tiles} walking tiles, {doors.Length} doors, {props.Length + (boardMissing ? 1 : 0)} props. {farm.Message} {addons} {haven743}";
     }
 
     private static Point3D OldSpot(BaseDoor d) => d.Open ? new Point3D(d.X - d.Offset.X, d.Y - d.Offset.Y, d.Z - d.Offset.Z) : d.Location;

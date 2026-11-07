@@ -91,6 +91,7 @@ public class TutorialWingTrialVerification : IDisposable
 
     private static TutorialWingTrials.Trial Begin(Player p, string key)
     {
+        p.Pm.MoveToWorld(TutorialWingTrials.PlaceOf(key), Map.Trammel); // cc-P743: weapons and magery have their own buildings
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find(key)!);
         var trial = p.Trial;
         Assert.Equal(key, trial.Key);

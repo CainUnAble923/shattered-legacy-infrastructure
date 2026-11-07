@@ -66,10 +66,12 @@ public static class ClusterFAnkhs
     public const int PresentRange = 2;
 
     private static bool _seedOnWorldLoad;
+    private static bool _leagueAnkhOnWorldLoad;
 
     public static void Configure()
     {
         _seedOnWorldLoad = ServerConfiguration.GetOrUpdateSetting("clusterf.ankhs.seedOnWorldLoad", false);
+        _leagueAnkhOnWorldLoad = ServerConfiguration.GetOrUpdateSetting("clusterf.ankhs.leagueAnkhOnWorldLoad", true);
         EventSink.WorldLoad += OnWorldLoad;
         CommandSystem.Register("ClusterFSeedAnkhs", AccessLevel.Administrator, OnSeedCommand);
         CommandSystem.Register("ClusterFAnkhSurvey", AccessLevel.GameMaster, OnSurveyCommand);
@@ -81,6 +83,36 @@ public static class ClusterFAnkhs
         {
             Console.WriteLine(Seed(false).Message);
         }
+
+        // cc-P799: Chase's ankh reaches an existing world by itself. After the load: an item made inside it is in
+        // World.Items only afterwards, so the check would see nothing and place a second one.
+        if (_leagueAnkhOnWorldLoad)
+        {
+            Timer.DelayCall(TimeSpan.Zero, () => Console.WriteLine(SeedLeagueAnkh(false).Message));
+        }
+    }
+
+    /// <summary>
+    /// cc-P799: Chase's League ankh alone (Placements[0]), for a world already set up. P137 left every placement to the
+    /// world-setup commands, so the world testers play never got it, though Chase had asked for it: its map static (client
+    /// art, nothing the server can take away) stayed all they saw. Places it only where no working ankh stands, so it is safe at every load.
+    /// </summary>
+    public static SeedResult SeedLeagueAnkh(bool dryRun)
+    {
+        var p = Placements[0];
+
+        if (WorkingAnkhNear(p.Map, p.Location))
+        {
+            return new SeedResult(0, 1, "League ankh: already working.");
+        }
+
+        if (dryRun)
+        {
+            return new SeedResult(1, 0, "League ankh (dry run): would place it.");
+        }
+
+        var generated = new ClusterFNewHavenServicesSeeder.DecorEntry(p.Header, p.X, p.Y, p.Z).Read().Generate([p.Map]);
+        return new SeedResult(generated > 0 ? 1 : 0, 0, generated > 0 ? $"League ankh: placed at {p.Location}." : "League ankh: nothing placed.");
     }
 
     [Usage("ClusterFSeedAnkhs [dryrun]")]

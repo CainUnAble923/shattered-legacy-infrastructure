@@ -97,7 +97,7 @@ public static class TutorialCoreTrials
             pm.SendGump(new TutorialTrialGump(next, false));
             return true;
         }
-        ClusterFTutorial.SystemLine(pm, "You finished the main lessons. Double-click Rook on the New Haven plaza to graduate or try an optional lesson.");
+        ClusterFTutorial.SystemLine(pm, "You finished the main lessons. Double-click Rook on his bench by the Bountiful Harvest Inn in New Haven to graduate or try an optional lesson.");
         return false;
     }
 
@@ -178,7 +178,7 @@ public static class TutorialCoreTrials
         // cc-P769 item 5: what to do with Elara, exactly (her window opens and the lesson is done).
         "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss (or click her once and choose Talk): her League window opens and this lesson is done. In that window, click Join the League to join now, or the X to close it; you can join later in New Haven.",
         "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the lesson's signpost there. Watch the vision; it lasts about a minute, holds you still, and will not change your character.",
-        "core.travel" => "Follow the arrow to the end of the dock and walk into the shimmering blue moongate, or double-click it. It takes you, and your pet, to Rook on the New Haven plaza.",
+        "core.travel" => "Follow the arrow to the end of the dock and walk into the shimmering blue moongate, or double-click it. It takes you, and your pet, to Rook on his bench by the Bountiful Harvest Inn in New Haven.",
         _ => "Double-click Tamsin on the Wakening Isle's beach to choose this lesson."
     };
 
@@ -520,7 +520,7 @@ public sealed class TutorialTrialGump : Gump
                 if (ClusterFTutorial.CoreLeft(record).FirstOrDefault() is { } next) { ClusterFTutorial.RunStation(pm, next); }
                 else
                 {
-                    ClusterFTutorial.SystemLine(pm, "You finished the main lessons. Follow the arrow to Rook on the New Haven plaza and choose Graduate, or try an optional lesson there.");
+                    ClusterFTutorial.SystemLine(pm, "You finished the main lessons. Follow the arrow to Rook on his bench by the Bountiful Harvest Inn in New Haven and choose Graduate, or try an optional lesson there.");
                     TutorialRecruiter.PointTo(pm);
                 }
             }

@@ -291,7 +291,7 @@ public static class TutorialStart
                 }
 
                 ClusterFTutorial.SystemLine(pm, ClusterFTutorial.RecordOf(pm)?.State == TutorialState.Skipped
-                    ? "Your account skipped the tutorial, so this character starts in New Haven. Double-click Rook on the plaza to take the lessons now and earn their rewards."
+                    ? "Your account skipped the tutorial, so this character starts in New Haven. Double-click Rook on his bench by the Bountiful Harvest Inn to take the lessons now and earn their rewards."
                     : "Your account has finished the tutorial, so this character starts in New Haven.");
                 break;
             case Outcome.Haven:

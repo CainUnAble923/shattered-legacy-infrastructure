@@ -21,11 +21,44 @@ public static class HavenSpots
     /// </summary>
     public static Point3D Start { get; set; } = new(3503, 2574, 14);
 
-    /// <summary>Rook Hallowell, on the plaza two tiles from the start (cc-P80).</summary>
-    public static readonly Point3D Rook = new(3500, 2572, 14);
+    /// <summary>
+    /// Rook Hallowell, seated on a bench in the Bountiful Harvest Inn's south yard (cc-P743, Chase 10-30: "a better spot
+    /// instead of in the middle of the square"; cc-P799 on the stock town, which has no tavern patio near the square).
+    /// </summary>
+    public static readonly Point3D Rook = new(3502, 2530, 22);
 
-    /// <summary>Where the isle's dock moongate sets a trainee down: beside Rook (the old travel gate's exit, cc-P289).</summary>
-    public static readonly Point3D MoongateExit = new(3501, 2572, 14);
+    /// <summary>Rook's old spot on the plaza, where an older world's Rook is moved from (cc-P743).</summary>
+    public static readonly Point3D OldRook = new(3500, 2572, 14);
+
+    /// <summary>The way Rook sits on his bench (cc-P806): the yard, the moongate exit and the square are south of him, the Inn's low wall one tile north.</summary>
+    public const Direction RookFacing = Direction.South;
+
+    /// <summary>His bench: two wooden bench pieces (0x0B2D, which runs east-west; cc-P806, read from the art), Rook on the west one (cc-P743).</summary>
+    public static readonly Point3D[] RookBench = [new(3502, 2530, 22), new(3503, 2530, 22)];
+
+    /// <summary>Where the isle's dock moongate sets a trainee down: in front of Rook's bench (cc-P743; was 3501,2572,14).</summary>
+    public static readonly Point3D MoongateExit = new(3502, 2532, 22);
+
+    /// <summary>cc-P743: Rook's place in words, for every line that sends a trainee to him.</summary>
+    public const string RookPlace = "on his bench by the Bountiful Harvest Inn, north of the square";
+
+    /// <summary>cc-P799: New Haven's warrior training area on the stock town, the Warrior Guild's open court (Z 20).</summary>
+    public static readonly Point3D ProvingGrounds = new(3529, 2544, 20);
+
+    /// <summary>cc-P799: the Magery School's south room on the stock town (Z 52).</summary>
+    public static readonly Point3D MageryHall = new(3486, 2501, 52);
+
+    /// <summary>cc-P799: the theater, the audience floor before the stage (Z 55, the plank stage is Z 60), Chase 11-05.</summary>
+    public static readonly Point3D Theater = new(3414, 2602, 55);
+
+    /// <summary>cc-P799: the mine in the mountains south of town, by Jacob Waltz's camp (the ravine floor).</summary>
+    public static readonly Point3D MiningCave = new(3514, 2747, 0);
+
+    /// <summary>cc-P799: the stables' aisle, in front of the sick-bay stall.</summary>
+    public static readonly Point3D Stables = new(3534, 2577, 7);
+
+    /// <summary>cc-P799: the sick-bay stall, where the injured horse waits.</summary>
+    public static readonly Point3D SickStall = new(3534, 2575, 7);
 
     /// <summary>The town's centre, for "a vet in New Haven" (60 tiles round it).</summary>
     public static readonly Point3D Centre = new(3500, 2590, 0);

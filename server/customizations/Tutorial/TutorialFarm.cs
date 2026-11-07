@@ -673,7 +673,8 @@ namespace Server.Tutorial
                 return false;
             }
 
-            ClusterFTutorial.CompleteStation(pm, TamingStation); // cc-P726: the pet and its commands
+            // cc-P743 (Chase 10-30: "Animals showed done even though all we did was get the evo cat/dog"): the isle's pet
+            // and its commands no longer complete New Haven's Animals lesson (animals.taming); only the stable horse does.
 
             TutorialCoreTrials.FarmFinished(pm);
             ClusterFTutorial.SystemLine(pm, TutorialPetCare.FarmPetLessonLine); // cc-P666: the farm's pet lesson line
@@ -931,7 +932,11 @@ namespace Server.Tutorial
 
         /// <summary>cc-P721: Pip may be bandaged; every other beneficial act is <paramref name="inner"/>'s (pinned's) to judge.</summary>
         public static bool AllowBeneficial(Mobile from, Mobile target, AllowBeneficialHandler? inner) =>
-            target is TutorialWoundedHelper || (inner?.Invoke(from, target) ?? true);
+            target is TutorialWoundedHelper ||
+            // cc-P799: the stable horse is as uncontrolled as Pip, and P743's lesson was refused the same way ("You cannot
+            // perform beneficial acts on your target"): its own trainee may bandage it.
+            target is TutorialStableHorse { Controlled: false } horse && horse.Trainee == from ||
+            (inner?.Invoke(from, target) ?? true);
 
         /// <summary>A trainee on the Wakening Isle (or a copy of it).</summary>
         public static bool IsleTrainee(Mobile m) => m is PlayerMobile pm && ClusterFTutorial.IsParticipant(pm) && TutorialWorld.IsOnIsle(pm);
@@ -1194,9 +1199,9 @@ namespace Server.Tutorial
             return n;
         }
 
-        [Usage("ClusterFSeedTutorialFarm [dryrun | force]")]
-        [Description("Places New Haven's tutorial farm props (the farmhouse and field addon, its door and the pen spawner) that the wing trials use, where missing. The core farm, with Wren and the pests, is on the Wakening Isle ([ClusterFSeedTutorial). Test shard only unless clusterf.tutorialFarm.allowLive; refuses while the map still has the two trees the farm's map patch removes, unless force. Moves and deletes nothing.")]
-        [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestOnly, DryRun = "dryrun", Summary = "Places New Haven's tutorial farm props (farmhouse, field, pen) for the wing trials on the test shard. Moves and deletes nothing.")]
+        [Usage("ClusterFSeedTutorialFarm [dryrun]")]
+        [Description("cc-P743: takes away New Haven's old tutorial farm (the farmhouse and field addon, its door and the pen spawner at the ML map's west farm); nothing uses it any more (the animals lesson is in the stables). The core farm, with Wren and the pests, is on the Wakening Isle ([ClusterFSeedTutorial). Test shard only.")]
+        [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestOnly, DryRun = "dryrun", Summary = "Takes away New Haven's old tutorial farm (addon, door, pen spawner) on the test shard.")]
         private static void OnSeedCommand(CommandEventArgs e)
         {
             var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "";
@@ -1206,7 +1211,7 @@ namespace Server.Tutorial
                 return;
             }
 
-            e.Mobile.SendMessage(SeedHaven(mode == "dryrun", mode == "force").Message);
+            e.Mobile.SendMessage(ClearHaven(mode == "dryrun"));
         }
 
         private static SeedResult? Refusal(bool island)
@@ -1430,6 +1435,38 @@ namespace Server.Tutorial
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// cc-P743 item 2 (Chase 10-30: "extra farm near Haven needs to be cleared out"): takes away what SeedHaven placed in
+        /// New Haven (the farm addon, its door, the pen spawner and the animals it spawned). The ground there was never
+        /// changed on the SoS land (no map op inside the old fence), so nothing else needs restoring. Returns a line.
+        /// </summary>
+        public static string ClearHaven(bool dryRun)
+        {
+            var map = HavenSpots.Map;
+            var gone = new List<IEntity>();
+            if (FindAddon<TutorialFarmAddon>(map, TutorialFarmLayout.Anchor) is { } addon) { gone.Add(addon); }
+            if (FindDoor(map, TutorialFarmLayout.DoorSpot) is { } door) { gone.Add(door); }
+            foreach (var (spot, _, _, types) in HavenSpawnerRows)
+            {
+                if (FindSpawner(map, spot, types[0]) is { } spawner)
+                {
+                    if (spawner.Spawned != null)
+                    {
+                        gone.AddRange(spawner.Spawned.Keys);
+                    }
+
+                    gone.Add(spawner);
+                }
+            }
+
+            if (!dryRun)
+            {
+                foreach (var e in gone) { e.Delete(); }
+            }
+
+            return $"old New Haven farm: {(dryRun ? "would take away" : "took away")} {gone.Count} thing(s).";
         }
 
         /// <summary>New Haven's farm props for the wing trials: the farm addon, its door and the pen (no Wren, no pests).</summary>

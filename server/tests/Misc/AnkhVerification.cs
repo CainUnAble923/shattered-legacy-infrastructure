@@ -144,6 +144,44 @@ public class AnkhVerification
     }
 
     [Fact]
+    public void TheLeagueAnkhReachesAnExistingWorldByItselfOnce()
+    {
+        var before = ItemsNow();
+        try
+        {
+            // cc-P799: a world that never ran the world-setup command, as the testers' did.
+            Assert.Null(NewHavenAnkh());
+            Assert.Equal(1, ClusterFAnkhs.SeedLeagueAnkh(true).Placed);
+            Assert.Null(NewHavenAnkh());
+
+            Assert.Equal(1, ClusterFAnkhs.SeedLeagueAnkh(false).Placed);
+            var ankh = NewHavenAnkh();
+            Assert.NotNull(ankh);
+            Assert.Equal(0x3, ankh.ItemID);
+            Assert.Equal(NewHaven.Z, ankh.Z);
+
+            // Every later load finds it and places nothing.
+            var again = ClusterFAnkhs.SeedLeagueAnkh(false);
+            Assert.Equal((0, 1), (again.Placed, again.Present));
+            Assert.Single(ItemsInRange(Map.Trammel, NewHaven, 2).OfType<AnkhWest>());
+        }
+        finally
+        {
+            DeleteNewSince(before);
+        }
+    }
+
+    [Fact]
+    public void TheLeagueAnkhIsOnByDefaultWhateverTheOldSettingSays()
+    {
+        ClusterFAnkhs.Configure();
+        var field = typeof(ClusterFAnkhs).GetField("_leagueAnkhOnWorldLoad", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.True((bool)field!.GetValue(null)!);
+        var old = typeof(ClusterFAnkhs).GetField("_seedOnWorldLoad", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.False((bool)old!.GetValue(null)!); // the testers' world has this False
+    }
+
+    [Fact]
     public void AWorkingAnkhAlreadyBesideAnEntryIsKept()
     {
         var before = ItemsNow();
