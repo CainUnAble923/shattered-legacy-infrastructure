@@ -1090,6 +1090,10 @@ apply_patch "$PATCHES/Skills-herbalism.patch"
 apply_patch "$PATCHES/skills-json-herbalism.patch"
 apply_patch "$PATCHES/FeatureFlagManager-skill-count.patch"
 apply_patch "$PATCHES/Plants-herbalism-lane.patch"
+# cc-P809: crafted horse barding (HorseBarding, customizations) absorbs a share of a monster's hit on the rider, beside
+# pinned's swamp dragon branch in AOS.Damage. Made with diff -u against pinned plus the AOS patches above; pinned by
+# HorseBardingVerification.
+apply_patch "$PATCHES/AOS-horse-barding.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.

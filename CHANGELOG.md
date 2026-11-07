@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07.2
+
+### Added
+- Horse barding: a blacksmith can make it (400 iron ingots, Blacksmithy 60) and use it on their own tamed horse, which becomes an armored horse in the metal's color. While you ride, it takes 5% of the damage monsters deal to you (10% if exceptional) until it wears out after 500 points (1,250 if exceptional), and then your horse looks as it did before. It is half as strong as the swamp dragon's, since a horse is far easier to tame. Other players' attacks pass by it.
+- Pet perches: a carpenter can make a pet perch deed (Carpentry 50, 100 logs). Place it in your house, double-click it and choose your own tamed chicken lizard, eagle or small bird: it settles on the perch for good as a house pet, keeps its name and color, shows its age, and the house's owners can rename it. Redeed the perch and the pet goes with it.
+
+### Staff
+- Horse barding's numbers are in Configuration/horse-barding.json and the perch's in Configuration/pet-perch.json (including the kinds of pet it takes), written with the defaults on first start.
+
 ## 2026.11.07
 
 ### Added
