@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07.4
+
+### Added
+- A small casino in the Haven inn's east room, gold only. Two slot machines take bets of 10 to 5,000 gold and pay three of a kind (three Gems pay 1,000 times the bet), and two cherries give your bet back. At the blackjack table, beat the dealer for even money; a natural blackjack pays 6:5, and you can double on your first two cards. The house keeps a few percent over time, and the whole shard hears about big wins. Each account can play up to 250,000 gold a day. Young characters can't play. If the server restarts in the middle of a hand, your bet goes back to your bank.
+
+### Staff
+- [Casino status shows the casino's books: gold taken in, paid out and kept, today and all time, for each game, and the house edge. The same line goes to Logs/casino.log at every world save. All the numbers are in Configuration/casino.json: bets, the pay table, blackjack rules, the daily limit and where the machines stand. A pay table that would pay back 99% or more is refused. [Casino reload reads the file again, and [Casino seed places anything missing.
+
 ## 2026.11.07.2
 
 ### Added
