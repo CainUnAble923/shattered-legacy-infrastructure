@@ -165,7 +165,7 @@ class Ctx(object):
         first = acct not in self.first_logins
         slot = next((i for i, n in enumerate(chars) if not n), None)
         if slot is None:
-            # cc-P224: the pool's 3 accounts give 21 character slots, and done() never deleted the throwaway it made,
+            # cc-P224 (and cc-P223, which found the same): the pool's 3 accounts give 21 character slots, and done() never deleted the throwaway it made,
             # so a run with more than 21 fresh() calls (the nightly set plus the cc-P224 checks, over 3 runs) ran the
             # accounts dry and every later fresh() ERRORed with "no free slot". The character in slot 0 has rested at
             # least REST_SECONDS, which is past the 5-minute logout delay, so it is fully out of the world and

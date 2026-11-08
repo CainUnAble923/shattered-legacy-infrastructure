@@ -105,10 +105,14 @@ class Client(object):
         self.move_result = None
         self.last_dir = None
         self.containers = []        # opened container serials (0x24)
+        self.mobile_flags = {}      # cc-P223: serial -> the last status flags byte (0x77 / 0x78)
+        self.flag_log = []          # cc-P223: (time, serial, flags) at each change
+        self.effects = []           # cc-P223: graphical effects (0x70, 0xC0)
         self.popups = []
         self.delete_results = []
         self.trades = []            # cc-P215: secure trade events (0x6F): dicts action, serial, container
         self.context_menus = []     # parsed 0xBF 0x14, newest last (cc-P224)
+        self.menus = self.context_menus  # cc-P223's name for the same list
         self.arrows = []            # quest arrows 0xBA, newest last (cc-P224)
 
     # -- transport --------------------------------------------------------------------------------------------
@@ -489,6 +493,82 @@ class Client(object):
                 for m in re.finditer(r"\{\s*button\s+(-?\d+)\s+(-?\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+(-?\d+)\s*\}", g["layout"])]
 
     # -- the server's packets ---------------------------------------------------------------------------------
+    # -- cc-P223: skills by text command, context menus, gump rows -----------------------------------------------
+    def use_skill(self, skill_index):
+        self.log("-> 0x12 use skill %d" % skill_index)
+        self.send(P.use_skill(skill_index))
+
+    def menu_click(self, serial, index):
+        self.log("-> 0xBF 0x15 context menu 0x%08X entry %d" % (serial, index))
+        self.send(P.context_menu_select(serial, index))
+
+    def menu_pick(self, serial, text_or_number, timeout=6):
+        """Open the entity's menu and click the entry whose cliloc number, or resolved text (a substring, case
+        folded), matches. Returns the entry, or None when the menu or the entry is missing."""
+        m = self.context_menu(serial, timeout)
+        if not m:
+            return None
+        for e in m["entries"]:
+            if (isinstance(text_or_number, int) and e["number"] == text_or_number) or                (isinstance(text_or_number, str) and text_or_number.lower() in (e.get("text") or "").lower()):
+                self.menu_click(serial, e["index"])
+                return e
+        return None
+
+    def gump_rows(self, g):
+        """The gump's layout as rows: {y: {"texts": [str], "buttons": [id], "x": [...]}} with every text-bearing
+        command resolved (text, croppedtext, htmlgump by line index; xmfhtmlgump, xmfhtmlgumpcolor, xmfhtmltok by
+        cliloc) and every reply button. Rows are keyed by the command's y; texts sit 3 px below their button in
+        pinned's craft gumps, so callers match with a tolerance (see row_at)."""
+        rows = {}
+        page = [0]
+        def add(y, kind, x, val):
+            r = rows.setdefault(y, {"texts": [], "buttons": [], "x": [], "pages": [], "all": []})
+            if kind == "text":
+                r["texts"].append(val)
+            else:
+                r["buttons"].append(val)
+                r["x"].append(x)          # x and page per button, in order (the craft walker pairs them)
+                r["pages"].append(page[0])
+            r["all"].append((kind, val, x, page[0]))
+        for m in re.finditer(r"\{\s*([a-z]+)\s+([^}]*)\}", g["layout"]):
+            kind, args = m.group(1), m.group(2).split()
+            try:
+                if kind == "page" and args:
+                    page[0] = int(args[0])
+                    continue
+                if kind in ("text", "croppedtext"):
+                    idx = int(args[3]) if kind == "text" else int(args[5])
+                    add(int(args[1]), "text", int(args[0]), g["lines"][idx])
+                elif kind == "htmlgump":
+                    add(int(args[1]), "text", int(args[0]), g["lines"][int(args[4])])
+                elif kind in ("xmfhtmlgump", "xmfhtmlgumpcolor", "xmfhtmltok"):
+                    nums = [int(v) for v in args if re.match(r"^-?\d+$", v)]
+                    cl = next((v for v in nums[4:] if v >= 500000), None)
+                    am = re.search(r"@([^@]*)@", m.group(2))
+                    if cl is not None:
+                        add(int(args[1]), "text", int(args[0]), self.cliloc.text(cl, am.group(1) if am else ""))
+                elif kind == "button" and len(args) >= 7 and int(args[4]) == 1:
+                    add(int(args[1]), "button", int(args[0]), int(args[6]))
+            except (ValueError, IndexError):
+                pass
+        return rows
+
+    def row_at(self, rows, y, tol=4, xmin=None, xmax=None, page=None):
+        """The texts and buttons within tol px of y, merged; with xmin/xmax only the commands in that x range (the
+        craft gump's group list at x 15-200 and its item list at x 220-500 share y values), and with page only the
+        commands on that gump page (page 0 is what every page shows)."""
+        out = {"texts": [], "buttons": []}
+        for ry, r in rows.items():
+            if abs(ry - y) > tol:
+                continue
+            for kind, val, x, pg in r.get("all", []):
+                if (xmin is not None and x < xmin) or (xmax is not None and x > xmax):
+                    continue
+                if page is not None and pg not in (0, page):
+                    continue
+                out[kind + "s"].append(val)
+        return out
+
     def _msg(self, kind, serial, name, text, cliloc=None):
         self.messages.append({"t": time.time(), "kind": kind, "serial": serial, "name": name, "text": text, "cliloc": cliloc})
         self.log("<- %s %s%s: %s" % (kind, name or "", (" #%d" % cliloc) if cliloc else "", text))
@@ -496,6 +576,8 @@ class Client(object):
     def _handle(self, p):
         pid = p[0]
         self.seen_ids["recv:0x%02X" % pid] = self.seen_ids.get("recv:0x%02X" % pid, 0) + 1
+        if pid in (0x77, 0x78, 0x70, 0xC0, 0xA1):
+            self._p223_flags_effects(pid, p)
         if pid == 0xA9:
             # S/OutgoingAccountPackets.cs:293: byte slots; per slot name[30]+30; byte cities; per city (new format)
             # idx, city[32], building[32], int32 x, y, z, map, cliloc, 0; int32 flags; int16 -1.
@@ -684,6 +766,35 @@ class Client(object):
             else:
                 self.items[s] = {"props": props, "container": None}
             self.log("<- 0xD6 properties 0x%08X: %s" % (s, " | ".join(props)))
+
+    def _p223_flags_effects(self, pid, p):
+        """cc-P223: a mobile's status flags (0x77 at 15, 0x78 at 17; bit 0x01 frozen/paralysed, pinned
+        Server/Mobiles/Mobile.cs:7067-7074) with each change logged, and graphical effects (0x70, 0xC0: byte type,
+        u32 source, u32 target, u16 item id; S/OutgoingEffectPackets.cs)."""
+        if pid == 0xA1:
+            # S/OutgoingMobilePackets.cs (MobileHits): u32 serial; u16 hitsMax; u16 hits. One's own are exact; a fight
+            # sends these, not 0x11, so without them the bot's own hits stood still (P67-6, P66-5, 10-21).
+            if len(p) >= 9:
+                s = P.u32(p, 1)
+                if s == self.serial and self.status:
+                    self.status["hitsMax"], self.status["hits"] = P.u16(p, 5), P.u16(p, 7)
+                else:
+                    self.mobiles.setdefault(s, {}).update(hitsMax=P.u16(p, 5), hits=P.u16(p, 7))
+            return
+        if pid in (0x77, 0x78):
+            o = 15 if pid == 0x77 else 17
+            if len(p) > o:
+                s = P.u32(p, 1 if pid == 0x77 else 3)
+                f = p[o]
+                if pid == 0x77 and s == self.serial:
+                    # A resurrection arrives as 0x77 for oneself; the ghost body would otherwise stay (T-024, 10-21).
+                    self.body = P.u16(p, 5)
+                old = self.mobile_flags.get(s)
+                self.mobile_flags[s] = f
+                if old != f:
+                    self.flag_log.append((time.time(), s, f))
+        elif len(p) >= 12:
+            self.effects.append({"t": time.time(), "type": p[1], "source": P.u32(p, 2), "target": P.u32(p, 6), "item": P.u16(p, 10)})
 
     def _status(self, p):
         # S/OutgoingMobilePackets.cs:497: u16 len; serial; name[30]; short hits; short hitsMax; bool rename; byte

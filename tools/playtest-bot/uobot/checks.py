@@ -71,7 +71,8 @@ def history_pages(c, staff=False):
     pages = [all_text(c, g)]
     last = g
     # Walk to the last page, however many there are: the history was 25 pages when this was written and 62 on
-    # 2026-10-20, when a cap of 40 made five checks fail (cc-P224). The counter's "of N" bounds the loop, 400 at most.
+    # 2026-10-20, when a cap of 40 made five checks fail (cc-P224; cc-P223 found the same at 74 pages on 10-21).
+    # The counter's "of N" bounds the loop, 400 at most.
     counter = next((t for t in pages[0] if re.match(r"^Page \d+ of \d+$", t)), "Page 1 of 1")
     total = min(int(counter.split()[-1]), 400)
     for _ in range(total + 2):
@@ -785,5 +786,7 @@ def t_046(ctx):
         g1["typeId"] == g2["typeId"], t1 == t2, len(t1), b1 == b2, b1)
 
 
-# cc-P224: the second-half checks and their shared helpers; imported last so they register after the cc-P91 ones.
+# cc-P223: the first half of the open-item checks lives in checks_p223.py; cc-P224: the second half and their shared
+# helpers. Both are imported last, so they can use the helpers above and register after the cc-P91 ones.
+from . import checks_p223  # noqa: E402,F401
 from . import checks_p224  # noqa: E402,F401
