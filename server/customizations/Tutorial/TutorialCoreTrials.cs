@@ -176,7 +176,8 @@ public static class TutorialCoreTrials
         "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
         "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
         // cc-P769 item 5: what to do with Elara, exactly (her window opens and the lesson is done).
-        "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss (or click her once and choose Talk): her League window opens and this lesson is done. In that window, click Join the League to join now, or the X to close it; you can join later in New Haven.",
+        // cc-P818: the door is in the lodge's east wall now, between two braziers at the end of a paved walk from the road.
+        "core.league" => "Follow the arrow to the League lodge. Its door is on the east side, facing you as you come along the road: take the paved walk south from the road, between the two fires, and double-click the door to enter. Double-click Elara Voss (or click her once and choose Talk): her League window opens and this lesson is done. In that window, click Join the League to join now, or the X to close it; you can join later in New Haven.",
         "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the lesson's signpost there. Watch the vision; it lasts about a minute, holds you still, and will not change your character.",
         "core.travel" => "Follow the arrow to the end of the dock and walk into the shimmering blue moongate, or double-click it. It takes you, and your pet, to Rook on his bench by the Albatross tavern in New Haven.",
         _ => "Double-click Tamsin on the Wakening Isle's beach to choose this lesson."
@@ -295,9 +296,37 @@ public static class TutorialCoreTrials
     }
 
     // cc-P720 item 4: what the arrow is pointing at, named.
-    private static string ArrowLabel(Trial t) => t.Station.Key == "core.banking"
-        ? TutorialCorePlacement.InBank(t.Player.Location) ? "Merrin the banker" : "the practice bank's door"
-        : t.Station.Title;
+    private static string ArrowLabel(Trial t) => t.Station.Key switch
+    {
+        "core.banking" => TutorialCorePlacement.InBank(t.Player.Location) ? "Merrin the banker" : "the practice bank's door",
+        "core.league" => TutorialCorePlacement.InLodge(t.Player.Location) ? "Elara Voss" : LodgeDoorLabel, // cc-P818
+        _ => t.Station.Title
+    };
+
+    /// <summary>cc-P818: what the League lesson's arrow names outside the lodge.</summary>
+    public const string LodgeDoorLabel = "the League lodge's door, on its east side";
+
+    /// <summary>cc-P818: what Elara calls to a trainee outside the lodge on the League lesson, every 25 seconds.</summary>
+    public const string ElaraDoorLine = "In here! The lodge door is on the east side, between the two fires.";
+
+    /// <summary>cc-P818: how near the lodge (tiles from Elara) a trainee outside hears her call.</summary>
+    public const int ElaraCallRange = 12;
+
+    /// <summary>
+    /// cc-P818 (Chase 11-07: "something for player to know where door is"): on the League lesson, a trainee outside the
+    /// lodge and near it hears Elara say where the door is, to them alone. Returns true when she spoke.
+    /// </summary>
+    public static bool CallFromLodge(PlayerMobile pm)
+    {
+        var map = TutorialWorld.MapOf(pm);
+        if (map == null || !pm.Alive || TutorialCorePlacement.InLodge(pm.Location)) { return false; }
+        Mobile? elara = null;
+        foreach (var m in map.GetMobilesInRange(TutorialWorld.Ground(map, TutorialWorld.Elara), 2))
+        { if (m is LeagueRegistrar { Deleted: false }) { elara = m; break; } }
+        if (elara == null || !pm.InRange(elara.Location, ElaraCallRange)) { return false; }
+        elara.SayTo(pm, ElaraDoorLine);
+        return true;
+    }
 
     private static Point3D Destination(Trial t) => t.Station.Key switch
     {
@@ -305,6 +334,8 @@ public static class TutorialCoreTrials
         "core.death" => t.Progress.Step == 0 ? TutorialCorePlacement.DeathSpot : TutorialCorePlacement.HealerSpot,
         // cc-P720 item 4: the bank's door until the trainee is inside, then Merrin
         "core.banking" when !TutorialCorePlacement.InBank(t.Player.Location) => TutorialWorld.Ground(TutorialWorld.MapOf(t.Player) ?? TutorialWorld.Isle, TutorialWorld.BankDoor),
+        // cc-P818: the lodge's east door until the trainee is inside, then Elara
+        "core.league" when !TutorialCorePlacement.InLodge(t.Player.Location) => TutorialWorld.Ground(TutorialWorld.MapOf(t.Player) ?? TutorialWorld.Isle, TutorialWorld.LodgeDoor),
         _ => TutorialCorePlacement.Spot(t.Station.Key)
     };
 
@@ -378,6 +409,14 @@ public static class TutorialCoreTrials
                 break;
             case "core.banking" when pm.Alive && trial.Supply?.IsChildOf(pm.FindBankNoCreate()) == true:
                 Observe(pm, TutorialAction.Deposited);
+                break;
+            case "core.league" when Destination(trial) != trial.ArrowAt:
+                // cc-P818: through the east door, the arrow turns to Elara (and back to the door on leaving)
+                Point(pm, Destination(trial), ArrowLabel(trial));
+                trial.ArrowAt = Destination(trial);
+                break;
+            case "core.league" when trial.Ticks % 100 == 4:
+                CallFromLodge(pm); // cc-P818: Elara says where the door is, every 25 s, while the trainee is outside
                 break;
             case "core.banking" when Destination(trial) != trial.ArrowAt:
                 // cc-P720 item 4: through the door, the arrow turns to Merrin (and back to the door on leaving)

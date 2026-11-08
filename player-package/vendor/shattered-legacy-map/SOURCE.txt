@@ -54,6 +54,13 @@ trammel.mapops   facet 1 (Trammel): the Rootdeep Burrows (x 5136-5247, y 1128-12
                  west eave column of the bank (x 6758, y 3973-3980) and the lodge (x 6778, y 3996-4003),
                  where it stood over the roof's west slope at Z 19 and drew as grey squares. 16 S+ lines
                  gone, no B line changed; the driver (notes/cc-P662-tools/build_isle.py) skips that column.
+                 cc-P818, 2026-11-07 (Chase 11-07: the isle's League lodge hides its door): the lodge's door
+                 moved from its north wall (6782,3995, now a wall piece 0x0058) to its east wall (6787,4000,
+                 the opening), with two braziers 0x0E31 either side outside, a walk of sandstone bricks
+                 0x0525-0x0528 from the road (6789,3990-4000, 6788,4000), the inside brazier gone, a
+                 candelabra off a window and a banner off the door. Rebuilt by the isle driver
+                 (notes/cc-P662-tools/build_isle.py, isle-sets.json); 12 S+ lines more, 5 changed, no L or
+                 B line changed (notes/cc-P818-tools/splice818.py).
 
 Format: shard-migration scripts/mapbuild/mapops.py (one line per changed land cell, L x y tile z; per static added,
 S+ x y z id hue; per EA static removed, S- x y z id hue; B lines fingerprint EA's blocks so the applier can say
