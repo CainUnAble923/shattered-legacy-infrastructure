@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07.10
+
+### Changed
+- On the Wakening Isle, the League lodge's door is now on its east side, where you can see it as you come along the road: a brick walk leads to it from the road between two braziers, the lodge's signs stand where the walk meets the road, the lesson says which side the door is on and its arrow points at the door, and Elara calls out to you if you are outside. Get the new player package to see the moved door and the walk.
+
 ## 2026.11.07.9
 
 ### Changed

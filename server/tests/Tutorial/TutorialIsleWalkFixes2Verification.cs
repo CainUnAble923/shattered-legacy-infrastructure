@@ -283,7 +283,13 @@ public class TutorialIsleWalkFixes2Verification : IDisposable
             Assert.NotEqual((at.X, at.Y), (sign.X, sign.Y)); // beside the stop, never on it
             // cc-P741: north of its path, which puts a sign across the road from a stop south of it (the yard's, 6
             // north), and the travel lesson's where the road meets the dock (TutorialCorePlacement.DockRoadEnd)
-            var near = key == "core.travel" ? TutorialCorePlacement.DockRoadEnd : new Point2D(at.X, at.Y);
+            // cc-P818: and the League lesson's where the walk to the lodge's east door leaves the road
+            var near = key switch
+            {
+                "core.travel" => TutorialCorePlacement.DockRoadEnd,
+                "core.league" => TutorialCorePlacement.LodgeWalkMouth,
+                _ => new Point2D(at.X, at.Y)
+            };
             Assert.True(Math.Max(Math.Abs(near.X - sign.X), Math.Abs(near.Y - sign.Y)) <= 6, $"{key}'s sign at {sign.Location}");
         }
 
@@ -328,13 +334,18 @@ public class TutorialIsleWalkFixes2Verification : IDisposable
 
         Seed();
         Assert.True(old.Deleted);
-        foreach (var spot in new[] { bankDoor, TutorialWorld.Ground(TutorialWorld.LodgeDoor) })
+        // cc-P818: the bank's door is in an east-west wall (folds west); the lodge's moved to its east wall (folds north)
+        foreach (var (spot, closedId, dx, dy) in new[]
+                 {
+                     (bankDoor, TutorialCorePlacement.DoorClosedId, -1, 0),
+                     (TutorialWorld.Ground(TutorialWorld.LodgeDoor), TutorialCorePlacement.LodgeDoorClosedId, 0, -1)
+                 })
         {
             var door = Assert.Single(ItemsAt<BaseDoor>(spot));
-            Assert.Equal(TutorialCorePlacement.DoorClosedId, door.ClosedId);
+            Assert.Equal(closedId, door.ClosedId);
             door.Open = true;
-            Assert.Equal(spot.Y, door.Y); // open, it stays in the wall's line
-            Assert.Equal(spot.X - 1, door.X);
+            Assert.Equal(spot.Y + dy, door.Y); // open, it stays in the wall's line
+            Assert.Equal(spot.X + dx, door.X);
             door.Open = false;
         }
 

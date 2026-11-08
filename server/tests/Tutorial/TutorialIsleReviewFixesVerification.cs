@@ -9,7 +9,8 @@
 //   3. The farmhouse door is hung WestCCW, so open it folds along the south wall; a door hung WestCW before is rehung
 //      in place on an existing world, once (guide 2.4).
 //   4. The League lodge has its own name sign on its door's side, north of the road beside the League lesson sign, where
-//      the camera shows it, off the door's approach; an existing world gets it once (guide 1.1, 2.5, 6).
+//      the camera shows it, off the door's approach; an existing world gets it once (guide 1.1, 2.5, 6). cc-P818: the
+//      door moved to the east wall; the sign stands where the walk to it leaves the road.
 
 #nullable enable
 
@@ -160,16 +161,16 @@ public class TutorialIsleReviewFixesVerification : IDisposable
     {
         var door = TutorialWorld.LodgeDoor;
         var sign = TutorialCorePlacement.LodgeSign;
-        // on the door's side of the lodge (north of its north wall), within a few tiles of the door, out of the eave's
-        // shadow from the camera (more than 2 tiles out: at 6784,3994 the north eave hid it), beside the League sign
-        Assert.InRange(door.Y - sign.Y, 3, 6);
-        Assert.InRange(sign.X - door.X, -2, 2);
+        // cc-P818: the door moved to the east wall; the sign stands north of the road where the walk to it leaves the road
+        // (x 6789), out of the eave's shadow from the camera, beside the League sign
+        Assert.True(sign.Y < door.Y);
+        Assert.InRange(sign.X - TutorialWorld.LodgeStop.X, -2, 2);
         var league = TutorialCorePlacement.SignPoint("core.league");
         Assert.Equal(1, Math.Max(Math.Abs(league.X - sign.X), Math.Abs(league.Y - sign.Y)));
         Assert.Contains(TutorialCorePlacement.Props, p => p.At == sign && p.Id == TutorialCorePlacement.SignpostId &&
                                                           p.Name == TutorialCorePlacement.LodgeSignName);
         // the door's two-tile approach is clear of signs (P722: a signpost in front of a door made TazUO slide)
-        Assert.DoesNotContain(TutorialCorePlacement.Props, p => p.At.X == door.X && p.At.Y < door.Y && p.At.Y >= door.Y - 2);
+        Assert.DoesNotContain(TutorialCorePlacement.Props, p => p.At.Y == door.Y && p.At.X > door.X && p.At.X <= door.X + 2);
 
         bool IsSign(Item i) => i.ItemID == TutorialCorePlacement.SignpostId && i.Name == TutorialCorePlacement.LodgeSignName;
         var map = SeededCopy();
