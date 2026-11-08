@@ -184,6 +184,55 @@ public class TutorialIsleCoastVerification : IDisposable
         }
     }
 
+    // cc-P845 (P835 build review item 2): Pip's bench runs north-south against the farmhouse's east wall, so it is the
+    // north-south piece 0x0B2C (read from the art; 0x0B2D runs east-west, cc-P806). A world laid with P726's 0x0B2D gets
+    // the piece swapped at both tiles, not a second bench on top.
+    [Fact]
+    public void PipsCrosswiseBenchIsSwappedForTheNorthSouthPiece()
+    {
+        Assert.Equal(0x0B2C, TutorialFarm.BenchId);
+        var benches = TutorialFarm.PipProps.Where(p => p.Id == TutorialFarm.BenchId).ToList();
+        Assert.Equal(2, benches.Count);
+        Assert.Equal(benches[0].At.X, benches[1].At.X); // one column: the pieces join north-south
+
+        var map = SeededCopy();
+        try
+        {
+            List<Static> At(Point3D at)
+            {
+                var list = new List<Static>();
+                foreach (var s in map.GetItemsInRange<Static>(at, 0))
+                {
+                    if (!s.Deleted && s.X == at.X && s.Y == at.Y) { list.Add(s); }
+                }
+
+                return list;
+            }
+
+            // the world as P726 and P741 laid it: the east-west piece at each of the bench's tiles
+            foreach (var b in benches)
+            {
+                foreach (var s in At(b.At).Where(s => s.ItemID == TutorialFarm.BenchId)) { s.Delete(); }
+                new Static(TutorialFarm.CrosswiseBenchId) { Name = b.Name }.MoveToWorld(b.At, map);
+            }
+
+            TutorialCorePlacement.SeedOn(map, false, false);
+
+            foreach (var b in benches)
+            {
+                var here = At(b.At);
+                Assert.Single(here, s => s.ItemID == TutorialFarm.BenchId);
+                Assert.DoesNotContain(here, s => s.ItemID == TutorialFarm.CrosswiseBenchId);
+            }
+
+            Assert.Equal(TutorialFarm.PipBench, TutorialFarm.FindPip(map)!.Location);
+        }
+        finally
+        {
+            TutorialCopies.Reset(LastSlot);
+        }
+    }
+
     [Fact]
     public void ALessonSignFromBeforeIsMovedNorthOfItsPathNotDoubled()
     {
