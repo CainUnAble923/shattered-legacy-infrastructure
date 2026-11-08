@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07.9
+
+### Fixed
+- The League requisitions board in New Haven's League field office hangs on the north wall now, facing the room, instead of standing inside the wall.
+
+### Changed
+- The League field office is tidied: its bookcases face the room, and the sign by the door hangs out from the wall.
+
 ## 2026.11.07.8
 
 ### Changed

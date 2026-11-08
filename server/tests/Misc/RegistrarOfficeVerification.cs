@@ -541,7 +541,9 @@ public class RegistrarOfficeVerification
             Assert.DoesNotContain(placed, c => c.ItemID == id && c.Location == at);
         }
 
-        Assert.DoesNotContain(placed, c => c.ItemID is 0x0B98 or 0x0BD0 or 0x1E5F or 0x1047);
+        // cc-P803: 0x0B98 is the current sign arm (the one that sticks out from a south wall), so only cc-P19's own
+        // tiles rule it out, above; its board, bulletin board and globe graphics stay out altogether.
+        Assert.DoesNotContain(placed, c => c.ItemID is 0x0BD0 or 0x1E5F or 0x1047);
         Assert.Equal("League of Extraordinary Citizens", Assert.Single(placed, c => c.Name != null).Name);
     }
 
