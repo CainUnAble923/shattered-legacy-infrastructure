@@ -1087,6 +1087,8 @@ apply_patch "$PATCHES/Beekeeper-beekeeping.patch"
 apply_patch "$PATCHES/ShrinkTable-shard-rows.patch"
 # cc-P804 (F-51): the Herbalism skill and the reagent lane. Last: the lane's context includes the raised bed hooks above.
 apply_patch "$PATCHES/Skills-herbalism.patch"
+# cc-P801: the jail lesson's name colors: one call at the top of MobileNotoriety.
+apply_patch "$PATCHES/Notoriety-lesson-shown-color.patch"
 apply_patch "$PATCHES/skills-json-herbalism.patch"
 apply_patch "$PATCHES/FeatureFlagManager-skill-count.patch"
 apply_patch "$PATCHES/Plants-herbalism-lane.patch"
