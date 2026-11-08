@@ -240,7 +240,7 @@ public class RegistrarOfficeVerification
             var signs = outside.Components.Where(c => c.ItemID is 0x0BCF or 0x0BD0).ToList();
             var sign = Assert.Single(signs);
             Assert.Equal(0x0BCF, sign.ItemID);
-            Assert.Equal(new Point3D(3670, 2563, 0), sign.Location);
+            Assert.Equal(new Point3D(3671, 2563, 0), sign.Location); // cc-P827: off the window at 3670
             Assert.Single(ClusterFRegistrarOfficeLayout.Components, c => c.Name == "wooden sign");
 
             Assert.Equal("League of Extraordinary Citizens", sign.Name);
@@ -541,7 +541,9 @@ public class RegistrarOfficeVerification
             Assert.DoesNotContain(placed, c => c.ItemID == id && c.Location == at);
         }
 
-        Assert.DoesNotContain(placed, c => c.ItemID is 0x0B98 or 0x0BD0 or 0x1E5F or 0x1047);
+        // cc-P803: 0x0B98 is the current sign arm (the one that sticks out from a south wall), so only cc-P19's own
+        // tiles rule it out, above; its board, bulletin board and globe graphics stay out altogether.
+        Assert.DoesNotContain(placed, c => c.ItemID is 0x0BD0 or 0x1E5F or 0x1047);
         Assert.Equal("League of Extraordinary Citizens", Assert.Single(placed, c => c.Name != null).Name);
     }
 

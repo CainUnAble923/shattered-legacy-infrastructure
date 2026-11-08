@@ -321,10 +321,21 @@ public static class ClusterFRequisitionSeeder
         new("Royal City", "by the bank", 5, 838, 3439, -20, Direction.South, false),
     ];
 
-    /// <summary>The League board in the field office: on the north wall, beside the flowerpot (ClusterFRegistrarOfficeLayout).</summary>
-    // cc-P678: the office moved into SoS Haven's hall (walls x3658-3674, y2547-2562, floor z0). The board hangs on the
-    // north wall's tile above the free floor tile 3662,2548, the flowerpot at 3663,2548 beside it (was 3459,2596,18).
-    public static readonly Post OfficeBoard = new("New Haven", "League field office, north wall", 1, 3662, 2547, 0, Direction.North, true);
+    /// <summary>The League board in the field office: on the north wall, east of the bookcases (ClusterFRegistrarOfficeLayout).</summary>
+    // cc-P678: the office moved into SoS Haven's hall (walls x3658-3674, y2547-2562, floor z0).
+    // cc-P803: the board stood ON the north wall's tile (3662,2547), in the wall line, with the art that hangs on a west
+    // wall (0x1E5E), so it showed edge-on from the wrong side. It hangs on the floor tile in front of the wall now, between
+    // the bookcases and the flowerpot (P803 gave it 0x1E5F, which stands edge-on there; cc-P849: 0x1E5E hangs flat on a north wall).
+    // cc-P827: at 3662 its art drew over the bookcase at 3661 (P824's build review); at 3663 a free tile stands on each
+    // side (3662 and 3664), and the flowerpot moved to the north-east corner.
+    public static readonly Post OfficeBoard = new("New Haven", "League field office, north wall", 1, 3663, 2548, 0, Direction.North, true);
+
+    /// <summary>cc-P849: the board's art for its wall: 0x1E5E hangs flat on a north wall (its frame runs east-west), 0x1E5F on a west wall (north-south). P803 had them swapped, so the board stood edge-on (P836's build review; render notes/cc-P849-review/board-arts-on-walls.jpg).</summary>
+    public const int OfficeBoardItemID = 0x1E5E;
+
+    /// <summary>cc-P803: where earlier layouts stood the board, in a wall's line (the old New Haven house's front door; SoS
+    /// Haven's hall north wall). A League board found on one of these tiles moves to OfficeBoard on load, the same item.</summary>
+    public static readonly Point3D[] OldOfficeBoardSpots = [new(3459, 2596, 18), new(3662, 2547, 0)];
 
     public static void Configure()
     {
@@ -379,14 +390,26 @@ public static class ClusterFRequisitionSeeder
         var officeMap = MapOf(OfficeBoard.MapIndex);
         if (officeMap != null)
         {
+            if (MoveOldOfficeBoard(officeMap) is { } moved)
+            {
+                report.Add(moved);
+            }
+
             if (FindItem<RequisitionsBoard>(officeMap, OfficeBoard.X, OfficeBoard.Y, 5) is { } board)
             {
                 present++;
+                if (board.IsLeagueBoard && board.ItemID != OfficeBoardItemID && board.X == OfficeBoard.X && board.Y == OfficeBoard.Y)
+                {
+                    var was = board.ItemID;
+                    board.ItemID = OfficeBoardItemID; // cc-P803: the art that hangs on its wall (cc-P849: the right one now)
+                    report.Add($"League board: art turned from 0x{was:X4} to 0x{OfficeBoardItemID:X4} at {board.Location}.");
+                }
+
                 if (verbose) report.Add($"League board: already at {board.Location}.");
             }
             else
             {
-                var item = new RequisitionsBoard();
+                var item = new RequisitionsBoard { ItemID = OfficeBoardItemID };
                 item.MoveToWorld(new Point3D(OfficeBoard.X, OfficeBoard.Y, OfficeBoard.Z), officeMap);
                 placed++;
                 report.Add($"League board: placed at {item.Location} ({OfficeBoard.Where}).");
@@ -397,6 +420,59 @@ public static class ClusterFRequisitionSeeder
         foreach (var line in report)
             Console.WriteLine($"[ClusterFRequisitionSeeder] {line}");
         return report;
+    }
+
+    /// <summary>
+    /// cc-P803: League boards standing on OldOfficeBoardSpots (an earlier layout put the board in a wall's line). The first
+    /// moves to OfficeBoard and takes OfficeBoardItemID, the same item, when no League board hangs there yet; any other is
+    /// a duplicate and is deleted (a League board holds no state). Returns the report line, or null when there was nothing
+    /// on an old spot. Idempotent: afterwards no League board stands on an old spot.
+    /// </summary>
+    public static string MoveOldOfficeBoard(Map map)
+    {
+        var olds = new List<RequisitionsBoard>();
+        RequisitionsBoard onWall = null;
+        foreach (var i in World.Items.Values)
+        {
+            if (i is not RequisitionsBoard b || b.Deleted || !b.IsLeagueBoard || b.Map != map)
+            {
+                continue;
+            }
+
+            if (Array.Exists(OldOfficeBoardSpots, p => p.X == b.X && p.Y == b.Y && p.Z == b.Z))
+            {
+                olds.Add(b);
+            }
+            else if (b.X == OfficeBoard.X && b.Y == OfficeBoard.Y)
+            {
+                onWall = b;
+            }
+        }
+
+        if (olds.Count == 0)
+        {
+            return null;
+        }
+
+        var lines = new List<string>();
+        foreach (var old in olds)
+        {
+            var from = old.Location;
+            if (onWall == null)
+            {
+                old.ItemID = OfficeBoardItemID;
+                old.MoveToWorld(new Point3D(OfficeBoard.X, OfficeBoard.Y, OfficeBoard.Z), map);
+                onWall = old;
+                lines.Add($"League board: moved from {from} to {old.Location} ({OfficeBoard.Where}).");
+            }
+            else
+            {
+                old.Delete();
+                lines.Add($"League board: a second one at {from} removed; the office's board is at {onWall.Location}.");
+            }
+        }
+
+        return string.Join(" ", lines);
     }
 
     private static Map MapOf(int index) =>
