@@ -239,7 +239,16 @@ namespace Server.Tutorial
         {
             CommandSystem.Register("ClusterFSeedTutorialFarm", AccessLevel.Administrator, OnSeedCommand);
             EnsureHooks();
+            // cc-P802 item 4 (Chase 11-05: "with tutorial island we can probably clear the farm we placed in Haven"): the old
+            // farm went only when the tutorial seed ran to its end (TutorialWingTrials.SeedHaven), so a world whose seed was
+            // skipped (the tutorial off) or refused early kept it. Now it goes at every start by itself, on the first tick
+            // (Initialize runs after World.Load). Idempotent, and only our pieces: the addon, its door, the pen spawner and
+            // what it spawned. The crop fields at the town's east edge are the SoS map's own, not ours, and stay.
+            Timer.DelayCall(TimeSpan.Zero, () => Console.WriteLine($"[Tutorial] {ClearHavenOnLoad()}"));
         }
+
+        /// <summary>cc-P802 item 4: the start's pass over New Haven's old farm; the line it logs.</summary>
+        public static string ClearHavenOnLoad() => HavenSpots.Map == null ? "old New Haven farm: no Trammel map." : ClearHaven(false);
 
         /// <summary>The station's handler and the heal hook, once. The test host calls it: Initialize never runs there.</summary>
         public static void EnsureHooks()

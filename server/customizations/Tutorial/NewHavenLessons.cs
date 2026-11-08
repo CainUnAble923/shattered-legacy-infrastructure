@@ -44,6 +44,12 @@ namespace Server.Tutorial
         {
             ClusterFTutorial.SystemLine(m, text);
             Said?.Invoke(m, text);
+            // cc-P802 item 1: and in the running lesson's window, which stays until closed.
+            if (m is PlayerMobile pm && Current(pm) is { } trial && text != NextLessonLine)
+            {
+                trial.Latest = text;
+                Refresh(pm, trial);
+            }
         }
 
         // -- Places and words (items 1, 3, 4, 7, 9) --
@@ -89,6 +95,8 @@ namespace Server.Tutorial
         {
             "combat.weapons" => HavenSpots.ProvingGrounds,
             "magic.magery" => HavenSpots.MageryHall,
+            "magic.mysticism" => new Point3D(3653, 2477, 0),    // cc-P802 item 3: the Magery School's south room
+            "magic.necromancy" => new Point3D(3686, 2475, 0),   // cc-P802 item 8: before the shrine's skull candles
             _ => YardSpot
         };
 
@@ -97,6 +105,8 @@ namespace Server.Tutorial
         {
             "combat.weapons" => new Point3D(3733, 2580, 40),
             "magic.magery" => new Point3D(3654, 2472, 0),
+            "magic.mysticism" => MysticEchoSpot,   // cc-P802
+            "magic.necromancy" => ShrineEchoSpot,  // cc-P802
             _ => TargetSpot
         };
 
@@ -107,6 +117,8 @@ namespace Server.Tutorial
         {
             "combat.weapons" => "the Proving Grounds, the fenced warrior training yard on the east side of town",
             "magic.magery" => "the Haven Magery School, the stone hall at the north end of town",
+            "magic.mysticism" => MysticWhere,   // cc-P802
+            "magic.necromancy" => ShrineWhere,  // cc-P802
             _ => "the training yard, behind the Little Shop of Magic"
         };
 
@@ -114,6 +126,8 @@ namespace Server.Tutorial
         {
             "combat.weapons" => "the Proving Grounds",
             "magic.magery" => "the Haven Magery School",
+            "magic.mysticism" => "the Haven Magery School",       // cc-P802
+            "magic.necromancy" => "the necromancer's shrine",    // cc-P802
             _ => "the training yard"
         };
 
@@ -395,7 +409,63 @@ namespace Server.Tutorial
             }
 
             var farm = TutorialFarm.ClearHaven(dryRun);
-            return $"New Haven (cc-P743){(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {placed} pieces (took away {moved743} from old spots), moved {moved} Rook, {farm}";
+            var teachers = SeedTeachers(map, dryRun); // cc-P802 items 3 and 8
+            return $"New Haven (cc-P743){(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {placed} pieces (took away {moved743} from old spots), moved {moved} Rook, {farm} {teachers}";
+        }
+
+        /// <summary>cc-P802 items 3 and 8: the Mysticism instructor and the shrine keeper, placed when missing, put back on their spot and facing.</summary>
+        public static string SeedTeachers(Map map, bool dryRun)
+        {
+            int placed = 0, moved = 0;
+            foreach (var (key, spot, make) in new (string, Point3D, Func<TutorialLessonTeacher>)[]
+                     {
+                         ("magic.mysticism", MysticInstructorSpot, TutorialLessonTeacher.Mystic),
+                         ("magic.necromancy", ShrineKeeperSpot, TutorialLessonTeacher.ShrineKeeper)
+                     })
+            {
+                var found = FindTeacher(key);
+                if (found == null)
+                {
+                    placed++;
+                    if (!dryRun)
+                    {
+                        var t = make();
+                        t.Home = spot;
+                        t.MoveToWorld(spot, map);
+                    }
+
+                    continue;
+                }
+
+                var facing = make();
+                var dir = facing.Direction;
+                facing.Delete();
+                if (found.Location != spot || found.Map != map || found.Direction != dir)
+                {
+                    moved++;
+                    if (!dryRun)
+                    {
+                        found.Home = spot;
+                        found.MoveToWorld(spot, map);
+                        found.Direction = dir;
+                    }
+                }
+            }
+
+            return $"teachers: {(dryRun ? "would place" : "placed")} {placed}, moved {moved}.";
+        }
+
+        public static TutorialLessonTeacher? FindTeacher(string key)
+        {
+            foreach (var m in World.Mobiles.Values)
+            {
+                if (m is TutorialLessonTeacher { Deleted: false } t && t.LessonKey == key)
+                {
+                    return t;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>cc-P806: a world seeded with the crosswise pieces loses them, or they would stay under the new bench.</summary>

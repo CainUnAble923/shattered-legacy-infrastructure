@@ -97,7 +97,7 @@ public static class TutorialStations
         new("magic.magery", TutorialWing.Magic, "Magery", ["Magery"], ["Meditation", "Evaluating Intelligence"], None,
             ["SpellBar", "Quick spell cast", "Spell indicators", "Counter bar"], "a loaned spellbook and reagents (spell ingredients)", "the Haven Magery School, the stone hall at the north end of town"), // cc-P743 item 7
         new("magic.necromancy", TutorialWing.Magic, "Necromancy", ["Necromancy"], ["Spirit Speak"], None,
-            ["SpellBar"], "a loaned necromancer spellbook", "the training yard, behind the Little Shop of Magic"),
+            ["SpellBar"], "a loaned necromancer spellbook", "the necromancer's shrine at the north-east of the loop road"), // cc-P802 item 8
         new("magic.chivalry", TutorialWing.Magic, "Chivalry", ["Chivalry"], None, None,
             ["SpellBar"], "a loaned Book of Chivalry", "the training yard, behind the Little Shop of Magic"),
         new("magic.bushido", TutorialWing.Magic, "Bushido", ["Bushido"], None, None,
@@ -105,37 +105,37 @@ public static class TutorialStations
         new("magic.ninjitsu", TutorialWing.Magic, "Ninjitsu", ["Ninjitsu"], None, None,
             ["Buff and cooldown bars"], "a loaned Book of Ninjitsu", "the training yard, behind the Little Shop of Magic"),
         new("magic.mysticism", TutorialWing.Magic, "Mysticism", ["Mysticism"], None, ["Spellweaving (start with a quest)"],
-            ["SpellBar"], "a loaned mystic book", "the training yard, behind the Little Shop of Magic"),
+            ["SpellBar"], "a loaned mystic book", "the Haven Magery School, with its elven adjunct instructor"), // cc-P802 item 3
 
         // -- Gathering wing --
         new("gathering.mining", TutorialWing.Gathering, "Mining", ["Mining"], None, None,
             ["Counter bar"], "a loaned pickaxe", "the cave on the mountain path south of town"), // cc-P743 item 3
         new("gathering.lumberjacking", TutorialWing.Gathering, "Lumberjacking", ["Lumberjacking"], None, None,
-            [], "a loaned hatchet", "the trades yard, west of the training yard"),
+            [], "a loaned hatchet", "the Woodsman's lodge"),
         new("gathering.fishing", TutorialWing.Gathering, "Fishing", ["Fishing"], None, None,
-            [], "a loaned fishing pole", "the trades yard, west of the training yard"),
+            [], "a loaned fishing pole", "the docks"),
         new("gathering.camping", TutorialWing.Gathering, "Camping", ["Camping"], None, ["Herbalism (the wild garlic in the yard)"],
-            [], "loaned kindling", "the trades yard, west of the training yard"),
+            [], "loaned kindling", "the camp spot by the road to the east fields"),
 
         // -- Crafting yard, one item each --
         new("crafting.blacksmithy", TutorialWing.Crafting, "Blacksmithy", ["Blacksmithy"], ["Arms Lore"], ["Imbuing"],
-            ["Counter bar", "Grid highlighting by property", "Item database", "Organizer agent"], "a loaned smith's hammer", "the trades yard, west of the training yard"),
+            ["Counter bar", "Grid highlighting by property", "Item database", "Organizer agent"], "a loaned smith's hammer", "the Hammer and Steel smithy"),
         new("crafting.tailoring", TutorialWing.Crafting, "Tailoring", ["Tailoring"], None, None,
-            ["Counter bar"], "a loaned sewing kit", "the trades yard, west of the training yard"),
+            ["Counter bar"], "a loaned sewing kit", "A Stitch in Time"),
         new("crafting.carpentry", TutorialWing.Crafting, "Carpentry", ["Carpentry"], None, None,
-            [], "a loaned saw", "the trades yard, west of the training yard"),
+            [], "a loaned saw", "Carpenters of Haven"),
         new("crafting.tinkering", TutorialWing.Crafting, "Tinkering", ["Tinkering"], ["Item Identification"], None,
-            [], "loaned tinker's tools", "the trades yard, west of the training yard"),
+            [], "loaned tinker's tools", "the Haven Clockworks and Tinker Shop"),
         new("crafting.alchemy", TutorialWing.Crafting, "Alchemy", ["Alchemy"], ["Taste Identification"], None,
-            [], "a loaned mortar and pestle", "the trades yard, west of the training yard"),
+            [], "a loaned mortar and pestle", "the reagent kitchen behind the mage's shop"),
         new("crafting.fletching", TutorialWing.Crafting, "Bowcraft and Fletching", ["Fletching"], None, None,
-            [], "loaned fletcher's tools", "the trades yard, west of the training yard"),
+            [], "loaned fletcher's tools", "the Bullseye Marksmen archery range"),
         new("crafting.cooking", TutorialWing.Crafting, "Cooking", ["Cooking"], None, None,
-            [], "a loaned skillet", "the trades yard, west of the training yard"),
+            [], "a loaned skillet", "the Albatross kitchen"),
         new("crafting.inscription", TutorialWing.Crafting, "Inscription", ["Inscription"], None, None,
-            [], "a loaned scribe's pen", "the trades yard, west of the training yard"),
+            [], "a loaned scribe's pen", "the Haven Public Library"),
         new("crafting.cartography", TutorialWing.Crafting, "Cartography", ["Cartography"], None, None,
-            ["Treasure maps and SOS", "SOS locator"], "a loaned mapmaker's pen", "the trades yard, west of the training yard"),
+            ["Treasure maps and SOS", "SOS locator"], "a loaned mapmaker's pen", "Mapmakers of Haven"),
 
         // -- Animals --
         // cc-P743 item 4: heal and tame an injured horse in the stables, and keep it. Herding is explained, not practised.
@@ -149,7 +149,7 @@ public static class TutorialStations
         // -- Thieving and stealth (one trial) --
         new("thieving.trial", TutorialWing.Thieving, "Thieving and stealth",
             ["Hiding", "Stealth", "Detecting Hidden", "Lockpicking", "Remove Trap", "Snooping", "Stealing", "Poisoning", "Tracking", "Begging"],
-            None, ["Forensic Evaluation"], ["Hidden characters"], "loaned lockpicks", "the trades yard, west of the training yard"),
+            None, ["Forensic Evaluation"], ["Hidden characters"], "loaned lockpicks", "the Haven Thieves' Guild"),
 
         // -- Non-skill wings --
         new("housing.basics", TutorialWing.Housing, "Houses", None, None, None,

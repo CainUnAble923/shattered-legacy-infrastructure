@@ -28,7 +28,7 @@
 -            pm.SendAsciiMessage($"You will enjoy the benefits and relatively safe status of a young player for {hours} more hours.");
 -        }
 +        // cc-P18 (F-5): days and hours, and how to end it sooner (ClusterFYoungPlayer.cs).
-+        pm.SendAsciiMessage(ClusterFYoungPlayer.LoginMessage(ts));
++        ClusterFYoungPlayer.SendLoginMessage(pm, ts);
      }
  
      public void RemoveYoungStatus(int message)

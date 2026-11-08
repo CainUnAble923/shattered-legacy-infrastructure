@@ -339,18 +339,11 @@ public static class TutorialStart
             return;
         }
 
+        // cc-P802 item 7 (Chase 11-07: "it should all be gumps"): the first step is in the welcome window; the System window
+        // echoes it in a few words.
         void FirstLines()
         {
-            ClusterFTutorial.SystemLine(pm, "You wake on a quiet shore: the Wakening Isle.");
-            if (visitor)
-            {
-                ClusterFTutorial.SystemLine(pm, VisitorLine(pm));
-                ClusterFTutorial.SystemLine(pm, "Follow the road east to the moongate at the end of the dock; it takes you to New Haven.");
-                TutorialGuide.PointTo(pm);
-                return;
-            }
-
-            ClusterFTutorial.SystemLine(pm, "Follow the arrow and double-click Tamsin, your guide, with two quick left clicks. Tamsin's window starts each lesson.");
+            TutorialWelcome.Standing(pm, visitor ? $"{VisitorLine(pm)} {TutorialWelcome.VisitorStep}" : null);
             TutorialGuide.PointTo(pm);
         }
 

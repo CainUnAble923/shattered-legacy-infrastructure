@@ -426,7 +426,7 @@ public class NewHavenFixesVerification : IDisposable
     [MemberData(nameof(ThiefOrders))]
     public void TheThiefChestAlwaysHasATrapUntilRemoveTrapIsDone(SkillName[] order)
     {
-        using var p = new Player(new Point3D(TutorialWingTrials.TradesYard.X, TutorialWingTrials.TradesYard.Y, 0));
+        using var p = new Player(new Point3D(TutorialWingTrials.Trade("thieving.trial")!.Place.X, TutorialWingTrials.Trade("thieving.trial")!.Place.Y, 0));
         var trial = Begin(p, "thieving.trial");
         var chest = trial.Props.OfType<WoodenChest>().Single();
         foreach (var skill in order)

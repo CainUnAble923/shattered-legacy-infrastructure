@@ -507,7 +507,7 @@ public class PersuasionVerification : IDisposable
         pm.Hits = pm.HitsMax;
         pm.AddItem(new Backpack());
         acct[0] = pm;
-        pm.MoveToWorld(new Point3D(TutorialWingTrials.TradesYard.X, TutorialWingTrials.TradesYard.Y, 0), Map.Trammel);
+        pm.MoveToWorld(new Point3D(TutorialWingTrials.Trade("thieving.trial")!.Place.X, TutorialWingTrials.Trade("thieving.trial")!.Place.Y, 0), Map.Trammel); // cc-P802
         _made.Add(pm);
         var ns = PacketTestUtilities.CreateTestNetState();
         ns.Account = acct;

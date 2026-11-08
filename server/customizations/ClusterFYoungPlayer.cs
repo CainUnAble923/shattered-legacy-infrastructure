@@ -106,6 +106,13 @@ public static class ClusterFYoungPlayer
     }
 
     /// <summary>The login line (pinned Account.cs:788-806 counted hours only), in days and hours.</summary>
+    /// <summary>
+    /// cc-P802 item 7: the login line (Account-young-duration.patch). A trainee waking on the Wakening Isle reads it in
+    /// the welcome window instead (Tutorial.TutorialWelcome.Note); everyone else in the System window, as before.
+    /// </summary>
+    public static void SendLoginMessage(PlayerMobile pm, TimeSpan remaining) =>
+        Server.Tutorial.TutorialWelcome.Note(pm, LoginMessage(remaining));
+
     public static string LoginMessage(TimeSpan remaining) =>
         "You will enjoy the benefits and relatively safe status of a young player for another " +
         $"{FormatRemaining(remaining)} of play time. Say \"{GrowUpPhrase}\" to give it up sooner.";
