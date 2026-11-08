@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.08.2
+
+### Fixed
+- On Tutorial Island, the hurt farmhand Pip sits on one whole bench in the farmhouse again, not on two crosswise bench ends.
+
 ## 2026.11.08
 
 ### Added

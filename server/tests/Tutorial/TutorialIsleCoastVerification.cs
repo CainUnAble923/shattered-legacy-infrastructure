@@ -10,6 +10,8 @@
 //      and blood and the old pest and pen spawners go; Wren, Tobin and Pip walk to their new spots; nothing is doubled.
 //   4. The chat lesson's farm signpost, laid on the road's edge before, is moved north of the road, not doubled.
 //   5. A lesson sign standing where P720 put it is moved north of its path by the next seeding, not doubled.
+//   6. cc-P844: Pip's bench is the north-south piece (0x0B2C) on both tiles, and a world laid with the crosswise 0x0B2D
+//      gets it swapped in place, once.
 
 #nullable enable
 
@@ -231,6 +233,52 @@ public class TutorialIsleCoastVerification : IDisposable
             var now = Assert.Single(Items<Static>(map), IsPost);
             Assert.Same(post, now);
             Assert.Equal(TutorialWorld.Ground(map, TutorialCorePlacement.ChatSignpost), now.Location);
+        }
+        finally
+        {
+            TutorialCopies.Reset(LastSlot);
+        }
+    }
+
+    [Fact]
+    public void PipsBenchIsTheNorthSouthPieceAndTheCrosswiseOneIsSwapped()
+    {
+        var map = SeededCopy();
+        try
+        {
+            var tiles = TutorialFarm.PipProps.Where(p => p.Name == "wooden bench").Select(p => p.At).ToList();
+            Assert.Equal(2, tiles.Count);
+            Assert.Equal(tiles[0].X, tiles[1].X); // two tiles in a north-south line, along the east wall
+            Assert.Equal(0x0B2C, TutorialFarm.BenchId);
+            List<Item> BenchAt(Point3D at)
+            {
+                var found = new List<Item>();
+                foreach (var i in map.GetItemsInRange<Static>(at, 0))
+                {
+                    if (!i.Deleted && i.Z == at.Z && i.Name == "wooden bench") { found.Add(i); }
+                }
+
+                return found;
+            }
+
+            // a world laid before cc-P844: the crosswise pieces on Pip's tiles
+            foreach (var at in tiles)
+            {
+                BenchAt(at).ForEach(i => i.Delete());
+                new Static(TutorialFarm.OldBenchId) { Name = "wooden bench" }.MoveToWorld(at, map);
+            }
+
+            Assert.Equal(2, TutorialFarm.TakeAwayOldPipBench(map, true)); // a dry run counts them and leaves them
+            TutorialCorePlacement.SeedOn(map, false, false);
+            TutorialCorePlacement.SeedOn(map, false, false);
+
+            foreach (var at in tiles)
+            {
+                var one = Assert.Single(BenchAt(at));
+                Assert.Equal(0x0B2C, one.ItemID);
+            }
+
+            Assert.Equal(TutorialFarm.PipBench, Assert.Single(Mobiles<TutorialWoundedHelper>(map)).Location);
         }
         finally
         {

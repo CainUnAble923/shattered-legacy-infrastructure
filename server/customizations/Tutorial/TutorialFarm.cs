@@ -930,7 +930,12 @@ namespace Server.Tutorial
         public static readonly Point2D OldPipSpot = new(6715, 3981); // cc-P721's, by the barrel south of the gate
         public static readonly Point3D OldPipBench = new(6692, 3975, 7); // cc-P726's, before the farmhouse moved (cc-P741)
 
-        public const int BenchId = 0x0B2D; // "wooden bench", the north-south piece along the east wall
+        // cc-P844 (P834's build review asked for the bench in a shot): 0x0B2C is the wooden bench that runs north-south, so
+        // its two tiles along the east wall join into one bench; 0x0B2D runs east-west (cc-P805/P806, Rook's bench) and
+        // drew here as two crosswise stubs (notes/cc-P844-review/bench-0B2D-left-0B2C-right.png). A world laid before has
+        // 0x0B2D on Pip's tiles; the seeder takes it away (TakeAwayOldPipBench).
+        public const int BenchId = 0x0B2C; // "wooden bench", the north-south piece along the east wall
+        public const int OldBenchId = 0x0B2D;
 
         /// <summary>The bench's two tiles and the blood decals (stock "blood" art 0x122A-0x122E) on the floor beside it.</summary>
         public static readonly (int Id, Point3D At, string Name)[] PipProps =
@@ -944,7 +949,25 @@ namespace Server.Tutorial
 
         /// <summary>cc-P741: Pip's props where they stood before the farmhouse moved (cc-P726's), removed by the seeder.</summary>
         public static readonly (int Id, Point3D At, string Name)[] OldPipProps =
-            PipProps.Select(p => (p.Id, new Point3D(p.At.X - HouseMovedX, p.At.Y, p.At.Z), p.Name)).ToArray();
+            PipProps.Select(p => (p.Id == BenchId ? OldBenchId : p.Id, new Point3D(p.At.X - HouseMovedX, p.At.Y, p.At.Z), p.Name)).ToArray(); // cc-P844: laid then with 0x0B2D
+
+        /// <summary>cc-P844: the crosswise 0x0B2D pieces on Pip's bench tiles, from a world laid before; returns how many.</summary>
+        public static int TakeAwayOldPipBench(Map map, bool dryRun)
+        {
+            var old = new List<Item>();
+            foreach (var (id, at, name) in PipProps)
+            {
+                if (id != BenchId) { continue; }
+                foreach (var i in map.GetItemsInRange<Static>(at, 0))
+                {
+                    if (!i.Deleted && i.ItemID == OldBenchId && i.Z == at.Z && i.Name == name) { old.Add(i); }
+                }
+            }
+
+            if (!dryRun) { old.ForEach(i => i.Delete()); }
+
+            return old.Count;
+        }
 
         /// <summary>cc-P721: Pip may be bandaged; every other beneficial act is <paramref name="inner"/>'s (pinned's) to judge.</summary>
         public static bool AllowBeneficial(Mobile from, Mobile target, AllowBeneficialHandler? inner) =>
@@ -1316,7 +1339,9 @@ namespace Server.Tutorial
             }
 
             // cc-P721: Pip, the healing lesson's patient (he is optional: the lesson falls back to a scratch). cc-P726: on his
-            // bench in the farmhouse, with blood around him; one placed by the gate before is moved there.
+            // bench in the farmhouse, with blood around him; one placed by the gate before is moved there. cc-P844: the old
+            // crosswise bench pieces go first, so the north-south bench is laid in their place, not on top of them.
+            TakeAwayOldPipBench(map, dryRun);
             foreach (var (id, at, name) in PipProps)
             {
                 if (!HasProp(map, id, at, name) && !dryRun)
