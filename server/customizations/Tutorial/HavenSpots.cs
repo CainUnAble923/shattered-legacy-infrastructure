@@ -95,6 +95,15 @@ public static class HavenSpots
     /// </summary>
     public static readonly Point3D PublicMoongate = new(3696, 2570, 14);
 
+    /// <summary>cc-P801: the jail's north-west wall post (flat land at Z 20, on the dirt road by the east farm field).</summary>
+    public static readonly Point3D JailPost = new(3702, 2634, 21);
+
+    /// <summary>cc-P801: the jail's floor, one above the land so the doorstep is one step.</summary>
+    public const int JailFloorZ = 21;
+
+    /// <summary>cc-P801: the jail's place in words.</summary>
+    public const string JailWhere = "the New Haven jail, the stone building on the dirt road east of the Albatross tavern";
+
     /// <summary>The town healer: pinned's pre-UOML Haven healer spawner (Spawns/uoml/trammel/Vendors.json).</summary>
     public static readonly Point3D Healer = new(3665, 2581, 0);
 
