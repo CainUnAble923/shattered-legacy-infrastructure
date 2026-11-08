@@ -31,6 +31,11 @@ Example:
 
 ## 2026.11.08
 
+### Added
+- A gold "!" now floats over someone who has something new for you, and a "?" over someone waiting for you to hand something in: Rook and the farmhand during the tutorial, the League Registrar (joining, your next rank, the mule errand), and the guildmaster of every guild you belong to (work orders, and the smiths' bulk orders and commissions). Only you see your own markers.
+- Keys you can see at a glance: boss room doors that open only for their own key, League trial gates that let through only the holder of that chapter's key, and top-tier loot boxes that come locked and open with a Vault key, which bosses sometimes drop.
+- Moongates in four new spinning colours, blue, red, black and white. A white gate at League Headquarters can take you to any guild hall, and a blue gate at each hall brings you back. The Valley of Eodon's moongate turns red. The old moongates are unchanged.
+
 ### Changed
 - Character creation: humans only, Tutorial Island start, a brighter wake, and your pet waits at the end of the isle.
 - The trade (Blacksmith) starting choice is gone; you can still pick Blacksmithy, Mining, Tailoring and Tinkering with Advanced, where you choose your own skills.
@@ -38,6 +43,10 @@ Example:
 
 ### Staff
 - The creation screen's race row and profession list need the new player package; the server already makes any other race Human and refuses the Blacksmith choice.
+- Quest markers: setting clusterf.questMarkers (on by default) turns them off for everyone. The art is RedRooster's "Quest Markers" (art 46592-46597); he asks to be in the shard credits list.
+- Keys: ShardKey ([add ShardKey "<lock tag>" "<name>" <design 1-34> <hue>), ShardLockedDoor (a boss room door, LockTag and LockName in [props; ConsumeKey takes the key), keyed moongates (LockTag on a ShardMoongate). Top-tier boxes: clusterf.lootBoxes.keyTier (6; 0 turns locked boxes off) and clusterf.lootBoxes.vaultKeyChance (0.25 a boss kill). Boxes earned before this update stay unlocked. The keys and gem tokens are Hestia's "Quest, Item, Token Keys" (art 46618-46663), credit Hestia.
+- Gates: [add ShardMoongate Red (Blue, Red, Black, White; Color in [props). [ShardGates guildhalls dryrun shows the guild hall network, [ShardGates guildhalls places it, [ShardGates clear removes it. The Eodon gate takes its red look the next time [GenEodon runs. The gates are Carl Hamilton's spinning moongates (art 46598-46617), credit Carl Hamilton.
+- Players need the package update to see the new art; without it they see the "UNUSED" placeholder.
 
 ## 2026.11.07.9
 

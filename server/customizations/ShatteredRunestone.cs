@@ -72,6 +72,9 @@ namespace Server
 
             // cc-P813: the Hall of Finishers banner (FinishersBannerArt).
             Items.FinishersBannerArt.Apply();
+
+            // cc-P363: quest markers, gem tokens and quest keys, and the coloured moongates (ShardItemArt.Records).
+            Items.ShardItemArt.Apply();
         }
     }
 }

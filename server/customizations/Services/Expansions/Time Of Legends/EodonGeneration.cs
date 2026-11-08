@@ -187,7 +187,8 @@ public static class EodonGeneration
         }
         else
         {
-            var gate = new PublicMoongate();
+            // cc-P363: the stock gate, in Carl Hamilton's red spinning look (a new art ID; OSI's 0xF6C is untouched).
+            var gate = new PublicMoongate { ItemID = ShardItemArt.GateItemId(ShardGateColor.Red) };
             WeakEntityCollection.Add(CollectionKey, gate);
             gate.MoveToWorld(MoongateLocation, Map.TerMur);
             gates++;

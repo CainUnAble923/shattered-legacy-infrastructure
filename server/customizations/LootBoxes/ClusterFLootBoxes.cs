@@ -216,7 +216,10 @@ public static class ClusterFLootBoxes
         tier = Math.Clamp(tier, 1, 6);
         var r = rarity ?? RarityRoll(tier);
         var rolled = LootBoxRoller.Roll(pm, theme, tier, skill, sourceName ?? label, r, ActiveSeason());
-        var box = new LootBox(theme, tier, pm.Account?.Username ?? "", label) { Rarity = r };
+        // cc-P363: the keyed tier comes locked, and opens with a Vault key (ShardKeys.cs).
+        var box = ShardKeys.NeedsKey(tier)
+            ? new ShardLockedLootBox(theme, tier, pm.Account?.Username ?? "", label) { Rarity = r }
+            : new LootBox(theme, tier, pm.Account?.Username ?? "", label) { Rarity = r };
         box.Fill(rolled.BoxName, rolled.Hue, rolled.Gold, rolled.Renown, rolled.Items);
         return box;
     }
@@ -303,6 +306,7 @@ public static class ClusterFLootBoxes
         var grade = LootTable.Current.TierForBoss(bossType);
         // cc-P763: the boss's own name for its trophy ("Trophy of a balron"), not the label ("slaying a balron").
         var result = Award(pm, $"boss:{bossType.Name}", BoxTheme.Boss, grade, null, $"slaying {bossName}", out _, sourceName: bossName);
+        ShardKeys.OnBossKilled(pm, Utility.RandomDouble()); // cc-P363: sometimes a Vault key, on every kill
         if (result == AwardResult.Box)
         {
             ClusterFFanfare.Play(pm, FanfareLevel.Major, "", tier: grade, line: $"{pm.Name} has slain {bossName} for the first time.");

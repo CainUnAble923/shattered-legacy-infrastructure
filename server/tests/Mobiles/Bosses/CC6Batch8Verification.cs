@@ -580,6 +580,14 @@ public class CC6Batch8Verification
 
             foreach (var item in pm.Backpack!.Items.ToList())
             {
+                // cc-P832: a boss kill sometimes hands the killer a Vault key (cc-P363, ShardKeys.OnBossKilled); it is
+                // not the boss's own loot, so it is set aside here.
+                if (item is ShardKey)
+                {
+                    item.Delete();
+                    continue;
+                }
+
                 tally[item.GetType().Name] = tally.GetValueOrDefault(item.GetType().Name) + 1;
                 Assert.Contains(item.GetType(), d.UniqueSAList.Concat(d.SharedSAList));
                 item.Delete();
