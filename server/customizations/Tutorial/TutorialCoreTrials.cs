@@ -91,6 +91,7 @@ public static class TutorialCoreTrials
             pm.SendGump(new TutorialTrialGump(trial.Station, false, trial.Now));
             return true;
         }
+        if (TutorialWingTrials.ReopenJail(pm)) { return true; } // cc-P801: the jail's window again
         if (ClusterFTutorial.RecordOf(pm) is { } record && ClusterFTutorial.CoreLeft(record).FirstOrDefault() is { } next)
         {
             pm.CloseGump<TutorialTrialGump>();

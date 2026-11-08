@@ -157,7 +157,7 @@ public static class TutorialStations
         new("travel.wing", TutorialWing.Travel, "Runes, gates and boats", None, None, None,
             ["World Map"], "a loaned blank recall rune", "the public moongate, then Rook's bench by the Albatross tavern"),
         new("reputation.wing", TutorialWing.Reputation, "Name colors, reputation, and guards", None, None, None,
-            [], null, "the training yard, the town healer, then Rook's bench"),
+            [], null, HavenSpots.JailWhere), // cc-P801
         new("shard.systems", TutorialWing.ShardSystems, "Rewards and extra jewelry slots", None, None, None,
             ["Skill progress bar", "Autoloot", "Scavenger", "Nearby loot", "Vendors: advanced shop, trade, auto buy and sell",
              "Legion scripting (advanced)", "Script library browser (advanced)"], null, "Elara Voss's house, the bank, then Rook"),

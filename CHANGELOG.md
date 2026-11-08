@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.08.1
+
+### Changed
+- The Name Colors lesson now happens in a new New Haven jail: click five people to learn the colors, take from a marked crate and see your own name turn gray (no real penalty), read your karma and fame in the warden's ledger, and call the guards on a thief.
+
+### Fixed
+- The New Haven jail's south-west corner no longer shows a stub of wall, no torch hangs on a window, and the marked crate stands in the hall where you can see it.
+
 ## 2026.11.07.9
 
 ### Changed
