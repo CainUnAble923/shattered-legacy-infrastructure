@@ -1,7 +1,7 @@
 {
  "map": "Trammel",
  "building": "League of Extraordinary Citizens Field Office (Haven, SoS Trammel), the hall walls x3658-3674 y2547-2562, floor z0, doorway 3667-3668,2562",
- "source": "design/registrar-office/registrar.py; cc-P678 moved it into SoS Haven (shard-migration notes/cc-P678-tools/office), z from the SoS map files",
+ "source": "design/registrar-office/registrar.py; cc-P678 moved it into SoS Haven (shard-migration notes/cc-P678-tools/office), z from the SoS map files; cc-P803 decoration review (shard-migration notes/cc-P803-league-building-deco.md); cc-P827 fix-up (notes/cc-P827-cont-fixup-league-building-deco.md)",
  "components": [
   {
    "area": "outside",
@@ -13,9 +13,9 @@
   },
   {
    "area": "outside",
-   "id": "0x0B97",
+   "id": "0x0B98",
    "name": "wooden signpost",
-   "x": 3670,
+   "x": 3671,
    "y": 2563,
    "z": 0
   },
@@ -23,7 +23,7 @@
    "area": "outside",
    "id": "0x0BCF",
    "name": "wooden sign",
-   "x": 3670,
+   "x": 3671,
    "y": 2563,
    "z": 0
   },
@@ -61,7 +61,7 @@
   },
   {
    "area": "office",
-   "id": "0x0A99",
+   "id": "0x0A98",
    "name": "bookcase",
    "x": 3660,
    "y": 2548,
@@ -69,7 +69,7 @@
   },
   {
    "area": "office",
-   "id": "0x0A9A",
+   "id": "0x0A97",
    "name": "bookcase",
    "x": 3661,
    "y": 2548,
@@ -87,7 +87,7 @@
    "area": "office",
    "id": "0x11CA",
    "name": "flowerpot",
-   "x": 3663,
+   "x": 3673,
    "y": 2548,
    "z": 0
   },
@@ -101,7 +101,7 @@
   },
   {
    "area": "quarters",
-   "id": "0x0A9A",
+   "id": "0x0A98",
    "name": "bookcase",
    "x": 3670,
    "y": 2548,
