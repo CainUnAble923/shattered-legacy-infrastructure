@@ -29,7 +29,7 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
-## 2026.11.08
+## 2026.11.08.1
 
 ### Added
 - A gold "!" now floats over someone who has something new for you, and a "?" over someone waiting for you to hand something in: Rook and the farmhand during the tutorial, the League Registrar (joining, your next rank, the mule errand), and the guildmaster of every guild you belong to (work orders, and the smiths' bulk orders and commissions). Only you see your own markers.
@@ -40,6 +40,11 @@ Example:
 - Character creation: humans only, Tutorial Island start, a brighter wake, and your pet waits at the end of the isle.
 - The trade (Blacksmith) starting choice is gone; you can still pick Blacksmithy, Mining, Tailoring and Tinkering with Advanced, where you choose your own skills.
 - On the Wakening Isle, Merrin the banker faces his counter and tells you what to do as you walk in, and the island bank is tidier: its lesson sign stands by the path instead of before the door.
+- The Name Colors lesson now happens in a new New Haven jail: click five people to learn the colors, take from a marked crate and see your own name turn gray (no real penalty), read your karma and fame in the warden's ledger, and call the guards on a thief.
+
+### Fixed
+- The New Haven jail's south-west corner no longer shows a stub of wall, no torch hangs on a window, and the marked crate stands in the hall where you can see it.
+- The New Haven jail's cells now have closed fronts: the bars run in one line with the gates instead of showing as stubs, the cell walls meet the bars without a gap, and the hall's candelabra no longer stands in front of a cell gate.
 
 ### Staff
 - The creation screen's race row and profession list need the new player package; the server already makes any other race Human and refuses the Blacksmith choice.
