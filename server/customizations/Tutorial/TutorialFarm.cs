@@ -930,7 +930,15 @@ namespace Server.Tutorial
         public static readonly Point2D OldPipSpot = new(6715, 3981); // cc-P721's, by the barrel south of the gate
         public static readonly Point3D OldPipBench = new(6692, 3975, 7); // cc-P726's, before the farmhouse moved (cc-P741)
 
-        public const int BenchId = 0x0B2D; // "wooden bench", the north-south piece along the east wall
+        /// <summary>
+        /// "wooden bench", the north-south piece along the east wall. cc-P845 (P835 build review item 2): read from the
+        /// art, 0x0B2C runs north-south and 0x0B2D east-west (as cc-P806 found for Rook's bench); P726 laid 0x0B2D,
+        /// which drew two crosswise half benches against the wall.
+        /// </summary>
+        public const int BenchId = 0x0B2C;
+
+        /// <summary>cc-P845: the east-west piece P726 laid at the bench's tiles; the seeder swaps it for <see cref="BenchId"/>.</summary>
+        public const int CrosswiseBenchId = 0x0B2D;
 
         /// <summary>The bench's two tiles and the blood decals (stock "blood" art 0x122A-0x122E) on the floor beside it.</summary>
         public static readonly (int Id, Point3D At, string Name)[] PipProps =
@@ -944,7 +952,8 @@ namespace Server.Tutorial
 
         /// <summary>cc-P741: Pip's props where they stood before the farmhouse moved (cc-P726's), removed by the seeder.</summary>
         public static readonly (int Id, Point3D At, string Name)[] OldPipProps =
-            PipProps.Select(p => (p.Id, new Point3D(p.At.X - HouseMovedX, p.At.Y, p.At.Z), p.Name)).ToArray();
+            PipProps.Select(p => (p.Id == BenchId ? CrosswiseBenchId : p.Id, new Point3D(p.At.X - HouseMovedX, p.At.Y, p.At.Z), p.Name))
+                .ToArray();
 
         /// <summary>cc-P721: Pip may be bandaged; every other beneficial act is <paramref name="inner"/>'s (pinned's) to judge.</summary>
         public static bool AllowBeneficial(Mobile from, Mobile target, AllowBeneficialHandler? inner) =>
@@ -1384,7 +1393,10 @@ namespace Server.Tutorial
                 if (!item.Deleted && item.ItemID == FieldFenceId) { gone.Add(item); }
             }
 
-            foreach (var (id, at, name) in OldPipProps)
+            // cc-P845: and the crosswise bench pieces P726 laid (OldPipProps holds them where it laid them; P741 copied
+            // them to the bench's tiles here), so the seeder lays the north-south piece in their place.
+            var crosswise = PipProps.Where(p => p.Id == BenchId).Select(p => (CrosswiseBenchId, p.At, p.Name));
+            foreach (var (id, at, name) in OldPipProps.Concat(crosswise))
             {
                 foreach (var i in map.GetItemsInRange<Static>(at, 0))
                 {

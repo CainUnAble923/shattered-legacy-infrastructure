@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.08.2
+
+### Fixed
+- On the Wakening Isle, the bench where hurt Pip sits in the farmhouse now runs along the wall as one whole bench.
+
 ## 2026.11.08
 
 ### Added
