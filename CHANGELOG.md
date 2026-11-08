@@ -35,6 +35,7 @@ Example:
 - Character creation: humans only, Tutorial Island start, a brighter wake, and your pet waits at the end of the isle.
 - The trade (Blacksmith) starting choice is gone; you can still pick Blacksmithy, Mining, Tailoring and Tinkering with Advanced, where you choose your own skills.
 - On the Wakening Isle, Merrin the banker faces his counter and tells you what to do as you walk in, and the island bank is tidier: its lesson sign stands by the path instead of before the door.
+- On the Wakening Isle, the League lodge's door is now on its east side, where you can see it as you come along the road: a brick walk leads to it from the road between two braziers, the lodge's signs stand where the walk meets the road, the lesson says which side the door is on and its arrow points at the door, and Elara calls out to you if you are outside. Get the new player package to see the moved door and the walk.
 
 ### Staff
 - The creation screen's race row and profession list need the new player package; the server already makes any other race Human and refuses the Blacksmith choice.

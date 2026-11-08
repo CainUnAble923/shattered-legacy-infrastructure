@@ -67,9 +67,14 @@ public static class TutorialWorld
     public static readonly Point2D BankDoor = new(6762, 3980);
     public static readonly Point2D Banker = new(6762, 3976);
     public static readonly Point2D BankBox = new(6760, 3975);
-    /// <summary>Stop 8, the League lodge's door (north wall); Elara inside.</summary>
-    public static readonly Point2D LodgeStop = new(6782, 3994);
-    public static readonly Point2D LodgeDoor = new(6782, 3995);
+    /// <summary>
+    /// Stop 8, the League lodge's door; Elara inside. cc-P818 (Chase 11-07: "league building needs either to rotate so
+    /// player can see door or something for player to know where door is"): the door moved from the north wall (6782,3995),
+    /// which the client's camera (from the south-east) never shows, to the east wall, which faces the road's east stretch
+    /// and the camera. A paved walk runs from the road (6789,3989) south to it, between two braziers.
+    /// </summary>
+    public static readonly Point2D LodgeStop = new(6789, 4000);
+    public static readonly Point2D LodgeDoor = new(6787, 4000);
     public static readonly Point2D Elara = new(6782, 3999);
     /// <summary>Stop 9, the standing stones on the knoll (the ring's gap faces the road).</summary>
     public static readonly Point2D Stones = new(6794, 3982);
