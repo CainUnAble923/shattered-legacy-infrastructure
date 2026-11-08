@@ -299,18 +299,32 @@ def opl_request(serials):
     return struct.pack(">BH", 0xD6, 3 + len(body)) + body
 
 
+def text_command(kind, text):
+    """0x12, var: byte type; ASCII text, null-terminated. U/Network/Packets/IncomingPlayerPackets.cs:135 (the 0x24
+    branch :145 is 'use skill': the text is the skill index then a space and 0). cc-P223."""
+    body = struct.pack(">B", kind) + text.encode("ascii") + b"\x00"
+    return struct.pack(">BH", 0x12, 3 + len(body)) + body
+
+
 def use_skill(skill_id):
     """0x12 text command, type 0x24 (use skill): ASCII "<id> 0" null-terminated. U/Network/Packets/IncomingPlayerPackets.cs
-    (TextCommand: 0x24 -> Skills.UseSkill). cc-P224."""
-    body = struct.pack(">B", 0x24) + ("%d 0" % skill_id).encode("ascii") + b"\x00"
-    return struct.pack(">BH", 0x12, 3 + len(body)) + body
+    (TextCommand: 0x24 -> Skills.UseSkill, :145-153). cc-P224, cc-P223."""
+    return text_command(0x24, "%d 0" % skill_id)
 
 
 def cast_spell(spell_id):
-    """0x12 text command, type 0x56 (cast spell by id): ASCII "<id>" null-terminated. IncomingPlayerPackets.cs
-    (TextCommand: 0x56 -> Spellbook.CastSpellRequest). cc-P224."""
-    body = struct.pack(">B", 0x56) + ("%d" % spell_id).encode("ascii") + b"\x00"
-    return struct.pack(">BH", 0x12, 3 + len(body)) + body
+    """0x12 text command, type 0x56 (cast spell from macro): the 1-based spell id as text. IncomingPlayerPackets.cs
+    (TextCommand: 0x56 -> Spellbook.CastSpellRequest, :184-190 subtracts 1; Evasion is registered 402, so 403).
+    cc-P224, cc-P223."""
+    return text_command(0x56, "%d" % spell_id)
+
+
+def weapon_ability(serial, index):
+    """cc-P223. 0xD7 (encoded command), 14: u16 len; u32 the player; u16 0x19 (set weapon ability); then the encoded
+    int (byte 0x00, int32). U/Network/Packets/IncomingPlayerPackets.cs:51, :470-500;
+    U/Items/Weapons/Abilities/WeaponAbilityPackets.cs:11-34 (index 0 or out of range clears it; 18 is Nerve Strike,
+    WeaponAbility.cs:36, :70)."""
+    return struct.pack(">BHIHBi", 0xD7, 14, serial, 0x19, 0, index)
 
 
 def context_menu_request(serial):
@@ -319,8 +333,12 @@ def context_menu_request(serial):
 
 
 def context_menu_response(serial, index):
-    """0xBF sub 0x15: u32 serial; u16 index. ContextMenuSystem.cs:48-99 (registered :16). cc-P224."""
+    """0xBF sub 0x15: u32 serial; u16 index. ContextMenuSystem.cs:48-99 (registered :16; the entry must be enabled and
+    in range, else nothing happens). cc-P224; cc-P223 calls it context_menu_select."""
     return struct.pack(">BHHIH", 0xBF, 11, 0x15, serial, index)
+
+
+context_menu_select = context_menu_response   # cc-P223 name
 
 
 # --- server to client -------------------------------------------------------------------------------------------
@@ -355,10 +373,10 @@ def parse_gump_dd(p):
 
 
 def parse_context_menu(p):
-    """0xBF 0x14 (cc-P224): u16 command (1 old, 2 new); u32 serial; byte count; then per entry
-    old: i16 index, u16 number-3000000, i16 flags, [i16 color when flags & 0x20];
-    new: i32 number, i16 index, i16 flags. ContextMenuSystem.cs:142-210. Flags: 1 Disabled, 2 Arrow, 4 Highlighted,
-    0x20 Colored."""
+    """0xBF 0x14 (cc-P224, cc-P223): u16 command (1 old, 2 new); u32 serial; byte count; then per entry
+    old: u16 index, u16 number-3000000, u16 flags, [u16 color when flags & 0x20];
+    new: i32 number, u16 index, u16 flags. ContextMenuSystem.cs:142-210. Flags: 1 Disabled, 2 Arrow, 4 Highlighted,
+    0x20 Colored. Each entry carries its cliloc under both "cliloc" (the cc-P224 checks) and "number" (cc-P223)."""
     cmd = u16(p, 5)
     serial = u32(p, 7)
     n = p[11]
@@ -366,12 +384,12 @@ def parse_context_menu(p):
     entries = []
     for _ in range(n):
         if cmd == 2:
-            num, idx, flags = i32(p, o), i16(p, o + 4), u16(p, o + 6)
+            num, idx, flags = i32(p, o), u16(p, o + 4), u16(p, o + 6)
             o += 8
         else:
-            idx, num, flags = i16(p, o), u16(p, o + 2) + 3000000, u16(p, o + 4)
+            idx, num, flags = u16(p, o), u16(p, o + 2) + 3000000, u16(p, o + 4)
             o += 6
             if flags & 0x20:
                 o += 2
-        entries.append({"index": idx, "cliloc": num, "flags": flags})
+        entries.append({"index": idx, "cliloc": num, "number": num, "flags": flags})
     return {"serial": serial, "command": cmd, "entries": entries}
