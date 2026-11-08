@@ -73,12 +73,12 @@ namespace Server.Tutorial
         ];
 
         /// <summary>The housing lesson's first two stops (the third is the bank).</summary>
-        public static Point3D HousingStop(int i) => i == 0 ? Ground(3470, 2590) : Ground(3474, 2603); // cc-P806: on the street, in sight of the cottage, its sign north of the street; the flat lawn past it
+        public static Point3D HousingStop(int i) => i == 0 ? Ground(3470, 2590) : Ground(3482, 2623); // cc-P806: on the street, in sight of the cottage, its sign north of the street. cc-P848: stop 2 was 3474,2603, inside the jail (P801); now the flat open lawn south of the town wall, east of the south road
 
         public const string HousingStop1 =
             "Stop 1 of 3: the thatched cottage across the street, south-west of here, is a small house. A house comes from a house deed: double-click the deed, pick a spot, and the house appears there. " +
             "Inside your own house you can lock items down so they stay put, and secure a chest so only you can open it. " +
-            "Tip: TazUO's Options can make roofs and walls see-through when you walk inside. Next: follow the arrow to stop 2, the lawn to the south, past the cottage.";
+            "Tip: TazUO's Options can make roofs and walls see-through when you walk inside. Next: follow the arrow to stop 2, the open lawn outside the town wall: south through the gate by the jail, then east off the road.";
 
         public const string HousingStop2 =
             "Stop 2 of 3: you cannot build a house here. Towns and all of Haven island are no-building areas. " +
@@ -370,7 +370,7 @@ namespace Server.Tutorial
             new(0xA854, new Point3D(3520, 2568, 0), "The stables: the sick-bay stall is inside, in the north row"),
             new(0x0FFA, new Point3D(3534, 2574, 8), "bucket of water"), // cc-P806: on the stall's straw; at 3535,2575 the east wall hid it from the default camera
             new(0xA854, new Point3D(3471, 2588, 0), "Housing lesson, stop 1: a small house"), // cc-P814: 3469,2589 stood through a stock bench
-            new(0xA854, new Point3D(3474, 2601, 0), "Housing lesson, stop 2: where houses can be built")
+            new(0xA854, new Point3D(3481, 2622, 0), "Housing lesson, stop 2: where houses can be built") // cc-P848: was 3474,2601, in the jail hall; StrayPieces takes the old one away on load
         ];
 
         /// <summary>

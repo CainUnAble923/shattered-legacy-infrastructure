@@ -1022,6 +1022,8 @@ apply_patch "$PATCHES/MLQuestEntry-quest-milestones.patch"
 # Notes: shard-migration/notes/cc-P763-cont-loot-boxes-diversified.md; pinned by LootBoxDiversityVerification.
 apply_patch "$PATCHES/Fishing-loot-box-firsts.patch"
 apply_patch "$PATCHES/SetToDecorativeGump-loot-box-herbalist.patch"
+# cc-P801: the jail lesson's name colors, one call at the top of MobileNotoriety.
+apply_patch "$PATCHES/Notoriety-lesson-shown-color.patch"
 
 
 # cc-P804 (F-51): the Herbalism skill and the reagent lane. Last: the lane's context includes the raised bed hooks above.

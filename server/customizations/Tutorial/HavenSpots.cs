@@ -69,6 +69,15 @@ public static class HavenSpots
     /// <summary>New Haven's public moongate (pinned PublicMoongate.cs:194), the travel tour's first stop.</summary>
     public static readonly Point3D PublicMoongate = new(3450, 2677, 25);
 
+    /// <summary>cc-P801: the jail's north-west wall post (the open yard inside the palisade; the land runs Z 8 to 10).</summary>
+    public static readonly Point3D JailPost = new(3469, 2597, 11);
+
+    /// <summary>cc-P801: the jail's floor, above the land's highest tile.</summary>
+    public const int JailFloorZ = 11;
+
+    /// <summary>cc-P801: the jail's place in words.</summary>
+    public const string JailWhere = "the New Haven jail, the stone building inside the palisade, south-west of the plaza";
+
     /// <summary>The town healer's spawner (pinned Vendors.json; ClusterFNewHavenServicesSeeder).</summary>
     public static readonly Point3D Healer = new(3462, 2559, 35);
 

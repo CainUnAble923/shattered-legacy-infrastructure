@@ -173,7 +173,7 @@ namespace Server.Tutorial
                 Stops:
                 [
                     (() => HousingStop(0), "stop 1, the small cottage", HousingStop1),
-                    (() => HousingStop(1), "stop 2, the lawn past the cottage", HousingStop2),
+                    (() => HousingStop(1), "stop 2, the lawn outside the town wall", HousingStop2),
                     (() => ClusterFNewHavenSeeder.BankAnchor, "stop 3, the bank", HousingStop3)
                 ]),
             // cc-P802 item 2 (Chase 11-05: "the lesson should give scrolls to have player mark/recall"): at the public
@@ -188,18 +188,9 @@ namespace Server.Tutorial
                     ("back", "Recall back: read your other Recall scroll and click your own rune")
                 ],
                 TravelHint),
-            new("reputation.wing", "the first stop", TourCentre,
-                [("stop0", "The training yard"), ("stop1", "The healer"), ("stop2", "Rook's bench")],
-                "Follow the arrow to the first stop. Walk close to each stop to read its lesson.",
-                Stops:
-                [
-                    (() => YardSpot, "the training yard",
-                        "Blue names usually mean innocent; gray names can be attacked, and red names mark murderers. Harming an innocent can make you gray for a while."),
-                    (() => HavenSpots.Healer, "the healer",
-                        "Karma and fame affect your title; killing innocent players can give you murder counts. Five murder counts make your name red, and some healers will refuse to help you."),
-                    (() => TutorialRecruiter.Spot, "Rook's bench",
-                        "In a guarded town, say 'guards' if someone attacks you unlawfully. Trammel generally prevents attacks on other players; Felucca allows them.")
-                ]),
+            // cc-P801: one place and a window instead of three stops (TutorialJail.cs).
+            new(TutorialJail.Key, HavenSpots.JailWhere, TutorialJail.Place, TutorialJail.Steps,
+                "Walk into the jail. The lesson window says what to do next and stays open until you close it."),
             new("shard.systems", "the first stop", TourCentre,
                 [("stop0", "The League field office"), ("stop1", "The bank"), ("stop2", "Rook")],
                 "Follow the arrow to the first stop. Walk close to each stop to read its lesson.",
@@ -327,6 +318,7 @@ namespace Server.Tutorial
                 "gathering.mining" => (HavenSpots.MiningCave, "the mine"),
                 "bard.trial" => (HavenSpots.Theater, "the theater"),
                 TravelKey => (HavenSpots.PublicMoongate, "the public moongate"), // cc-P802
+                TutorialJail.Key => (TutorialJail.Hall, "the New Haven jail"), // cc-P801
                 _ when HavenPlace(t.Key) is { } hp => (hp.Arm, hp.Short), // cc-P802 item 6: its building
                 _ => (Ground(t.Place.X, t.Place.Y), "the trades yard")
             };
@@ -375,6 +367,7 @@ namespace Server.Tutorial
                 TravelKey => Array.Empty<Point3D>(),                    // cc-P802: nothing set up, only loans
                 "bard.trial" => new[] { BardEchoA, BardEchoB },          // cc-P799: on the theater's stage
                 "thieving.trial" => hp!.Props, // cc-P802: the mark and the chest in the back alley
+                TutorialJail.Key => Array.Empty<Point3D>(), // cc-P801: the jail is seeded
                 _ when hp != null => hp.Props,  // cc-P802: the building's own prop tiles
                 _ when t.IsTour => Array.Empty<Point3D>(),
                 // The anvil and forge stand east of the yard's centre, in reach of it (CraftItem: 2 tiles) and out of the
@@ -589,6 +582,7 @@ namespace Server.Tutorial
             trial.BrawlTimer.Cancel(); // cc-P743
             trial.Brawling = false;
             ReturnStable(trial);
+            EndJail(trial); // cc-P801
             foreach (var item in trial.Props) { item.Delete(); }
             trial.Props.Clear();
             foreach (var c in trial.Creatures) { c.Delete(); }
@@ -621,6 +615,7 @@ namespace Server.Tutorial
         {
             var pm = trial.Player;
             var t = Trade(trial.Key)!;
+            if (trial.Key == TutorialJail.Key) { JailTick(trial); } // cc-P801
             if (t.Products != null && !trial.Steps.Contains(Made))
             {
                 foreach (var type in t.Products)
@@ -690,7 +685,11 @@ namespace Server.Tutorial
             }
 
             var label = Array.Find(t.Steps, s => s.Id == id).Label;
-            ClusterFTutorial.SystemLine(trial.Player, $"Finished: {label} ({trial.Steps.Count} of {t.Steps.Length}).");
+            if (t.Key != TutorialJail.Key) // cc-P801: its window ticks the step; the System speaks only at the end
+            {
+                ClusterFTutorial.SystemLine(trial.Player, $"Finished: {label} ({trial.Steps.Count} of {t.Steps.Length}).");
+            }
+
             Refresh(trial.Player, trial); // cc-P802 item 1: the window marks it; the steps were echoed once already
         }
     }

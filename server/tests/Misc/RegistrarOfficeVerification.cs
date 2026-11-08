@@ -90,10 +90,12 @@ public class RegistrarOfficeVerification
             Assert.Equal(loaded.Where(c => c.Group == area).ToArray(), components);
         }
 
-        // Counted here, not taken from the brief: 14 = 3 outside + 8 office + 3 quarters (cc-P19: 18 = 5 + 10 + 3).
-        Assert.Equal(14, loaded.Length);
+        // Counted here, not taken from the brief: 13 = 3 outside + 7 office + 3 quarters (cc-P19: 18 = 5 + 10 + 3;
+        // cc-P31: 14 = 3 + 8 + 3; cc-P803: the flowerpot off the north window's tile went, a League banner came;
+        // cc-P827: the office's west-wall bookcase gave its tile to the League board, so 12 = 3 + 6 + 3).
+        Assert.Equal(12, loaded.Length);
         Assert.Equal(3, ClusterFRegistrarOfficeLayout.Outside.Length);
-        Assert.Equal(8, ClusterFRegistrarOfficeLayout.Office.Length);
+        Assert.Equal(6, ClusterFRegistrarOfficeLayout.Office.Length);
         Assert.Equal(3, ClusterFRegistrarOfficeLayout.Quarters.Length);
         Assert.Equal(loaded.Length, areas.Sum(a => a.Components.Length));
     }
@@ -146,7 +148,7 @@ public class RegistrarOfficeVerification
                 components += addon.Components.Count;
             }
 
-            Assert.Equal(14, components);
+            Assert.Equal(12, components); // cc-P803, cc-P827
         }
         finally
         {
@@ -246,12 +248,13 @@ public class RegistrarOfficeVerification
             ClusterFRegistrarOfficeSeeder.Seed(false);
             var outside = OfficeAddons().OfType<RegistrarOfficeOutsideAddon>().Single();
 
-            // Exactly one sign: 0x0BCF on the east wall. cc-P19's north sign 0x0BD0 left the design (cc-P31).
-            var signs = outside.Components.Where(c => c.ItemID is 0x0BCF or 0x0BD0).ToList();
+            // Exactly one sign. cc-P19's north sign 0x0BD0 left the design (cc-P31); cc-P803: the sign arm and board on the
+            // east wall (0x0B97 + 0x0BCF at 3463,2597) became a standing signpost by the north-east corner, no arm left.
+            var signs = outside.Components.Where(c => c.ItemID is 0x0BCF or 0x0BD0 or 0xA854 or 0x0B97 or 0x0B98).ToList();
             var sign = Assert.Single(signs);
-            Assert.Equal(0x0BCF, sign.ItemID);
-            Assert.Equal(new Point3D(3463, 2597, 13), sign.Location);
-            Assert.Single(ClusterFRegistrarOfficeLayout.Components, c => c.Name == "wooden sign");
+            Assert.Equal(0xA854, sign.ItemID);
+            Assert.Equal(new Point3D(3460, 2591, 20), sign.Location); // cc-P827: north of the road, facing it
+            Assert.Single(ClusterFRegistrarOfficeLayout.Components, c => c.Name == "signpost");
 
             Assert.Equal("League of Extraordinary Citizens", sign.Name);
 
@@ -319,16 +322,24 @@ public class RegistrarOfficeVerification
             Assert.Equal(18, p19.Sum(a => a.Components.Count));
             Assert.Equal(18, OfficeComponentsInTheHouseBox().Count);
 
-            // What only cc-P19 had, from the two files, not from the brief: exactly the brief's five.
+            // What only cc-P19 had, from the two files, not from the brief: the brief's five (cc-P31), and since cc-P803
+            // also the sign arm and board on the east wall, the bookcase and chest and flowerpot by the windows, and the
+            // quarters' bookcase, each moved or replaced; since cc-P827 also the desk's inkwell and scroll and the office's
+            // west-wall bookcase.
             var current = ClusterFRegistrarOfficeLayout.Components.Select(c => (c.ItemID, c.Location)).ToHashSet();
             var p19Only = P19Layout().Where(c => !current.Contains((c.ItemID, c.Location))).Select(c => (c.ItemID, c.Location)).ToList();
-            var briefsFive = new List<(int ItemID, Point3D Location)>
+            var p19OnlyExpected = new List<(int ItemID, Point3D Location)>
             {
+                (0x0B97, new Point3D(3463, 2597, 13)), (0x0BCF, new Point3D(3463, 2597, 13)),
                 (0x0B98, new Point3D(3460, 2595, 15)), (0x0BD0, new Point3D(3460, 2595, 15)),
-                (0x1E5F, new Point3D(3458, 2598, 18)), (0x0B26, new Point3D(3461, 2600, 18)),
-                (0x1047, new Point3D(3461, 2598, 18)),
+                (0x2D61, new Point3D(3458, 2601, 24)), (0x2270, new Point3D(3458, 2601, 24)), // cc-P827: to the desk's north end
+                (0x0A99, new Point3D(3461, 2597, 18)), (0x0A9A, new Point3D(3458, 2602, 18)), // cc-P827: the board's tile now
+                (0x1E5F, new Point3D(3458, 2598, 18)),
+                (0x0B26, new Point3D(3461, 2600, 18)), (0x11CA, new Point3D(3460, 2597, 18)),
+                (0x1047, new Point3D(3461, 2598, 18)), (0x0E42, new Point3D(3456, 2597, 18)),
+                (0x0A9A, new Point3D(3454, 2602, 18)),
             };
-            Assert.Equal(briefsFive, p19Only);
+            Assert.Equal(p19OnlyExpected, p19Only);
 
             // A plain seed does not update it: each type is already on Trammel.
             var plain = ClusterFRegistrarOfficeSeeder.Seed(false);
@@ -359,7 +370,7 @@ public class RegistrarOfficeVerification
             // Twice is once: the second run swaps the current office for an identical one.
             var second = ClusterFRegistrarOfficeSeeder.Replace(false);
             _out.WriteLine(string.Join("\n", second));
-            Assert.Contains("ClusterF registrar office replace: deleted 3 addons (14 components).", second);
+            Assert.Contains("ClusterF registrar office replace: deleted 3 addons (12 components).", second);
             Assert.Equal(once, Layout());
             AssertTheCurrentLayoutAndNoP19Component(p19Only);
 
@@ -536,7 +547,7 @@ public class RegistrarOfficeVerification
         Assert.Single(addons, a => a is RegistrarQuartersAddon);
 
         var placed = OfficeComponentsInTheHouseBox();
-        Assert.Equal(14, placed.Count);
+        Assert.Equal(12, placed.Count); // cc-P803, cc-P827
         Assert.Equal(
             ClusterFRegistrarOfficeLayout.Components.Select(c => $"0x{c.ItemID:X4} {c.Location}").Order(),
             placed.Select(c => $"0x{c.ItemID:X4} {c.Location}").Order()

@@ -29,6 +29,17 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.08.3
+
+### Changed
+- On the Wakening Isle, the League lodge's door is now on its east side, where you can see it as you come along the road: a brick walk leads to it from the road between two braziers, the lodge's signs stand where the walk meets the road, the lesson says which side the door is on and its arrow points at the door, and Elara calls out to you if you are outside. Get the new player package to see the moved door and the walk.
+- The Name Colors lesson now happens in a new New Haven jail: click five people to learn the colors, take from a marked crate and see your own name turn gray (no real penalty), read your karma and fame in the warden's ledger, and call the guards on a thief.
+- The League field office in New Haven is tidied: its bookcases face the room, nothing stands in front of a window, and the office carries a League sign and banner outside.
+
+### Fixed
+- New Haven's housing lesson no longer sends you into the jail: its second stop and its signpost stand on open lawn outside.
+- The League requisitions board in New Haven's League field office hangs flat on a wall inside the office, facing the room. Worlds that already have it move and turn it by themselves.
+
 ## 2026.11.08.1
 
 ### Changed
