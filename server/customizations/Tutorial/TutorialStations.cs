@@ -60,6 +60,10 @@ public static class TutorialStations
         //    cc-P663: on the Wakening Isle, one line west to east (P481 11.2): the farm joins the core after chat, and
         //    travel, the dock moongate out to New Haven, is last (ClusterFTutorial.IsDone counts an old travel key only
         //    once the rest are done).
+        //    cc-P817 (Chase 11-07: "move evo dog/cat later in tutorial"; asked where, the last isle lesson): the farm, with
+        //    the pet pick, is the last lesson before the moongate, so the pet is the reward for finishing the isle. Pip's
+        //    healing stays where it stood, after chat, at the farmhouse by the chat signpost. Records hold done keys, not
+        //    positions: a trainee already past the farm keeps it done, and the pet is never offered twice (PetClaimed).
         new("core.movement", TutorialWing.Core, "Walk and run", None, None, None,
             ["Options", "Global Scaling", "Hotkeys"], null, "the bright tiles in the road, up from the beach"),
         new("core.backpack", TutorialWing.Core, "Your backpack", None, None, None,
@@ -68,9 +72,7 @@ public static class TutorialStations
             ["Alternate Paperdoll", "Durability gump"], null, "the clothes rack"),
         new("core.chat", TutorialWing.Core, "Speak and read your Journal", None, None, None,
             ["Journal and filters", "TTF fonts", "Nameplates"], null, "the signpost at the meadow's edge"),
-        new("core.farm", TutorialWing.Core, "The farm: pests, then your pet", None, None, None,
-            ["Pet scaling", "Follow mode"], null, "the farm gate, with Wren the Farmhand"),
-        // cc-P726 item 4: bandaging is its own lesson after the farm, at Pip on his bench in the farmhouse.
+        // cc-P726 item 4: bandaging is its own lesson, at Pip on his bench in the farmhouse (cc-P817: before the farm now).
         new("core.healing", TutorialWing.Core, "Healing: bandage Pip", None, None, None,
             [], null, "the farmhouse, where Pip sits hurt on a bench"),
         new("core.death", TutorialWing.Core, "Death and resurrection", None, None, None,
@@ -81,6 +83,9 @@ public static class TutorialStations
             [], null, "the League lodge"),
         new("core.loop", TutorialWing.Core, "Watch a loop vision", None, None, None,
             ["Skill progress bar"], null, "the standing stones on the knoll"),
+        // cc-P817: the farm and the pet pick, last before the moongate.
+        new("core.farm", TutorialWing.Core, "The farm: pests, then your pet", None, None, None,
+            ["Pet scaling", "Follow mode"], null, "the farm gate, with Wren the Farmhand"),
         new("core.travel", TutorialWing.Core, "Getting around", None, None, None,
             ["World Map", "Macros"], null, "the moongate at the end of the dock"),
 
@@ -97,7 +102,7 @@ public static class TutorialStations
         new("magic.magery", TutorialWing.Magic, "Magery", ["Magery"], ["Meditation", "Evaluating Intelligence"], None,
             ["SpellBar", "Quick spell cast", "Spell indicators", "Counter bar"], "a loaned spellbook and reagents (spell ingredients)", "the Magery School, the hall at the north end of town"), // cc-P743 item 7
         new("magic.necromancy", TutorialWing.Magic, "Necromancy", ["Necromancy"], ["Spirit Speak"], None,
-            ["SpellBar"], "a loaned necromancer spellbook", "the training yard, east of the farm gate"),
+            ["SpellBar"], "a loaned necromancer spellbook", "the Necromancers' Guild Hall on the hill north-east of town"), // cc-P802 item 8
         new("magic.chivalry", TutorialWing.Magic, "Chivalry", ["Chivalry"], None, None,
             ["SpellBar"], "a loaned Book of Chivalry", "the training yard, east of the farm gate"),
         new("magic.bushido", TutorialWing.Magic, "Bushido", ["Bushido"], None, None,
@@ -105,37 +110,37 @@ public static class TutorialStations
         new("magic.ninjitsu", TutorialWing.Magic, "Ninjitsu", ["Ninjitsu"], None, None,
             ["Buff and cooldown bars"], "a loaned Book of Ninjitsu", "the training yard, east of the farm gate"),
         new("magic.mysticism", TutorialWing.Magic, "Mysticism", ["Mysticism"], None, ["Spellweaving (start with a quest)"],
-            ["SpellBar"], "a loaned mystic book", "the training yard, east of the farm gate"),
+            ["SpellBar"], "a loaned mystic book", "the Mage hall, with its elven adjunct instructor"), // cc-P802 item 3
 
         // -- Gathering wing --
         new("gathering.mining", TutorialWing.Gathering, "Mining", ["Mining"], None, None,
             ["Counter bar"], "a loaned pickaxe", "the mine in the mountains south of town"), // cc-P743 item 3
         new("gathering.lumberjacking", TutorialWing.Gathering, "Lumberjacking", ["Lumberjacking"], None, None,
-            [], "a loaned hatchet", "the trades yard, southeast of the training yard"),
+            [], "a loaned hatchet", "the logging clearing south of the carpenter's"),
         new("gathering.fishing", TutorialWing.Gathering, "Fishing", ["Fishing"], None, None,
-            [], "a loaned fishing pole", "the trades yard, southeast of the training yard"),
+            [], "a loaned fishing pole", "the docks"),
         new("gathering.camping", TutorialWing.Gathering, "Camping", ["Camping"], None, ["Herbalism (the wild garlic in the yard)"],
-            [], "loaned kindling", "the trades yard, southeast of the training yard"),
+            [], "loaned kindling", "the camp spot by the north road"),
 
         // -- Crafting yard, one item each --
         new("crafting.blacksmithy", TutorialWing.Crafting, "Blacksmithy", ["Blacksmithy"], ["Arms Lore"], ["Imbuing"],
-            ["Counter bar", "Grid highlighting by property", "Item database", "Organizer agent"], "a loaned smith's hammer", "the trades yard, southeast of the training yard"),
+            ["Counter bar", "Grid highlighting by property", "Item database", "Organizer agent"], "a loaned smith's hammer", "the Forge and Anvil smithy"),
         new("crafting.tailoring", TutorialWing.Crafting, "Tailoring", ["Tailoring"], None, None,
-            ["Counter bar"], "a loaned sewing kit", "the trades yard, southeast of the training yard"),
+            ["Counter bar"], "a loaned sewing kit", "the tailor's workroom"),
         new("crafting.carpentry", TutorialWing.Crafting, "Carpentry", ["Carpentry"], None, None,
-            [], "a loaned saw", "the trades yard, southeast of the training yard"),
+            [], "a loaned saw", "the carpenter's workshop"),
         new("crafting.tinkering", TutorialWing.Crafting, "Tinkering", ["Tinkering"], ["Item Identification"], None,
-            [], "loaned tinker's tools", "the trades yard, southeast of the training yard"),
+            [], "loaned tinker's tools", "Springs N Things"),
         new("crafting.alchemy", TutorialWing.Crafting, "Alchemy", ["Alchemy"], ["Taste Identification"], None,
-            [], "a loaned mortar and pestle", "the trades yard, southeast of the training yard"),
+            [], "a loaned mortar and pestle", "the alchemist's"),
         new("crafting.fletching", TutorialWing.Crafting, "Bowcraft and Fletching", ["Fletching"], None, None,
-            [], "loaned fletcher's tools", "the trades yard, southeast of the training yard"),
+            [], "loaned fletcher's tools", "the bowyers' corner of the Warrior's Guild yard"),
         new("crafting.cooking", TutorialWing.Crafting, "Cooking", ["Cooking"], None, None,
-            [], "a loaned skillet", "the trades yard, southeast of the training yard"),
+            [], "a loaned skillet", "the bakery"),
         new("crafting.inscription", TutorialWing.Crafting, "Inscription", ["Inscription"], None, None,
-            [], "a loaned scribe's pen", "the trades yard, southeast of the training yard"),
+            [], "a loaned scribe's pen", "the scribe's library"),
         new("crafting.cartography", TutorialWing.Crafting, "Cartography", ["Cartography"], None, None,
-            ["Treasure maps and SOS", "SOS locator"], "a loaned mapmaker's pen", "the trades yard, southeast of the training yard"),
+            ["Treasure maps and SOS", "SOS locator"], "a loaned mapmaker's pen", "the mapmaker's above the docks"),
 
         // -- Animals --
         // cc-P743 item 4: heal and tame an injured horse in the stables, and keep it. Herding is explained, not practised.
@@ -149,7 +154,7 @@ public static class TutorialStations
         // -- Thieving and stealth (one trial) --
         new("thieving.trial", TutorialWing.Thieving, "Thieving and stealth",
             ["Hiding", "Stealth", "Detecting Hidden", "Lockpicking", "Remove Trap", "Snooping", "Stealing", "Poisoning", "Tracking", "Begging"],
-            None, ["Forensic Evaluation"], ["Hidden characters"], "loaned lockpicks", "the trades yard, southeast of the training yard"),
+            None, ["Forensic Evaluation"], ["Hidden characters"], "loaned lockpicks", "the back alley behind the tavern"),
 
         // -- Non-skill wings --
         new("housing.basics", TutorialWing.Housing, "Houses", None, None, None,

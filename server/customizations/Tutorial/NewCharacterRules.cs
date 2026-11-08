@@ -81,6 +81,18 @@ public static class NewCharacterRules
     private static void OnBotStaffAccount(CommandEventArgs e) =>
         e.Mobile.SendMessage(MakeBotStaff(e.Length > 0 ? e.GetString(0) : null, GolemTestAccounts.CurrentRefusal()));
 
+    /// <summary>
+    /// cc-P817 (the isle release; Chase 2026-11-07: "I also want to remove the trade choice"): the stock Blacksmith
+    /// (profession 3: Blacksmithy, Tailoring, Tinkering and Mining at 30) is not offered. The player package's Prof.txt
+    /// copy leaves it off the creation screen (Build-UoOverrides.ps1, $ProfRemoved), and a client that asks for it anyway
+    /// (an old package, a third-party client) makes no character (CharacterCreation.OnCharacterCreated). Main refuses
+    /// the same number as P714's Maker (ClusterFStartChoices.RemovedProfessions). Staff are exempt.
+    /// </summary>
+    public static readonly int[] RefusedProfessions = [3];
+
+    public static bool ProfessionRefused(IAccount? account, int profession) =>
+        !IsExempt(account) && Array.IndexOf(RefusedProfessions, profession) >= 0;
+
     /// <summary>GameMaster and up: neither lock applies.</summary>
     public static bool IsExempt(IAccount? account) => account?.AccessLevel >= AccessLevel.GameMaster;
 

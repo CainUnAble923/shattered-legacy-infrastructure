@@ -642,7 +642,7 @@ public static class PlayTestTasks
         {
             if (HasNewTasks(pm))
             {
-                pm.SendMessage(0x35, NewTasksLine);
+                TutorialWelcome.Note(pm, NewTasksLine, 0x35); // cc-P802 item 7: in the welcome window while waking
             }
         }
         catch (Exception e)

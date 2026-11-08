@@ -206,6 +206,16 @@ public static partial class CharacterCreation
             return;
         }
 
+        // cc-P817 (isle release): the trade choice, the stock Blacksmith, makes no character; the client is told
+        // "Character creation blocked." (pinned's handler for a null Mobile) and the log says why.
+        if (Server.Tutorial.NewCharacterRules.ProfessionRefused(args.Account, args.Profession))
+        {
+            logger.Information("Login: {NetState}: Character creation refused (account={Account}): profession {Profession} (the Blacksmith) is no longer offered",
+                state, args.Account?.Username, args.Profession);
+            args.Mobile = null;
+            return;
+        }
+
         // cc-P762: only the races newCharacters.races allows (Human, for now); any other is made Human, with a line once
         // the character is in the world. Staff are exempt (and the staff branch below makes every staff character Human).
         var askedRace = Core.Expansion >= args.Race.RequiredExpansion ? args.Race : Race.DefaultRace;
@@ -265,6 +275,14 @@ public static partial class CharacterCreation
             SetStats(newChar, state, profession?.Stats ?? args.Stats);
             SetSkills(newChar, profession?.Skills ?? args.Skills);
             GiveProfessionItems(newChar, profession, args.ShirtHue, args.PantsHue);
+
+            // cc-P802 item 7: the shard's skill caps now, while no client is attached, so the first login's pass changes
+            // nothing: each cap that changed there sent a single-skill update, and TazUO printed "Your skill in ... has
+            // increased by 30.0" for every starting skill.
+            if (newChar is PlayerMobile capped)
+            {
+                ClusterFSkillCaps.ApplyTo(capped);
+            }
 
             if (race.ValidateHair(newChar, args.HairID))
             {

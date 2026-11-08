@@ -224,7 +224,7 @@ namespace Server.Tutorial
         public const string ScratchAgainLine = "A rat nipped your ankle in the rows. Double-click a bandage again, then click yourself to treat it.";
         public const string NoMoreBandagesLine = "I have no more free bandages for you. You can buy more from a healer in town.";
         public const string NoRoomForBandagesLine = "Your backpack is too full for these bandages. Make room in it, then double-click me again.";
-        public const string DoneLine = "You finished the farm lesson. If your bonded pet dies, bring its ghost to Tobin the vet beside me. While you are Young, he brings it back free. Pip, in the farmhouse, could use your help next.";
+        public const string DoneLine = "You finished the farm lesson. If your bonded pet dies, bring its ghost to Tobin the vet beside me. While you are Young, he brings it back free. Your last lesson is the moongate at the end of the dock, and your pet goes through it with you.";
         public const string EchoPetLine = "This pet is yours to keep.";
         public const string EchoPestsLine = "The cabbage rows are clear! Go back to Wren at the farm gate and double-click her.";
         public const string EchoHealLine = "Your bandage restored health and finished the healing lesson.";
@@ -239,7 +239,16 @@ namespace Server.Tutorial
         {
             CommandSystem.Register("ClusterFSeedTutorialFarm", AccessLevel.Administrator, OnSeedCommand);
             EnsureHooks();
+            // cc-P802 item 4 (Chase 11-05: "with tutorial island we can probably clear the farm we placed in Haven"): the old
+            // farm went only when the tutorial seed ran to its end (TutorialWingTrials.SeedHaven), so a world whose seed was
+            // skipped (the tutorial off) or refused early kept it. Now it goes at every start by itself, on the first tick
+            // (Initialize runs after World.Load). Idempotent, and only our pieces: the addon, its door, the pen spawner and
+            // what it spawned. The crop fields at the town's east edge are the SoS map's own, not ours, and stay.
+            Timer.DelayCall(TimeSpan.Zero, () => Console.WriteLine($"[Tutorial] {ClearHavenOnLoad()}"));
         }
+
+        /// <summary>cc-P802 item 4: the start's pass over New Haven's old farm; the line it logs.</summary>
+        public static string ClearHavenOnLoad() => HavenSpots.Map == null ? "old New Haven farm: no Trammel map." : ClearHaven(false);
 
         /// <summary>The station's handler and the heal hook, once. The test host calls it: Initialize never runs there.</summary>
         public static void EnsureHooks()
@@ -367,7 +376,7 @@ namespace Server.Tutorial
         /// <summary>The station's handler: a line and a quest arrow to the Farmhand.</summary>
         public static void PointTo(PlayerMobile pm)
         {
-            ClusterFTutorial.SystemLine(pm, "Follow the arrow east along the road to the farm gate. Double-click Wren the Farmhand, who wears a straw hat and carries a pitchfork.");
+            ClusterFTutorial.SystemLine(pm, "Follow the arrow west along the road to the farm gate, past the farmhouse. Double-click Wren the Farmhand, who wears a straw hat and carries a pitchfork."); // cc-P817: from the standing stones
             if (TutorialFarmhand.Find(TutorialWorld.MapOf(pm)) is { } hand && hand.Map == pm.Map)
             {
                 pm.QuestArrow = new GuildDirectionArrow(pm, hand, hand.Location, hand.Map, "Wren the Farmhand");
@@ -379,6 +388,13 @@ namespace Server.Tutorial
         {
             var step = StepOf(pm);
             TutorialCoreTrials.ClearNow(pm); // cc-P728: Wren gives the next step herself
+
+            // cc-P817: the healing lesson comes before the farm now; Wren still hands bandages for it (its hint says so).
+            if (step is >= 1 and <= 3 && TutorialCoreTrials.IsDoing(pm, HealingStationKey) && HealingOn(pm))
+            {
+                hand.SayTo(pm, WrenBandages(pm));
+                return 0;
+            }
 
             // cc-P663: the farm is a core station; a trainee with earlier lessons left is sent back to them.
             if (step is >= 1 and <= 3 && RecordOf(pm) is { } record && !ClusterFTutorial.IsDone(record, CoreStation) &&

@@ -29,6 +29,26 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.08.1
+
+### Changed
+- Character creation: humans only, Tutorial Island start, a brighter wake, and your pet waits at the end of the isle.
+- The trade (Blacksmith) starting choice is gone; you can still pick Blacksmithy, Mining, Tailoring and Tinkering with Advanced, where you choose your own skills.
+- On the Wakening Isle, Merrin the banker faces his counter and tells you what to do as you walk in, and the island bank is tidier: its lesson sign stands by the path instead of before the door.
+- Waking on the Wakening Isle is quiet now: one window tells you where you are, how to get up and that you are a young player, instead of a wall of System messages. The "Your skill in ... has increased by 30" lines for your starting skills are gone.
+- New Haven's lessons keep their teaching in the lesson window, which stays open until you close it: each step, each tour stop and the skills a lesson only explains.
+- The Runes lesson starts at New Haven's public moongate and gives you a blank rune, a Mark scroll and two Recall scrolls: mark your rune, recall to Rook's bench, then recall back. The scrolls always work in the lesson.
+- New Haven's lessons happen in fitting places: blacksmithing at the Forge and Anvil, fishing off the docks pier, lumberjacking in the logging clearing, cooking at the bakery, scribing in the scribe's library, and the other crafts in their shops.
+- Mysticism is taught in the Mage hall by Ilyra Moonwhisper, its elven adjunct instructor, and Necromancy in the Necromancers' Guild Hall on the hill north-east of town.
+- The pet choice scroll, the "Didn't Read the Sign" achievement and the League shop have new windows: a parchment scroll with Dog and Cat tiles, a dark System panel, and a dark shop with tabs for Titles and the Hall and a Buy button on every row you can buy.
+
+### Fixed
+- The old tutorial farm west of New Haven is cleared from every world by itself.
+
+### Staff
+- The creation screen's race row, profession list and new windows need the new player package; the server already makes any other race Human and refuses the Blacksmith choice.
+- [add FinishersBanner places the Hall of Finishers banner (new art in the player package).
+
 ## 2026.11.07.1
 
 ### Changed

@@ -44,9 +44,16 @@ public static class TutorialIslandGate
         return false;
     }
 
+    /// <summary>
+    /// cc-P802 item 2: the travel lesson teaches Mark on Haven Island with a loaned blank rune, taken back when the lesson
+    /// ends, so Mark is allowed while it runs. Recall still goes only to places on the island (CanTravel, RecallTo).
+    /// </summary>
+    private static bool MarkLesson(Mobile? mobile) =>
+        mobile is PlayerMobile pm && TutorialWingTrials.IsDoing(pm, TutorialWingTrials.TravelKey);
+
     public static bool CanCast(Mobile mobile, ISpell spell)
     {
-        if (spell is not MarkSpell || !NeedsGraduation(mobile))
+        if (spell is not MarkSpell || !NeedsGraduation(mobile) || MarkLesson(mobile))
         {
             return true;
         }
@@ -62,7 +69,7 @@ public static class TutorialIslandGate
         }
         return type switch
         {
-            TravelCheckType.Mark => false,
+            TravelCheckType.Mark => MarkLesson(mobile), // cc-P802 item 2
             TravelCheckType.RecallTo or TravelCheckType.GateTo or TravelCheckType.TeleportTo =>
                 CanMove(mobile, destination, map, false),
             _ => true

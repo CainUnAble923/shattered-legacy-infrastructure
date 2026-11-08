@@ -165,6 +165,8 @@ public static class ClusterFTutorial
     /// lessons, times, skip, pet and bandage counts as they are. A living recorded character of the account keeps it, and
     /// staff never take it. Called at login and at Rook, never from an eligibility check. True when it was taken up.
     /// </summary>
+    public const string ContinuesLine = "Your account's tutorial continues with this character. Your finished lessons are saved.";
+
     public static bool AdoptOrphanedRecord(PlayerMobile pm)
     {
         if (pm.AccessLevel > AccessLevel.Player || pm.Account?.AccessLevel > AccessLevel.Player ||
@@ -176,7 +178,7 @@ public static class ClusterFTutorial
 
         TutorialCoreTrials.Cancel(pm);
         record.CharacterSerial = (uint)pm.Serial;
-        SystemLine(pm, "Your account's tutorial continues with this character. Your finished lessons are saved.");
+        TutorialWelcome.Note(pm, ContinuesLine); // cc-P802 item 7: in the welcome window while waking
         return true;
     }
 

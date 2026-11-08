@@ -22,8 +22,8 @@
 // cc-P717 (Chase, 2026-10-28) made the account's first character take the isle, with New Haven unlocked per account.
 // cc-P762 (Chase, 2026-11-01) replaced that with a shard-wide lock, one switch (NewCharacterRules, newCharacters.newHavenStart,
 // false): while it is off, every new player character starts on the Wakening Isle, on every account, whatever the screen
-// sends. The list's second entry is "New Haven (locked)" with its one line ("New Haven opens once the Wakening Isle is
-// finished"), and Decide turns any pick into the isle. The account's tutorial record still runs once per account, so the
+// sends. The list's second entry was "New Haven (locked)" with its one line ("New Haven opens once the Wakening Isle is
+// finished"); cc-P817 sends the isle alone (Cities). Decide turns any pick into the isle. The account's tutorial record still runs once per account, so the
 // isle start has two kinds:
 //
 //   | Account state (switch off)                         | Outcome                                                        |
@@ -94,20 +94,16 @@ public static class TutorialStart
     ];
 
     /// <summary>
-    /// cc-P762: the list for this account: both entries while New Haven's switch is on and for staff, otherwise the isle
-    /// and New Haven shown locked with its one line.
+    /// cc-P762: the list for this account: both entries while New Haven's switch is on and for staff. cc-P817 (Chase
+    /// 2026-11-07: "I also want New Haven removed from map start"): otherwise the isle alone. P762 sent New Haven shown
+    /// locked; a client that still asks for a second entry (an old or third-party one) is refused by pinned's create
+    /// handler ("Invalid city selected during character creation.", IncomingAccountPackets.cs:156), and Decide turns any
+    /// pick into the isle as before. New Haven is reached through the isle's moongate, or the moongate skip (P762).
     /// </summary>
     public static CityInfo[] Cities(IAccount? account)
     {
         var cities = Cities();
-        if (NewCharacterRules.HavenStartOpenFor(account))
-        {
-            return cities;
-        }
-
-        var haven = cities[1];
-        cities[1] = new CityInfo(LockedHavenCity, haven.Building, ShardClilocs.NewHavenLockedCity, haven.X, haven.Y, haven.Z, haven.Map);
-        return cities;
+        return NewCharacterRules.HavenStartOpenFor(account) ? cities : [cities[0]];
     }
 
     public static Choice ChoiceOf(CityInfo? city) => city?.City switch
@@ -339,18 +335,11 @@ public static class TutorialStart
             return;
         }
 
+        // cc-P802 item 7 (Chase 11-07: "it should all be gumps"): the first step is in the welcome window; the System window
+        // echoes it in a few words.
         void FirstLines()
         {
-            ClusterFTutorial.SystemLine(pm, "You wake on a quiet shore: the Wakening Isle.");
-            if (visitor)
-            {
-                ClusterFTutorial.SystemLine(pm, VisitorLine(pm));
-                ClusterFTutorial.SystemLine(pm, "Follow the road east to the moongate at the end of the dock; it takes you to New Haven.");
-                TutorialGuide.PointTo(pm);
-                return;
-            }
-
-            ClusterFTutorial.SystemLine(pm, "Follow the arrow and double-click Tamsin, your guide, with two quick left clicks. Tamsin's window starts each lesson.");
+            TutorialWelcome.Standing(pm, visitor ? $"{VisitorLine(pm)} {TutorialWelcome.VisitorStep}" : null);
             TutorialGuide.PointTo(pm);
         }
 

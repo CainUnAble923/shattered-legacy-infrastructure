@@ -80,51 +80,51 @@ namespace Server.Tutorial
             new("gathering.mining", MiningWhere, new Point2D(HavenSpots.MiningCave.X, HavenSpots.MiningCave.Y),
                 [S(SkillName.Mining, "Mining: dig ore from the rock wall")],
                 "Double-click the loaned pickaxe in your backpack (your own pickaxe or shovel works too), then click the rock wall of the ravine beside you. Repeat until you dig up ore, which you can keep."),
-            new("gathering.lumberjacking", AtYard, TradesYard,
-                [S(SkillName.Lumberjacking, "Lumberjacking: chop logs from the practice tree")],
-                "Double-click the loaned hatchet, then click the walnut tree beside you. Repeat until you get logs, which you can keep."),
-            new("gathering.fishing", AtYard, TradesYard,
-                [S(SkillName.Fishing, "Fishing: catch something in the small practice pond")],
-                "Double-click the loaned fishing pole in your backpack, then click the water in the small practice pond. Repeat until you catch something, which you can keep."),
-            new("gathering.camping", AtYard, TradesYard,
+            new("gathering.lumberjacking", HavenPlaceOf("gathering.lumberjacking").Where, P2(HavenPlaceOf("gathering.lumberjacking").Arm), // cc-P802 item 6
+                [S(SkillName.Lumberjacking, "Lumberjacking: chop logs from the willow tree")],
+                "Double-click the loaned hatchet, then click the willow tree beside you, in the logging clearing. Repeat until you get logs, which you can keep."),
+            new("gathering.fishing", HavenPlaceOf("gathering.fishing").Where, P2(HavenPlaceOf("gathering.fishing").Arm), // cc-P802 item 6
+                [S(SkillName.Fishing, "Fishing: catch something off the pier")],
+                "Double-click the loaned fishing pole in your backpack, then click the sea just south of the pier's end. Repeat until you catch something, which you can keep."),
+            new("gathering.camping", HavenPlaceOf("gathering.camping").Where, P2(HavenPlaceOf("gathering.camping").Arm), // cc-P802 item 6
                 [S(SkillName.Camping, "Camping: light a campfire with kindling"), S(SkillName.Herbalism, "Herbalism: pick the wild garlic beside you")],
                 "Double-click the wild garlic beside you to pick it. Double-click the loaned kindling in your backpack to light a campfire beside you.",
                 HerbalismLine),
 
             // -- The crafting yard --
-            new("crafting.blacksmithy", AtYard, TradesYard,
+            new("crafting.blacksmithy", HavenPlaceOf("crafting.blacksmithy").Where, P2(HavenPlaceOf("crafting.blacksmithy").Arm), // cc-P802 item 6
                 [(Made, "Blacksmithy: make a dagger at the anvil"), S(SkillName.ArmsLore, "Arms Lore: use on the dagger you made")],
                 "Beside the anvil and forge, double-click the loaned smith's hammer, choose Bladed, then make a Dagger. Open Skills on your character window, use Arms Lore, and click your dagger.",
                 ImbuingLine, [typeof(Dagger)]),
-            new("crafting.tailoring", AtYard, TradesYard,
+            new("crafting.tailoring", HavenPlaceOf("crafting.tailoring").Where, P2(HavenPlaceOf("crafting.tailoring").Arm), // cc-P802 item 6
                 [(Made, "Tailoring: sew a skullcap")],
                 "Double-click the loaned sewing kit in your backpack. Choose Hats, then make a Skullcap with the loaned cloth.",
                 null, [typeof(SkullCap)]),
-            new("crafting.carpentry", AtYard, TradesYard,
+            new("crafting.carpentry", HavenPlaceOf("crafting.carpentry").Where, P2(HavenPlaceOf("crafting.carpentry").Arm), // cc-P802 item 6
                 [(Made, "Carpentry: make barrel staves")],
                 "Double-click the loaned saw in your backpack. Choose Other, then make Barrel Staves with the loaned boards.",
                 null, [typeof(BarrelStaves)]),
-            new("crafting.tinkering", AtYard, TradesYard,
+            new("crafting.tinkering", HavenPlaceOf("crafting.tinkering").Where, P2(HavenPlaceOf("crafting.tinkering").Arm), // cc-P802 item 6
                 [(Made, "Tinkering: make scissors"), S(SkillName.ItemID, "Item Identification: use on the odd blue curio")],
                 "Double-click the loaned tinker's tools, choose Tools, then make Scissors. Open Skills on your character window, use Item Identification, and click the odd blue curio in your backpack.",
                 null, [typeof(Scissors)]),
-            new("crafting.alchemy", AtYard, TradesYard,
+            new("crafting.alchemy", HavenPlaceOf("crafting.alchemy").Where, P2(HavenPlaceOf("crafting.alchemy").Arm), // cc-P802 item 6
                 [(Made, "Alchemy: make a refresh potion"), S(SkillName.TasteID, "Taste Identification: use on the loaned apple")],
                 "Double-click the loaned mortar and pestle, choose Refresh, then make a Refresh Potion. Open Skills on your character window, use Taste Identification, and click the loaned apple.",
                 null, [typeof(RefreshPotion)]),
-            new("crafting.fletching", AtYard, TradesYard,
+            new("crafting.fletching", HavenPlaceOf("crafting.fletching").Where, P2(HavenPlaceOf("crafting.fletching").Arm), // cc-P802 item 6
                 [(Made, "Fletching: make kindling")],
                 "Double-click the loaned fletcher's tools in your backpack. Choose Materials, then make Kindling with the loaned logs.",
                 null, [typeof(Kindling)]),
-            new("crafting.cooking", AtYard, TradesYard,
+            new("crafting.cooking", HavenPlaceOf("crafting.cooking").Where, P2(HavenPlaceOf("crafting.cooking").Arm), // cc-P802 item 6
                 [(Made, "Cooking: make dough")],
                 "Double-click the loaned skillet in your backpack. Choose Ingredients, then make Dough with the loaned flour and water.",
                 null, [typeof(Dough)]),
-            new("crafting.inscription", AtYard, TradesYard,
+            new("crafting.inscription", HavenPlaceOf("crafting.inscription").Where, P2(HavenPlaceOf("crafting.inscription").Arm), // cc-P802 item 6
                 [(Made, "Inscription: write a Magic Arrow scroll")],
                 "Double-click the loaned scribe's pen in your backpack. Choose First Circle, then make a Magic Arrow scroll with the loaned supplies.",
                 null, [typeof(MagicArrowScroll)]),
-            new("crafting.cartography", AtYard, TradesYard,
+            new("crafting.cartography", HavenPlaceOf("crafting.cartography").Where, P2(HavenPlaceOf("crafting.cartography").Arm), // cc-P802 item 6
                 [(Made, "Cartography: draw a local map")],
                 "Double-click the loaned mapmaker's pen in your backpack. Choose Maps, then make a Local Map on a loaned blank map.",
                 null, [typeof(LocalMap)]),
@@ -148,7 +148,7 @@ namespace Server.Tutorial
                 "Open Skills on your character window and use Peacemaking, Provocation, and Discordance on the two blue human figures. Choose the loaned lute when asked; for Provocation, click one figure, then the other."),
 
             // -- Thieving and stealth --
-            new("thieving.trial", AtYard, TradesYard,
+            new("thieving.trial", HavenPlaceOf("thieving.trial").Where, P2(HavenPlaceOf("thieving.trial").Arm), // cc-P802 item 6
                 [
                     S(SkillName.DetectHidden, "Detecting Hidden: use on the wooden practice chest"),
                     S(SkillName.RemoveTrap, "Remove Trap: use on the wooden practice chest"),
@@ -169,24 +169,25 @@ namespace Server.Tutorial
             // stop, and each stop's text ends with where to go next.
             new("housing.basics", "the small cottage west of the square (stop 1 of 3)", TourCentre,
                 [("stop0", "Stop 1: look at a small house"), ("stop1", "Stop 2: learn where houses can be built"), ("stop2", "Stop 3: the bank, where a deed is kept")],
-                "Follow the arrow. At each stop, stand beside its signpost and read the lesson in your System window; then the arrow points to the next stop.",
+                "Follow the arrow. At each stop, stand beside its signpost and read the lesson here in this window; then the arrow points to the next stop.",
                 Stops:
                 [
                     (() => HousingStop(0), "stop 1, the small cottage", HousingStop1),
                     (() => HousingStop(1), "stop 2, the lawn past the cottage", HousingStop2),
                     (() => ClusterFNewHavenSeeder.BankAnchor, "stop 3, the bank", HousingStop3)
                 ]),
-            new("travel.wing", "the first stop", TourCentre,
-                [("stop0", "The moongate"), ("stop1", "Rook's bench")],
-                "Follow the arrow to each stop and read the lesson when you arrive. The blank recall rune in your backpack is a loan and disappears when the tour ends.",
-                Stops:
+            // cc-P802 item 2 (Chase 11-05: "the lesson should give scrolls to have player mark/recall"): at the public
+            // moongate the trainee marks a blank rune, recalls away to Rook's bench with the lesson's own rune, and recalls
+            // back with their own; the return finishes it (TickTravel). The scrolls cast without Magery: the lesson lends
+            // Magery 100 and +30 Intelligence (a skill mod, never saved), so each scroll always works; a gain is then very
+            // unlikely, never more than a scroll gives. Everything is a loan and goes back at the end.
+            new("travel.wing", TravelWhere, new Point2D(HavenSpots.PublicMoongate.X, HavenSpots.PublicMoongate.Y),
                 [
-                    // cc-P663: the tutorial's own gate is on the isle now; the tour starts at New Haven's public one.
-                    (() => HavenSpots.PublicMoongate, "the moongate",
-                        "This public moongate offers destinations across the lands; the isle's moongate only ever brings trainees to Rook. Shipwrights sell boat deeds for travel by sea."),
-                    (() => TutorialRecruiter.Spot, "Rook's bench",
-                        "A recall rune stores a location when you cast Mark on it. Return with Recall, Gate Travel, or Sacred Journey; a runebook stores up to 16 runes.")
-                ]),
+                    ("mark", "Mark: read the Mark scroll and click your blank rune, here by the moongate"),
+                    ("away", "Recall away: read a Recall scroll and click the lesson's rune to Rook's bench"),
+                    ("back", "Recall back: read your other Recall scroll and click your own rune")
+                ],
+                TravelHint),
             new("reputation.wing", "the first stop", TourCentre,
                 [("stop0", "The training yard"), ("stop1", "The healer"), ("stop2", "Rook's bench")],
                 "Follow the arrow to the first stop. Walk close to each stop to read its lesson.",
@@ -213,6 +214,79 @@ namespace Server.Tutorial
                 ]),
         ];
 
+        // -- cc-P802 item 2: Mark and Recall --
+
+        public const string TravelKey = "travel.wing";
+
+        public const string TravelWhere = "New Haven's public moongate, in the open field east of the square";
+
+        public const string TravelHint =
+            "A recall rune remembers a place. 1. Here by the moongate, double-click the Mark scroll in your backpack and click your blank rune: it now holds this spot. " +
+            "2. Double-click a Recall scroll and click the lesson's rune (it says Rook's bench): you are carried to Rook. " +
+            "3. Double-click your other Recall scroll and click your own rune: it brings you back here. The scrolls work for everyone in this lesson.";
+
+        public const string RunebookLine =
+            "A runebook holds up to 16 marked runes, and you can recall from it straight away. Mages also open Gate Travel to a rune; paladins use Sacred Journey. " +
+            "This moongate offers towns across the lands, and shipwrights sell boat deeds for travel by sea.";
+
+        /// <summary>Where the lesson's own rune is marked: in front of Rook's bench (the isle moongate's way out).</summary>
+        public static Point3D TravelLessonTarget => HavenSpots.MoongateExit;
+
+        private static void ArmTravel(Trial trial)
+        {
+            var rune = new RecallRune();
+            Lend(trial, rune);
+            trial.TravelRune = rune;
+            Lend(trial, new RecallRune
+            {
+                Target = TravelLessonTarget, TargetMap = Map.Trammel, Marked = true, Description = "Rook's bench (the lesson's rune)"
+            });
+            Lend(trial, new MarkScroll());
+            Lend(trial, new RecallScroll(2));
+            LendSkill(trial, SkillName.Magery, 100);
+            LendMind(trial);
+        }
+
+        /// <summary>The loaned Recall scrolls still in the trainee's backpack.</summary>
+        public static int RecallScrollsLeft(PlayerMobile pm)
+        {
+            var n = 0;
+            if (pm.Backpack is { } pack)
+            {
+                foreach (var scroll in pack.FindItemsByType<RecallScroll>())
+                {
+                    if (IsLoaner(scroll)) { n += scroll.Amount; }
+                }
+            }
+
+            return n;
+        }
+
+        /// <summary>cc-P802 item 2: the rune marked, the trainee carried to Rook's bench, then back to their own rune.</summary>
+        private static void TickTravel(Trial trial)
+        {
+            var pm = trial.Player;
+            if (trial.TravelRune is not { Deleted: false } rune || trial.Finished)
+            {
+                return;
+            }
+
+            if (!trial.Steps.Contains("mark"))
+            {
+                if (rune.Marked) { Step(trial, "mark"); }
+                return;
+            }
+
+            var left = RecallScrollsLeft(pm);
+            if (!trial.Steps.Contains("away"))
+            {
+                if (left < 2 && pm.Map == Map.Trammel && pm.InRange(TravelLessonTarget, 3)) { Step(trial, "away"); }
+                return;
+            }
+
+            if (left < 1 && pm.Map == rune.TargetMap && pm.InRange(rune.Target, 3)) { Step(trial, "back"); }
+        }
+
         public static TradeTrial? Trade(string key) => Array.Find(Trades, t => t.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
 
         public static bool IsWingTrial(string key) => Array.IndexOf(Keys, key) >= 0 || Trade(key) != null;
@@ -225,7 +299,7 @@ namespace Server.Tutorial
 
         public static bool InReach(PlayerMobile pm, string key) => Trade(key) is not { } t
             ? pm.InRange(new Point3D(PlaceOf(key).X, PlaceOf(key).Y, pm.Z), LeaveRange)
-            : pm.InRange(new Point3D(t.Place.X, t.Place.Y, pm.Z), t.IsTour ? TourReach : LeaveRange);
+            : pm.InRange(new Point3D(t.Place.X, t.Place.Y, pm.Z), t.IsTour || t.Key == TravelKey ? TourReach : LeaveRange); // cc-P802: a recall to Rook stays in the lesson
 
         public static string FollowLine(string key) => Trade(key) is not { } t
             ? $"Follow the arrow to {PlaceName(key)}. Your lesson begins when you arrive."
@@ -252,6 +326,8 @@ namespace Server.Tutorial
                 "animals.taming" => (HavenSpots.Stables, "the stables"),
                 "gathering.mining" => (HavenSpots.MiningCave, "the mine"),
                 "bard.trial" => (HavenSpots.Theater, "the theater"),
+                TravelKey => (HavenSpots.PublicMoongate, "the public moongate"), // cc-P802
+                _ when HavenPlace(t.Key) is { } hp => (hp.Arm, hp.Short), // cc-P802 item 6: its building
                 _ => (Ground(t.Place.X, t.Place.Y), "the trades yard")
             };
         }
@@ -278,6 +354,7 @@ namespace Server.Tutorial
             "BlankMap" => "blank maps", "ShepherdsCrook" => "shepherd's crook", "Lute" => "lute", "Lockpick" => "lockpicks",
             "Dagger" => "dagger", "LesserPoisonPotion" => "lesser poison potion", "RecallRune" => "recall rune",
             "TutorialCurio" => "odd curio",
+            "MarkScroll" => "Mark scroll", "RecallScroll" => "Recall scroll", // cc-P802
             "TutorialLoanCloth" => "cloth", "TutorialLoanLog" => "logs", // cc-P610
             _ => item.GetType().Name.ToLowerInvariant()
         };
@@ -289,13 +366,16 @@ namespace Server.Tutorial
         {
             var pm = trial.Player;
             var t = Trade(trial.Key)!;
-            var work = Ground(TradesYard.X + 2, TradesYard.Y);
+            var hp = HavenPlace(trial.Key); // cc-P802 item 6: the lesson's building and its prop tiles
+            var work = hp != null ? (hp.Props.Length > 0 ? hp.Props[0] : hp.Fixture ?? hp.Arm) : Ground(TradesYard.X + 2, TradesYard.Y);
             var spots = trial.Key switch
             {
                 "animals.taming" => new[] { HavenSpots.SickStall }, // cc-P743
                 "gathering.mining" => Array.Empty<Point3D>(),           // cc-P743: the ravine's own rock
+                TravelKey => Array.Empty<Point3D>(),                    // cc-P802: nothing set up, only loans
                 "bard.trial" => new[] { BardEchoA, BardEchoB },          // cc-P799: on the theater's stage
-                "thieving.trial" => new[] { Ground(TradesYard.X + 1, TradesYard.Y), Ground(TradesYard.X - 1, TradesYard.Y) },
+                "thieving.trial" => hp!.Props, // cc-P802: the mark and the chest in the back alley
+                _ when hp != null => hp.Props,  // cc-P802: the building's own prop tiles
                 _ when t.IsTour => Array.Empty<Point3D>(),
                 // The anvil and forge stand east of the yard's centre, in reach of it (CraftItem: 2 tiles) and out of the
                 // way in from town (the first test-world run walked into them at x + 1 and stopped short).
@@ -322,36 +402,31 @@ namespace Server.Tutorial
                 case "gathering.lumberjacking":
                     Wield(trial, new Hatchet());
                     LendSkill(trial, SkillName.Lumberjacking, 60);
-                    Prop(trial, new Static(0x0CE0), work, "practice tree");
-                    Prop(trial, new Static(0x0CE1), work, "practice tree");
                     FreshBank(Lumberjacking.System.GetDefinition(), work);
                     break;
                 case "gathering.fishing":
                     Lend(trial, new FishingPole());
                     LendSkill(trial, SkillName.Fishing, 60);
-                    for (var dx = 0; dx < 2; dx++)
-                    {
-                        for (var dy = 0; dy < 2; dy++)
-                        {
-                            Prop(trial, new Static(0x1797), Ground(work.X + dx, work.Y + dy), "practice pond");
-                        }
-                    }
-
                     FreshBank(Fishing.System.GetDefinition(), work);
                     break;
                 case "gathering.camping":
                     Lend(trial, new Kindling(3));
                     LendSkill(trial, SkillName.Camping, 60);
                     LendSkill(trial, SkillName.Herbalism, 30); // cc-P804: F-51 is built
-                    Prop(trial, new Server.Engines.Plants.HerbPatch("Garlic", ""), Ground(work.X + 1, work.Y), "wild garlic");
+                    Prop(trial, new Server.Engines.Plants.HerbPatch("Garlic", ""), spots[1], "wild garlic"); // cc-P802: beside the camp spot
                     break;
                 case "crafting.blacksmithy":
                     Lend(trial, new SmithHammer());
                     Lend(trial, new IronIngot(12));
                     LendSkill(trial, SkillName.Blacksmith, 50);
                     LendSkill(trial, SkillName.ArmsLore, 60);
-                    Prop(trial, new Anvil(), spots[1], "anvil");
-                    Prop(trial, new Forge(), spots[2], "forge");
+                    // cc-P802: the smithy's own anvil and forge; a lent pair only if the town's are missing.
+                    Server.Engines.Craft.DefBlacksmithy.CheckAnvilAndForge(pm, 2, out var hasAnvil, out var hasForge);
+                    if (!hasAnvil || !hasForge)
+                    {
+                        Prop(trial, new Anvil(), spots[0], "anvil");
+                        Prop(trial, new Forge(), new Point3D(spots[0].X, spots[0].Y + 1, spots[0].Z), "forge");
+                    }
                     break;
                 case "crafting.tailoring":
                     Lend(trial, new SewingKit());
@@ -422,8 +497,8 @@ namespace Server.Tutorial
                 case "thieving.trial":
                     ArmThief(trial, spots[0], spots[1]);
                     break;
-                case "travel.wing":
-                    Lend(trial, new RecallRune());
+                case TravelKey:
+                    ArmTravel(trial); // cc-P802 item 2
                     break;
             }
 
@@ -560,7 +635,9 @@ namespace Server.Tutorial
                 var spot = stops[i].Spot();
                 if (pm.InRange(new Point3D(spot.X, spot.Y, pm.Z), StopRange))
                 {
-                    ClusterFTutorial.SystemLine(pm, stops[i].Text);
+                    // cc-P802 item 1: the stop's lesson in the window (it stays), the System window says where to read it.
+                    trial.Latest = stops[i].Text;
+                    ClusterFTutorial.SystemLine(pm, $"You reached {stops[i].Name}: read it in the lesson window.");
                     Step(trial, t.Steps[i].Id);
                     if (!trial.Finished)
                     {
@@ -572,6 +649,7 @@ namespace Server.Tutorial
 
             // cc-P743: the stable horse's steps, and the thief chest's trap while Remove Trap is to do.
             if (trial.Key == "animals.taming") { TickStable(trial); }
+            if (trial.Key == TravelKey) { TickTravel(trial); } // cc-P802 item 2
             KeepChestTrapped(trial);
         }
 
@@ -613,7 +691,7 @@ namespace Server.Tutorial
 
             var label = Array.Find(t.Steps, s => s.Id == id).Label;
             ClusterFTutorial.SystemLine(trial.Player, $"Finished: {label} ({trial.Steps.Count} of {t.Steps.Length}).");
-            Show(trial.Player, trial);
+            Refresh(trial.Player, trial); // cc-P802 item 1: the window marks it; the steps were echoed once already
         }
     }
 }

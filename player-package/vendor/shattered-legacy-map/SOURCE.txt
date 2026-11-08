@@ -26,6 +26,15 @@ trammel.mapops   facet 1 (Trammel): the Rootdeep Burrows (x 5136-5247, y 1128-12
                  (palms, banana, o'hii, OSI's jungle trees whole, ferns, pampas). P725 built it on both bases; this
                  stock-land file (release/isle-20261028, cc-P733) takes the same isle lines (they sit on void in both
                  maps), and is byte for byte P725's stock-base build (notes/cc-P725-tools/trammel-stock-base.mapops).
+                 cc-P817, 2026-11-07 (Chase 11-07: the isle bank's "sign and deco are not optimized"): two
+                 of the bank's statics, by hand in this file and in the driver's isle-sets.json (so a rebuild
+                 lays the same): the strongbox 0x09A8 from 6766,3974 to 6762,3973 on the back wall, and the
+                 potted plant 0x11CA inside at 6766,3978 removed. One S+ line moved, one gone; no B line changed
+                 (they fingerprint EA's base). notes/cc-P817-tools/bank_statics.py.
+                 cc-P823, 2026-11-07 (P821's build review): the slate ceiling 0x049C (Z 20) taken off the
+                 west eave column of the bank (x 6758, y 3973-3980) and the lodge (x 6778, y 3996-4003),
+                 where it stood over the roof's west slope at Z 19 and drew as grey squares. 16 S+ lines
+                 gone, no B line changed; the driver (notes/cc-P662-tools/build_isle.py) skips that column.
 
 Format: shard-migration scripts/mapbuild/mapops.py (one line per changed land cell, L x y tile z; per static added,
 S+ x y z id hue; per EA static removed, S- x y z id hue; B lines fingerprint EA's blocks so the applier can say

@@ -161,24 +161,30 @@ public partial class PetChoiceScroll : Item
     }
 }
 
-/// <summary>cc-P762: two buttons, Dog and Cat.</summary>
+/// <summary>
+/// cc-P762: two buttons, Dog and Cat. cc-P813: drawn on Chase's Claude Design scroll (DesignGumpArt): the text-free
+/// parchment, a Dog tile and a Cat tile with their icons as the buttons, and every word drawn here.
+/// </summary>
 public class PetChoiceGump : Gump
 {
+    public const string Heading = "A companion for the road";
+    public const string Lead = "Read the scroll aloud and one friend answers. Choose carefully: the scroll is used up either way.";
+    public const string Footer = "Your pet follows, guards and comes when called. It will not fight dragons for you.";
+
     private readonly PetChoiceScroll _scroll;
 
     public PetChoiceGump(PetChoiceScroll scroll) : base(160, 120)
     {
         _scroll = scroll;
         AddPage(0);
-        TutorialStyle.Panel(this, 360, 190);
-        AddLabel(24, 18, TutorialStyle.HeadingHue, "Choose your pet");
-        AddLabel(24, 40, TutorialStyle.TextHue, "It follows you, guards you and takes your orders.");
-        AddItem(30, 80, 0x2588);
-        AddButton(110, 90, 4005, 4007, 1);
-        AddLabel(146, 92, TutorialStyle.ActionHue, "Dog");
-        AddItem(30, 130, 0x211B);
-        AddButton(110, 140, 4005, 4007, 2);
-        AddLabel(146, 142, TutorialStyle.ActionHue, "Cat");
+        AddImage(0, 0, DesignGumpArt.PetScrollBackground);
+        AddHtml(20, 20, 300, 26, $"<BIG>{DesignGumpArt.Color(DesignGumpArt.Gold, Heading)}</BIG>", false, false);
+        AddHtml(20, 62, 300, 72, DesignGumpArt.Color(DesignGumpArt.Ink, Lead), false, false);
+        AddButton(21, 143, DesignGumpArt.PetDogTile, DesignGumpArt.PetDogTilePressed, 1);
+        AddLabel(DesignGumpArt.CenterX(21, 143, "Dog"), 199, DesignGumpArt.HueDesignBrown, "Dog");
+        AddButton(176, 143, DesignGumpArt.PetCatTile, DesignGumpArt.PetCatTilePressed, 2);
+        AddLabel(DesignGumpArt.CenterX(176, 143, "Cat"), 199, DesignGumpArt.HueDesignBrown, "Cat");
+        AddHtml(20, 244, 300, 34, DesignGumpArt.Color(DesignGumpArt.Muted, Footer), false, false);
     }
 
     public override void OnResponse(NetState sender, in RelayInfo info)

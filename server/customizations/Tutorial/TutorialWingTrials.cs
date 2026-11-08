@@ -114,6 +114,15 @@ namespace Server.Tutorial
             public TimerExecutionToken BrawlTimer;
             public TutorialStableHorse? Horse;
             public int ChestResets;
+
+            // cc-P802 item 1 (Chase 11-05: "all lessons should have more info in gumps than system messages that could be
+            // missed"): the lesson's last line, shown in its window under the steps, and whether the System window has had
+            // its short echo of the steps.
+            public string? Latest;
+            public bool Echoed;
+
+            // cc-P802 item 2: the travel lesson's own blank rune (the one the trainee marks).
+            public RecallRune? TravelRune;
         }
 
         private static readonly Dictionary<Serial, Trial> Active = new();
@@ -206,9 +215,8 @@ namespace Server.Tutorial
             var trial = new Trial(pm, station);
             Active[pm.Serial] = trial;
             Server.Timer.StartTimer(TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250), () => Tick(trial), out trial.Timer);
-            if (station.Key == "combat.weapons") { ClusterFTutorial.SystemLine(pm, ResistingSpellsLine); }
-            if (station.Key == "magic.mysticism") { ClusterFTutorial.SystemLine(pm, SpellweavingLine); }
-            if (Trade(station.Key)?.Line is { } line) { ClusterFTutorial.SystemLine(pm, line); }
+            // cc-P802 item 1: the lesson's explained skill (Resisting Spells, Spellweaving, Imbuing, Herbalism, Forensic
+            // Evaluation) is in its window (NoteOf), not a System line that scrolls away.
             if (NearPlace(pm, station.Key)) { Arm(trial); }
             Show(pm, trial);
         }
@@ -216,15 +224,40 @@ namespace Server.Tutorial
         public static bool NearYard(PlayerMobile pm, int range = 4) =>
             pm.Map == Map.Trammel && pm.InRange(new Point3D(Yard.X, Yard.Y, pm.Z), range);
 
+        /// <summary>
+        /// cc-P802 item 1: what a lesson explains without a task (a skill this tutorial only names, a pointer onward), shown
+        /// in its window under the steps. Null for none.
+        /// </summary>
+        public static string? NoteOf(string key) => key switch
+        {
+            "combat.weapons" => ResistingSpellsLine,
+            "magic.mysticism" => SpellweavingLine,
+            "travel.wing" => RunebookLine,
+            _ => Trade(key)?.Line
+        };
+
+        /// <summary>cc-P802 item 1: the System window's few words once the steps are in the window.</summary>
+        public static string EchoLine(TutorialStation station) => $"{station.Title}: the steps are in the lesson window.";
+
+        /// <summary>cc-P802 item 1: the lesson's window again, without a System line (a new latest line, a finished step).</summary>
+        public static void Refresh(PlayerMobile pm, Trial trial)
+        {
+            pm.CloseGump<TutorialWingTrialGump>();
+            pm.SendGump(new TutorialWingTrialGump(trial.Station, trial.Choice, trial.Finished, trial.Armed, Progress(trial),
+                NoteOf(trial.Key), trial.Latest));
+        }
+
         private static void Show(PlayerMobile pm, Trial trial)
         {
             if (!trial.Armed)
             {
                 ClusterFTutorial.SystemLine(pm, FollowLine(trial.Key));
             }
-            else if (!trial.Finished) // cc-P291: the done line is enough; the hint again read as a new task
+            else if (!trial.Finished && !trial.Echoed) // cc-P291: the done line is enough; the hint again read as a new task
             {
-                ClusterFTutorial.SystemLine(pm, Hint(trial.Key, trial.Choice));
+                // cc-P802 item 1: the steps are in the window; the System window says where, once.
+                trial.Echoed = true;
+                ClusterFTutorial.SystemLine(pm, EchoLine(trial.Station));
             }
 
             if (pm.Map == Map.Trammel && !trial.Finished)
@@ -233,8 +266,7 @@ namespace Server.Tutorial
                 TutorialCoreTrials.Point(pm, spot, name, HavenSpots.Map);
             }
 
-            pm.CloseGump<TutorialWingTrialGump>();
-            pm.SendGump(new TutorialWingTrialGump(trial.Station, trial.Choice, trial.Finished, trial.Armed, Progress(trial)));
+            Refresh(pm, trial);
         }
 
         /// <summary>At the yard: the loans and the creatures. False when the yard is blocked (nothing is lent then).</summary>
@@ -704,19 +736,42 @@ namespace Server.Tutorial
 
         private readonly TutorialStation _station;
 
-        public TutorialWingTrialGump(TutorialStation station, int choice, bool done, bool armed, string? progress = null) : base(80, 80)
+        /// <summary>cc-P802 item 1 (tests): the window's main text, its note and its latest line.</summary>
+        public string Text { get; }
+        public string? Note { get; }
+        public string? Latest { get; }
+        public const int NoteHeight = 64;
+
+        public TutorialWingTrialGump(TutorialStation station, int choice, bool done, bool armed, string? progress = null,
+            string? note = null, string? latest = null) : base(80, 80)
         {
             _station = station;
+            Note = note;
+            Latest = latest;
             var pick = station.Key == "combat.weapons" && armed && choice < 0 && !done;
             var steps = done || !armed || progress == null ? 0 : progress.Split('\n').Length;
-            var h = 250 + (pick ? TutorialWingTrials.Weapons.Length * 24 : 0) + steps * 20;
+            var extra = (latest != null ? NoteHeight : 0) + (note != null && !done ? NoteHeight : 0);
+            var h = 290 + (pick ? TutorialWingTrials.Weapons.Length * 24 : 0) + steps * 20 + extra;
             TutorialStyle.Panel(this, 500, h);
             AddLabel(24, 18, TutorialStyle.HeadingHue, station.Title);
             var text = done ? "Lesson finished and loaned supplies returned. Double-click Rook to choose another lesson." :
                 !armed ? TutorialWingTrials.FollowLine(station.Key) :
                 TutorialWingTrials.Hint(station.Key, choice);
-            AddHtml(24, 46, 452, 90, TutorialStyle.Html(text), false, false);
-            var y = 140;
+            Text = text;
+            AddHtml(24, 46, 452, 130, TutorialStyle.Html(text), false, false);
+            var y = 180;
+            if (latest != null)
+            {
+                // cc-P802 item 1: the lesson's last line (a tour stop, a step said, a demonstration), kept here.
+                AddHtml(24, y, 452, NoteHeight - 4, TutorialStyle.HeadingHtml(latest), false, false);
+                y += NoteHeight;
+            }
+
+            if (note != null && !done)
+            {
+                AddHtml(24, y, 452, NoteHeight - 4, TutorialStyle.Html(note), false, false);
+                y += NoteHeight;
+            }
             if (steps > 0)
             {
                 // cc-P291: a trade trial's steps, each marked done or still to do.
