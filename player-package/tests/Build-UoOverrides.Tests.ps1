@@ -262,7 +262,8 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P365: the reward mounts' mount items (46672-46689), checked by their own fact.
     # cc-P632: the scoring archery butte's hit pictures (46690-46709), checked by their own fact.
     # cc-P813: the Hall of Finishers banner (46710), checked by its own fact.
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28296) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) -and ([int]$_.id -lt 46672 -or [int]$_.id -gt 46689) -and ([int]$_.id -lt 46690 -or [int]$_.id -gt 46709) -and [int]$_.id -ne 46710 })
+    # cc-P363: the quest markers, coloured moongates, gem tokens and quest keys (46592-46663), checked by their own fact.
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28296) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) -and ([int]$_.id -lt 46672 -or [int]$_.id -gt 46689) -and ([int]$_.id -lt 46690 -or [int]$_.id -gt 46709) -and [int]$_.id -ne 46710 -and ([int]$_.id -lt 46592 -or [int]$_.id -gt 46663) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -308,11 +309,11 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # bestiary bodies (2072-2085); cc-P362 the 29 UI skin gumps (23052-23080) and 64 scroll skin art IDs (13049-13112); cc-P365 the 34 mount and evo bodies (2088-2133)
     # and 18 mount items (46672-46689); cc-P436 the nine guild and League frame gumps (23200-23208).
     # cc-P665 the two vision panel gumps (23209-23210), fixed in cc-P674; cc-P813 the twelve Claude Design gumps
-    # (23211-23222) and the Finishers banner art 46710.
-    Assert-Equal 816 $reg.Count 'registry rows'   # cc-P813: + 12 gumps + 1 art; cc-P665: + 2 gumps (the vision panels); cc-P632: + 20 art; cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art; cc-P436: + 9 gumps
+    # (23211-23222) and the Finishers banner art 46710; cc-P363 the 72 marker, gate, token and key IDs (46592-46663).
+    Assert-Equal 888 $reg.Count 'registry rows'   # cc-P363: + 72 art; cc-P813: + 12 gumps + 1 art; cc-P665: + 2 gumps (the vision panels); cc-P632: + 20 art; cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art; cc-P436: + 9 gumps
     Assert-Equal 74 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364), 2086-2087 (cc-P277), 34 of 2088-2133 (cc-P365)'
     Assert-Equal 68 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469, 23052-23080 (cc-P362), 23200-23208 (cc-P436), 23209-23210 (cc-P665) and 23211-23222 (cc-P813)'
-    Assert-Equal 673 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows (cc-P632: + 20 butte pictures; cc-P813: + the Finishers banner)'
+    Assert-Equal 745 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows (cc-P632: + 20 butte pictures; cc-P813: + the Finishers banner; cc-P363: + 72 markers, gates, tokens and keys)'
 }
 
 Fact 'TheScoringButteRecordsAreTheServersTableAndEveryPictureIsThere' {
@@ -532,7 +533,8 @@ Fact 'TheCommunityArtRecordsAreTheServersTableAndEveryRowIdIsRegisteredWithItsPn
     $listed = @([regex]::Match($lay, 'RegisteredIds =\s*\{([^}]+)\}').Groups[1].Value -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { [Convert]::ToInt32($_, 16) })
     Assert-Equal (@($set | ForEach-Object { [int]$_.id }) -join ',') ($listed -join ',') 'RegisteredIds is registry.csv''s list'
     $rowIds = @([regex]::Matches($lay, 'new\("[^"]+", "[^"]+", \d+, \d+, -?\d+, (0x[0-9A-F]+), "') | ForEach-Object { [Convert]::ToInt32($_.Groups[1].Value, 16) })
-    Assert-True ($rowIds.Count -ge 40) "the layout has $($rowIds.Count) rows"
+    # cc-P832: cc-P678 moved the art into the author's Haven on the SoS map with 36 rows (art_draft.py), so the floor is 36.
+    Assert-True ($rowIds.Count -ge 36) "the layout has $($rowIds.Count) rows"
     foreach ($id in $rowIds) { Assert-True ($listed -contains $id) "row ID $id is registered" }
 }
 
@@ -905,6 +907,80 @@ Fact 'TheSatchelIconRecordsAreTheServersTableAndEachIsOursWithItsPng' {
         Assert-Equal '44x40' "$($wd)x$($ht)" "size of $($r.id).png"
         Assert-Equal 'ours, Chase via Codex, 2026-10-05' $r.license "license of $($r.id)"
         Assert-True ($r.source -like "Ours: Chase's own source art*") "source of $($r.id)"
+    }
+}
+
+Fact 'TheMarkerGateTokenAndKeyRecordsAreTheServersTableAndNoStockIdIsOverwritten' {
+    # cc-P363. ShardItemArt.cs carries the server's copy of the records; records.json the players'. Every one of the
+    # 72 IDs is registered once as art with its PNG and its author's credit, and nothing of the set lands on a stock
+    # ID: OSI's moongates and keys keep their own art, and no record, animdata entry, PNG or row of ours names them.
+    $cs  = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\ShardItemArt.cs'))
+    $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    # The C# flags by value, not by name (pinned Server/TileData.cs TileFlag), so a misnamed bit cannot pass.
+    $flagValue = @{ ArticleA = 0x4000; PartialHue = 0x40000; LightSource = 0x800000; Animation = 0x1000000; Unknown3 = 0x4000000 }
+    $named = @{}
+    foreach ($m in [regex]::Matches($cs, 'private const TileFlag (\w+) = ([^;]+);')) { $named[$m.Groups[1].Value] = $m.Groups[2].Value }
+    $toValue = {
+        param($expr)
+        $v = 0
+        foreach ($nm in ($expr -split '\|' | ForEach-Object { $_.Trim() -replace '^TileFlag\.', '' })) {
+            if ($named.ContainsKey($nm)) { $v = $v -bor (& $toValue $named[$nm]) }
+            elseif ($flagValue.ContainsKey($nm)) { $v = $v -bor $flagValue[$nm] }
+            else { throw "unknown flag $nm in C#" }
+        }
+        $v
+    }
+    $csRows = @([regex]::Matches($cs, 'new\((0xB6[0-9A-F]{2}), "([^"]+)", ([^,]+), (\d+), (\d+)\)') | ForEach-Object {
+        [pscustomobject]@{ Id = [Convert]::ToInt32($_.Groups[1].Value, 16); Name = $_.Groups[2].Value; Flags = (& $toValue $_.Groups[3].Value); Weight = [int]$_.Groups[4].Value; Height = [int]$_.Groups[5].Value }
+    })
+    $ours = @($rec.tiledata | Where-Object { [int]$_.id -ge 46592 -and [int]$_.id -le 46663 })
+    Assert-Equal 52 $csRows.Count 'two markers, four gates, twelve tokens and 34 keys in C#'
+    Assert-Equal (@($csRows.Id) -join ',') (@($ours | ForEach-Object { [int]$_.id }) -join ',') 'the same IDs, in the same order'
+    for ($i = 0; $i -lt $ours.Count; $i++) {
+        $j = $ours[$i]; $c = $csRows[$i]
+        Assert-Equal $c.Name $j.name "name of $($c.Id)"
+        Assert-True ($j.name.Length -le 19 -and $j.name -match '^[\x20-\x7E]+$') "name of $($c.Id) is 19 ASCII characters at most"
+        Assert-Equal $c.Flags ([Convert]::ToInt32(($j.flags -replace '^0x', ''), 16)) "flags of $($c.Id)"
+        Assert-Equal $c.Weight ([int]$j.weight) "weight of $($c.Id)"
+        Assert-Equal $c.Height ([int]$j.height) "height of $($c.Id)"
+    }
+    Assert-Equal '0x05804000' (@($ours | Where-Object { [int]$_.id -eq 46598 })[0].flags) 'the blue gate copies the flags of OSI blue moongate 0xF6C'
+    # The animations: the two markers 1,2,3,2 at 3 (RedRooster's words), the four gates 1-5; only base IDs have records.
+    $anims = @($rec.animdata | Where-Object { [int]$_.id -ge 46592 -and [int]$_.id -le 46663 })
+    Assert-Equal '46592,46595,46598,46603,46608,46613' (@($anims | ForEach-Object { [int]$_.id }) -join ',') 'the animated base IDs'
+    foreach ($a in $anims) {
+        Assert-True (@($ours | Where-Object { [int]$_.id -eq [int]$a.id }).Count -eq 1) "$($a.id) has a tiledata record too"
+        $want = if ([int]$a.id -lt 46598) { '0,1,2,1' } else { '0,1,2,3,4' }
+        Assert-Equal $want (@($a.frames) -join ',') "frames of $($a.id)"
+        foreach ($f in @($a.frames | Where-Object { [int]$_ -ne 0 })) {
+            Assert-True (@($rec.tiledata | Where-Object { [int]$_.id -eq ([int]$a.id + [int]$f) }).Count -eq 0) "frame $([int]$a.id + [int]$f) has no record"
+        }
+    }
+    $art = Join-Path $pkg 'vendor\shattered-legacy-art\art'
+    $rows = @($reg | Where-Object { [int]$_.id -ge 46592 -and [int]$_.id -le 46663 })
+    Assert-Equal 72 $rows.Count 'the 72 IDs registered'
+    Assert-Equal 72 @($rows | Select-Object -ExpandProperty id -Unique).Count 'each once'
+    foreach ($r in $rows) {
+        Assert-Equal 'art' $r.kind "kind of $($r.id)"
+        Assert-True (Test-Path -LiteralPath (Join-Path $art ($r.id + '.png'))) "PNG for $($r.id)"
+        $author = if ([int]$r.id -le 46597) { 'RedRooster' } elseif ([int]$r.id -le 46617) { 'Carl Hamilton' } else { 'Hestia' }
+        Assert-True ($r.source -like "$author*" -and $r.license -like "*credit $author*") "$($r.id): credit to $author"
+    }
+    # No stock ID overwritten. OSI's moongates (blue 0xF6C-0xF70, red 0xDDA-0xDDE, the old moongate 0x1FD4-0x1FDE) and
+    # keys (0x100E-0x1013, the key ring among them) have no PNG, registry row, record or animdata entry of ours.
+    $stock = @(0xF6C..0xF70) + @(0xDDA..0xDDE) + @(0x1FD4..0x1FDE) + @(0x100E..0x1013)
+    foreach ($id in $stock) {
+        $hx = '0x{0:X}' -f $id
+        Assert-True (-not (Test-Path -LiteralPath (Join-Path $art "$id.png"))) "no PNG overrides stock $hx"
+        Assert-Equal 0 @($reg | Where-Object { [int]$_.id -eq $id -and $_.kind -eq 'art' }).Count "stock $hx not registered"
+        Assert-Equal 0 @($rec.tiledata | Where-Object { [int]$_.id -eq $id }).Count "no record for stock $hx"
+        Assert-Equal 0 @($rec.animdata | Where-Object { [int]$_.id -eq $id }).Count "no animdata for stock $hx"
+    }
+    # Every item ID the C# names lies in the set's own block (find-free-art.py: free, no stock art there).
+    foreach ($m in [regex]::Matches($cs, 'public const int (\w+) = (0x[0-9A-F]+);')) {
+        $v = [Convert]::ToInt32($m.Groups[2].Value, 16)
+        Assert-True ($v -ge 46592 -and $v -le 46663) "$($m.Groups[1].Value) $($m.Groups[2].Value) lies in 0xB600-0xB647"
     }
 }
 
