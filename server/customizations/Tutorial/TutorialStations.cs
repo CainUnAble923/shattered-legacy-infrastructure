@@ -60,6 +60,10 @@ public static class TutorialStations
         //    cc-P663: on the Wakening Isle, one line west to east (P481 11.2): the farm joins the core after chat, and
         //    travel, the dock moongate out to New Haven, is last (ClusterFTutorial.IsDone counts an old travel key only
         //    once the rest are done).
+        //    cc-P817 (Chase 11-07: "move evo dog/cat later in tutorial"; asked where, the last isle lesson): the farm, with
+        //    the pet pick, is the last lesson before the moongate, so the pet is the reward for finishing the isle. Pip's
+        //    healing stays where it stood, after chat, at the farmhouse by the chat signpost. Records hold done keys, not
+        //    positions: a trainee already past the farm keeps it done, and the pet is never offered twice (PetClaimed).
         new("core.movement", TutorialWing.Core, "Walk and run", None, None, None,
             ["Options", "Global Scaling", "Hotkeys"], null, "the bright tiles in the road, up from the beach"),
         new("core.backpack", TutorialWing.Core, "Your backpack", None, None, None,
@@ -68,9 +72,7 @@ public static class TutorialStations
             ["Alternate Paperdoll", "Durability gump"], null, "the clothes rack"),
         new("core.chat", TutorialWing.Core, "Speak and read your Journal", None, None, None,
             ["Journal and filters", "TTF fonts", "Nameplates"], null, "the signpost at the meadow's edge"),
-        new("core.farm", TutorialWing.Core, "The farm: pests, then your pet", None, None, None,
-            ["Pet scaling", "Follow mode"], null, "the farm gate, with Wren the Farmhand"),
-        // cc-P726 item 4: bandaging is its own lesson after the farm, at Pip on his bench in the farmhouse.
+        // cc-P726 item 4: bandaging is its own lesson, at Pip on his bench in the farmhouse (cc-P817: before the farm now).
         new("core.healing", TutorialWing.Core, "Healing: bandage Pip", None, None, None,
             [], null, "the farmhouse, where Pip sits hurt on a bench"),
         new("core.death", TutorialWing.Core, "Death and resurrection", None, None, None,
@@ -81,6 +83,9 @@ public static class TutorialStations
             [], null, "the League lodge"),
         new("core.loop", TutorialWing.Core, "Watch a loop vision", None, None, None,
             ["Skill progress bar"], null, "the standing stones on the knoll"),
+        // cc-P817: the farm and the pet pick, last before the moongate.
+        new("core.farm", TutorialWing.Core, "The farm: pests, then your pet", None, None, None,
+            ["Pet scaling", "Follow mode"], null, "the farm gate, with Wren the Farmhand"),
         new("core.travel", TutorialWing.Core, "Getting around", None, None, None,
             ["World Map", "Macros"], null, "the moongate at the end of the dock"),
 

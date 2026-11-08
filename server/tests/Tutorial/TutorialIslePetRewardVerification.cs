@@ -188,7 +188,8 @@ public class TutorialIslePetRewardVerification : IDisposable
         Assert.True(TutorialFarm.CheckCommands(p.Pm));
         Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
         Assert.Contains(TutorialFarm.CoreStation, p.Record.StationsDone);
-        Assert.Equal(TutorialFarm.HealingStationKey, ClusterFTutorial.CoreLeft(p.Record).First().Key);
+        // cc-P817: the farm is the last lesson before the moongate; healing came before it, after chat.
+        Assert.Equal("core.travel", ClusterFTutorial.CoreLeft(p.Record).First().Key);
     }
 
     // ---------------------------------------------------------------- 2
@@ -241,12 +242,16 @@ public class TutorialIslePetRewardVerification : IDisposable
         TutorialFarm.IsTestShard = () => true;
         TutorialTestStart.FreeAllCopies();
         using var p = new Player();
-        AtTheFarm(p);
+        // cc-P817: healing comes after chat, before the farm (which is last before the moongate).
+        TutorialTestStart.Begin(p.Pm);
+        TutorialWake.OnMoveRequest(p.Pm);
+        TutorialTestStart.DoneBefore(p.Pm, TutorialFarm.HealingStationKey);
         var map = TutorialWorld.MapOf(p.Pm)!;
 
-        // The station, after the farm; Pip on his bench in the farmhouse with blood around him.
+        // The station, after chat; Pip on his bench in the farmhouse with blood around him.
         var core = TutorialStations.Core.Select(s => s.Key).ToList();
-        Assert.Equal(core.IndexOf(TutorialFarm.CoreStation) + 1, core.IndexOf(TutorialFarm.HealingStationKey));
+        Assert.Equal(core.IndexOf("core.chat") + 1, core.IndexOf(TutorialFarm.HealingStationKey));
+        Assert.True(core.IndexOf(TutorialFarm.CoreStation) > core.IndexOf(TutorialFarm.HealingStationKey));
         var pip = TutorialFarm.FindPip(map);
         Assert.NotNull(pip);
         Assert.Equal(TutorialFarm.PipBench, pip!.Location);
@@ -254,13 +259,8 @@ public class TutorialIslePetRewardVerification : IDisposable
         Assert.Equal(3, StaticsAt(map, TutorialFarm.PipBench, 1).Count(s => s.Name == "blood"));
         Assert.Equal(TutorialFarm.PipBench, TutorialCorePlacement.Spot(TutorialFarm.HealingStationKey));
 
-        // Not before the farm is done.
+        // Not before its lesson starts.
         Assert.False(TutorialFarm.HealingOn(p.Pm));
-        p.Record.PetClaimed = true;
-        p.Record.StationsDone.UnionWith([TutorialFarm.PestsKey, TutorialFarm.FollowKey, TutorialFarm.GuardKey]);
-        TutorialFarm.CheckDone(p.Pm);
-        Assert.Contains(TutorialFarm.CoreStation, p.Record.StationsDone);
-        Assert.DoesNotContain(TutorialFarm.HealKey, p.Record.StationsDone); // the farm no longer heals
 
         // The lesson: bandages and the arrow to Pip; a heal finishes it.
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find(TutorialFarm.HealingStationKey)!);

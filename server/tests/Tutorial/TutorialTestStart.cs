@@ -49,13 +49,24 @@ internal static class TutorialTestStart
         TutorialCopies.Waiting.Clear();
     }
 
-    /// <summary>Marks the four lessons before the farm done: Wren answers a trainee only at core.farm or later.</summary>
-    public static void ToTheFarm(PlayerMobile pm)
+    /// <summary>
+    /// Marks every core lesson before the farm done: Wren answers a trainee only at core.farm or later. cc-P817: from the
+    /// station order (the farm moved from after chat to last before the moongate), not a fixed list.
+    /// </summary>
+    public static void ToTheFarm(PlayerMobile pm) => DoneBefore(pm, "core.farm");
+
+    /// <summary>cc-P817: marks every core lesson before <paramref name="key"/> done, in the station order.</summary>
+    public static void DoneBefore(PlayerMobile pm, string key)
     {
         var record = ClusterFTutorial.RecordOf(pm)!;
-        foreach (var key in new[] { "core.movement", "core.backpack", "core.paperdoll", "core.chat" })
+        foreach (var station in TutorialStations.Core)
         {
-            record.StationsDone.Add(key);
+            if (station.Key == key)
+            {
+                return;
+            }
+
+            record.StationsDone.Add(station.Key);
         }
     }
 }

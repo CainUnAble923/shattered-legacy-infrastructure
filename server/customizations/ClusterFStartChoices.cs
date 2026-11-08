@@ -6,7 +6,9 @@
 //   Archer (profession 8, a new client entry; for a gargoyle it is Thrower, Throwing for Archery): Archery, Tactics,
 //     Anatomy, Healing; 45/35/10.
 //   Mage (profession 2): Magery, Evaluating Intelligence, Meditation, Wrestling; 25/20/45.
-//   Maker (profession 3, the client's Blacksmith): Mining, Blacksmithy, Tinkering, Tailoring; 60/15/15.
+//   (Maker, profession 3, the client's Blacksmith: Mining, Blacksmithy, Tinkering, Tailoring; 60/15/15. cc-P817, Chase
+//   2026-11-07: "I also want to remove the trade choice": no longer offered; the crafts are learned in the world, and
+//   the custom list below still has them. The player package's Prof.txt copy drops it from the screen.)
 //   Choose my own skills (profession 0): only the skills in CustomSkills, at most 50 in one, no repeats, totalling 120
 //     on a four-slot client (stats 90) or 100 on a legacy three-slot client (stats 80), each stat 10-60; Archery is not
 //     a gargoyle's and Throwing is only a gargoyle's.
@@ -42,7 +44,7 @@ public static class ClusterFStartChoices
 
     public static bool Enabled => ClusterFSchoolGate.Enabled;
 
-    public static readonly HashSet<int> RemovedProfessions = [NecromancerId, PaladinId, SamuraiId, NinjaId];
+    public static readonly HashSet<int> RemovedProfessions = [NecromancerId, PaladinId, SamuraiId, NinjaId, MakerId]; // cc-P817: the Maker
 
     public static readonly HashSet<SkillName> CustomSkills =
     [
@@ -66,16 +68,12 @@ public static class ClusterFStartChoices
     public static StartChoice Mage =>
         new("Mage", [(SkillName.Magery, 30), (SkillName.EvalInt, 30), (SkillName.Meditation, 30), (SkillName.Wrestling, 30)], [25, 20, 45], "mage", true);
 
-    public static StartChoice Maker =>
-        new("Maker", [(SkillName.Mining, 30), (SkillName.Blacksmith, 30), (SkillName.Tinkering, 30), (SkillName.Tailoring, 30)], [60, 15, 15], "maker", true);
-
     /// <summary>The templates a race is offered, by profession id.</summary>
     public static StartChoice Template(int profession, Race race) => profession switch
     {
         FighterId => Fighter,
         ArcherId => race == Race.Gargoyle ? Thrower : Archer,
         MageId => Mage,
-        MakerId => Maker,
         _ => null
     };
 
@@ -88,7 +86,9 @@ public static class ClusterFStartChoices
         why = null;
         if (RemovedProfessions.Contains(profession))
         {
-            why = $"profession {profession} is no longer offered at creation (Paladin, Necromancer, Samurai and Ninja are learned in the world)";
+            why = profession == MakerId
+                ? $"profession {profession} (the Maker, the client's Blacksmith) is no longer offered at creation (the crafts are learned in the world)"
+                : $"profession {profession} is no longer offered at creation (Paladin, Necromancer, Samurai and Ninja are learned in the world)";
             return null;
         }
 

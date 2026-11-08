@@ -85,7 +85,10 @@ public static class TutorialCorePlacement
         "core.farm" => new Point2D(6698, 3978),
         "core.healing" => HealingSign,
         "core.death" => new Point2D(6736, 3989),
-        "core.banking" => new Point2D(6766, 3981),
+        // cc-P817 (Chase 11-07: the bank's "sign and deco are not optimized"): 6766,3981 stood on the road at the apron's
+        // east end, in front of the door's side, and read as clutter. North of the road where it passes the bank's
+        // south-west corner, on grass, off the apron and the door's line (the road runs y 3983-3986 below it).
+        "core.banking" => new Point2D(6757, 3982),
         "core.league" => new Point2D(6782, 3989),
         "core.loop" => new Point2D(6794, 3981),
         "core.travel" => new Point2D(6811, 3988),
@@ -148,6 +151,39 @@ public static class TutorialCorePlacement
     public const int OldSignpostId = 0x0B97;
     public const string OldChatSignpostName = "signpost: the farm, east";
 
+    // cc-P817 (the bank decoration pass): the practice bank box stood alone mid-floor behind the counter
+    // (TutorialWorld.BankBox, 6760,3975); it stands with the vault chests on the back wall now, beside the strongbox and
+    // clear of the north window's floor tile (6760,3973). MoveOldProps takes the old one away on load.
+    public static readonly Point2D BankBoxSpot = new(6761, 3973);
+
+    public static readonly (int Id, Point2D At, string Name)[] OldProps =
+    [
+        (0x0E7C, TutorialWorld.BankBox, "practice bank box")
+    ];
+
+    /// <summary>cc-P817: removes the props that stood where OldProps says (an older layout). Returns how many.</summary>
+    public static int MoveOldProps(Map map)
+    {
+        var gone = new List<Item>();
+        foreach (var (id, at, name) in OldProps)
+        {
+            foreach (var item in map.GetItemsInRange<Item>(TutorialWorld.Ground(map, at), 0))
+            {
+                if (!item.Deleted && item.ItemID == id && item.Name == name && item.X == at.X && item.Y == at.Y)
+                {
+                    gone.Add(item);
+                }
+            }
+        }
+
+        foreach (var item in gone)
+        {
+            item.Delete();
+        }
+
+        return gone.Count;
+    }
+
     // The stops' props (all stock art, server items so P662's statics stay the map's own): id, spot, name.
     public static readonly (int Id, Point2D At, string Name)[] Props =
     [
@@ -157,7 +193,7 @@ public static class TutorialCorePlacement
         (0x0EC6, new Point2D(TutorialWorld.Rack.X, TutorialWorld.Rack.Y - 2), "clothes rack"),
         (TableId, ClothesTable, "table"),
         (SignpostId, ChatSignpost, ChatSignpostName),
-        (0x0E7C, TutorialWorld.BankBox, "practice bank box"),
+        (0x0E7C, BankBoxSpot, "practice bank box"), // cc-P817: on the back wall with the vault chests
         (SignpostId, LodgeSign, LodgeSignName) // cc-P751
     ];
 
@@ -260,13 +296,15 @@ public static class TutorialCorePlacement
         if (!dryRun) { MoveOldMarkers(map); } // cc-P720: a rune on its stop becomes the sign beside it
         if (!dryRun) { MoveChatSignpost(map); } // cc-P741: before the props are counted, so it is moved, not doubled
         if (!dryRun) { TutorialFarm.MoveFromOldLayout(map); } // cc-P741: Tobin moved before he is looked for
+        if (!dryRun) { TutorialBankerVoice.FaceCounter(map); } // cc-P817: an already placed Merrin turned to his counter
+        if (!dryRun) { MoveOldProps(map); } // cc-P817: the practice bank box moved to the back wall
         var markers = TutorialStations.Core.Where(s => FindMarker(s.Key, map) == null).ToArray();
         var mobiles = new (Type Type, Point3D Spot, Func<Mobile> Make)[]
         {
             (typeof(TutorialGuide), Ground(TutorialWorld.Guide), () => new TutorialGuide { Direction = Direction.West }),
             (typeof(TutorialDeathEcho), DeathSpot, () => new TutorialDeathEcho()),
             (typeof(TutorialHealer), HealerSpot, () => new TutorialHealer()),
-            (typeof(Banker), BankerSpot, () => new Banker { Name = "Merrin", CantWalk = true }),
+            (typeof(Banker), BankerSpot, () => new Banker { Name = "Merrin", CantWalk = true, Direction = TutorialBankerVoice.Facing }), // cc-P817: facing his counter's customer side
             (typeof(LeagueRegistrar), ElaraSpot, () => new LeagueRegistrar { CantWalk = true }),
             (typeof(TutorialVeterinarian), FarmVetSpot, () => new TutorialVeterinarian { Name = "Tobin", Direction = Direction.East })
         }.Where(row => FindMobile(map, row.Type, row.Spot) == null).ToList();

@@ -98,11 +98,8 @@ public class TutorialIsleWakeVisibleVerification : IDisposable
         TutorialTestStart.FreeAllCopies();
         TutorialTestStart.Begin(p.Pm);
         TutorialWake.Stand(p.Pm, true);
-        TutorialTestStart.ToTheFarm(p.Pm);
-        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find(TutorialFarm.CoreStation)!);
-        p.Record.PetClaimed = true;
-        p.Record.StationsDone.UnionWith([TutorialFarm.PestsKey, TutorialFarm.FollowKey, TutorialFarm.GuardKey]);
-        TutorialFarm.CheckDone(p.Pm);
+        // cc-P817: the healing lesson comes after chat now, before the farm.
+        TutorialTestStart.DoneBefore(p.Pm, TutorialFarm.HealingStationKey);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find(TutorialFarm.HealingStationKey)!);
         Assert.True(TutorialCoreTrials.IsDoing(p.Pm, TutorialFarm.HealingStationKey));
         Assert.True(TutorialFarm.HealingOn(p.Pm));
@@ -226,7 +223,7 @@ public class TutorialIsleWakeVisibleVerification : IDisposable
         Assert.Contains("table beside Pip", TutorialFarm.WrenBandageHintLine);
 
         // Double-clicked, she hands more (the lesson's first stack was one of BandageIssues).
-        Assert.Equal(4, TutorialFarm.Talk(p.Pm, wren!));
+        Assert.Equal(0, TutorialFarm.Talk(p.Pm, wren!)); // cc-P817: before the farm now, her answer is the bandages, no farm step
         Assert.True(Bandages(p.Pm) > 0);
         Assert.Equal(TutorialFarm.WrenHasBandagesLine, TutorialFarm.WrenBandages(p.Pm));
 
