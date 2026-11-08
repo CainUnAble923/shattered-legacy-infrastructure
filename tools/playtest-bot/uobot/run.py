@@ -4,6 +4,13 @@
 
 Each check runs --runs times. 3/3 is PASS, 0/3 FAIL, anything between FLAKY; a check that cannot be set up is ERROR.
 Every run writes its own transcript (transcripts/<id>-run<n>.txt). results.json is what report.py reads.
+
+cc-P819: the game pause (uobot.gamepause, the Golem kit's Test-GameRunning.ps1). With --game-until (the overnight
+runner: the night window's end, 06:30) it looks before each check and every soak minute; while Chase plays another game
+on the game PC it finishes the step, closes its clients and waits (every --game-interval seconds), then goes on; still
+playing at --game-until, the checks not run are SKIPPED and the soak's rest is skipped. Without --game-until (a Golem's
+own run) it looks once at the start and, while a game runs, exits 4 with "waiting: Chase is playing <game>": the Golem
+waits (Test-GameRunning.ps1 -Wait, in the background) and runs it again. --game-check '' turns the look off.
 """
 import argparse
 import json
@@ -18,6 +25,7 @@ from .client import Client, Cliloc, LoginFailed, Transcript
 from . import packets as P
 from . import checks as C
 from . import safety
+from . import gamepause
 
 CLIENT_DATA = r"D:\ShatteredLegacy\client-data\classic-client"
 CACHE = r"D:\UO\bot-shard\cache"
@@ -61,6 +69,17 @@ class Ctx(object):
         for c in (self.admin, self.player):
             if c is not None:
                 c.tr = tr
+
+    def close_clients(self):
+        """cc-P819: the long-lived clients closed cleanly (the game pause); ensure_admin/ensure_player open them again."""
+        for c in (self.admin, self.player):
+            if c is not None and c.closed is None:
+                try:
+                    c.close()
+                except Exception:
+                    pass
+        self.admin = None
+        self.player = None
 
     def ensure_admin(self):
         if self.admin is None or self.admin.closed is not None:
@@ -212,10 +231,66 @@ class Ctx(object):
             return "(docker logs failed: %s)" % e
 
 
-def run_checks(ctx, selected, runs):
+class GamePause(object):
+    """cc-P819: the overnight runner's waits. script: the kit's check ('' none); until: HH:mm, the night's end."""
+
+    def __init__(self, script, until, interval=600):
+        self.script, self.until, self.interval = script, until, interval
+        self.over = False      # still playing at `until`: what is left is skipped
+        self.waits = []        # {"at", "game", "outcome"} for results.json and the report
+
+    def active(self):
+        return bool(self.until) and gamepause.available(self.script)
+
+    def playing(self):
+        if not self.active() or self.over:
+            return ""
+        playing, line = gamepause.now(self.script)
+        return line if playing else ""
+
+    def hold(self, ctx, where):
+        """A game is running: close the clients, wait. True to go on, False when the night is over."""
+        line = self.playing()
+        if not line:
+            return True
+        print("game pause before %s: %s" % (where, line), flush=True)
+        ctx.close_clients()
+        ok = gamepause.wait(self.script, self.until, self.interval, who="overnight",
+                            what="the overnight play tests", say=lambda l: print("  " + l, flush=True))
+        self.waits.append({"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "where": where, "line": line, "outcome": "resumed" if ok else "skipped"})
+        if not ok:
+            self.over = True
+        return ok
+
+
+def merge_soak(minutes, parts):
+    """cc-P819: a soak split by game waits as one record (report.py reads one): events summed, samples, errors and loud
+    lines in order, memory from the first and last parts; stoppedFor lists each stop; skipped when no part ran."""
+    if not parts:
+        return {"minutes": minutes, "events": {}, "samples": [], "errors": [], "loud": [], "loudCount": 0,
+                "memStartMB": None, "memEndMB": None, "memMaxMB": None, "stoppedFor": [], "skipped": "a game was running until the night's end"}
+    events = {}
+    for p in parts:
+        for k, v in p.get("events", {}).items():
+            events[k] = events.get(k, 0) + v
+    maxes = [p.get("memMaxMB") for p in parts if p.get("memMaxMB") is not None]
+    return {"minutes": minutes, "events": events, "parts": len(parts),
+            "samples": [s for p in parts for s in p.get("samples", [])], "errors": [e for p in parts for e in p.get("errors", [])],
+            "loud": [l for p in parts for l in p.get("loud", [])][:200], "loudCount": sum(p.get("loudCount", 0) for p in parts),
+            "memStartMB": parts[0].get("memStartMB"), "memEndMB": parts[-1].get("memEndMB"), "memMaxMB": max(maxes) if maxes else None,
+            "stoppedFor": [p["stoppedFor"] for p in parts if p.get("stoppedFor")]}
+
+
+def run_checks(ctx, selected, runs, pause=None):
     results = []
     tdir = os.path.join(ctx.out, "transcripts")
     for chk in selected:
+        if pause is not None and (pause.over or not pause.hold(ctx, chk.id)):
+            # cc-P819: the night ended while Chase played: this check and the rest are not run tonight
+            results.append({"id": chk.id, "title": chk.title, "kind": chk.kind, "left_for_chase": chk.left_for_chase,
+                            "result": "SKIPPED", "passes": 0, "runs": [], "why": "a game was running until the night's end"})
+            print("%-10s SKIPPED: a game was running until the night's end" % chk.id, flush=True)
+            continue
         outcomes = []
         for k in range(1, runs + 1):
             path = os.path.join(tdir, "%s-run%d.txt" % (chk.id, k))
@@ -286,9 +361,20 @@ def main(argv):
     # cc-P224: "scratch" (127.0.0.1:2595, the overnight runner's shard) or "test" (127.0.0.1:2594, this PC's own test
     # shard, started by Start-TestShard.ps1). Nothing else; safety.py refuses the live port in both.
     ap.add_argument("--target", default="scratch", choices=sorted(safety.TARGETS))
+    # cc-P819: the game pause (see the top of this file)
+    ap.add_argument("--game-check", default=gamepause.DEFAULT_SCRIPT, help="the kit's Test-GameRunning.ps1; '' for none")
+    ap.add_argument("--game-until", default="", help="HH:mm: wait for a game to close up to then (the overnight runner)")
+    ap.add_argument("--game-interval", type=int, default=600)
     a = ap.parse_args(argv)
     safety.configure(a.target)
     print("target: %s" % safety.describe(), flush=True)
+    pause = GamePause(a.game_check, a.game_until, a.game_interval)
+    if not a.game_until and a.game_check:
+        playing, line = gamepause.now(a.game_check)
+        if playing:
+            print(line + ": no bot client connects on the game PC while he plays. Wait with D:\\UO\\golem\\Test-GameRunning.ps1 -Wait "
+                  "(in the background; it ends when the game closes), then run this again.", flush=True)
+            return 4
     os.makedirs(os.path.join(a.out, "transcripts"), exist_ok=True)
     with open(a.secrets, "r", encoding="utf-8") as f:
         secrets = json.load(f)
@@ -299,14 +385,27 @@ def main(argv):
     only = [x.strip() for x in a.only.split(",") if x.strip()]
     selected = [c for c in C.REGISTRY if not only or c.id in only]
     print("checks: %d (%s)" % (len(selected), ", ".join(c.id for c in selected)), flush=True)
-    results = run_checks(ctx, selected, a.runs)
+    results = run_checks(ctx, selected, a.runs, pause if pause.active() else None)
     soak = None
     if a.soak_minutes > 0:
         from . import soak as S
         ctx.use_transcript(Transcript(os.path.join(a.out, "transcripts", "soak.txt")))
-        soak = S.run(ctx, a.soak_minutes)
+        if pause.active():
+            # cc-P819: the soak stops at a game (its clients finish their step and close), waits, and runs the minutes
+            # left after; parts are kept in order. Still playing at the night's end: the rest is skipped.
+            left, parts = a.soak_minutes, []
+            while left > 0 and pause.hold(ctx, "the soak"):
+                t0 = time.time()
+                part = S.run(ctx, left, game=pause.playing)
+                parts.append(part)
+                left -= max(1, int(round((time.time() - t0) / 60)))
+                if not part.get("stoppedFor"):
+                    break
+            soak = merge_soak(a.soak_minutes, parts)
+        else:
+            soak = S.run(ctx, a.soak_minutes)
     with open(os.path.join(a.out, "results.json"), "w", encoding="utf-8") as f:
-        json.dump({"checks": results, "soak": soak, "firstLogins": sorted(ctx.first_logins)}, f, indent=1)
+        json.dump({"checks": results, "soak": soak, "firstLogins": sorted(ctx.first_logins), "gameWaits": pause.waits}, f, indent=1)
     for c in (ctx.admin, ctx.player):
         if c is not None:
             c.close()

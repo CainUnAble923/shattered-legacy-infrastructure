@@ -10,13 +10,22 @@
   tasks) sends it to Chase the same way the Golem's emails go (D:\UO\golem\email.json and smtp-cred.xml), then removes
   it. Not set up for email: the email file stays for the next run and the log says so. -DryRun writes only the summary.
   Exit 0 ran, 2 the Goblin stopped on a broken file, 3 the email could not be sent. ASCII only (PowerShell 5.1).
+  cc-P819 (Chase 11-07: "pause bot play testing when im playing other games"): first it asks the Golem kit's game check
+  (-GameCheck, D:\UO\golem\Test-GameRunning.ps1: a game running on the game PC, our own UO clients left out,
+  settings.json gamePause on). While a game runs it waits, looking again every -GameIntervalSeconds (600), up to
+  -NightEnd (06:30); still playing then, it skips this run with a log line (exit 0). -NoGameWait runs anyway.
 #>
 param(
     [switch]$DryRun,
     [string]$PlaytestDir = '',
     [string]$Notes = 'D:\UO\shard-migration',
     [string]$GolemRoot = 'D:\UO\golem',
-    [string]$Log = 'D:\UO\logs\playtest-goblin.log'
+    [string]$Log = 'D:\UO\logs\playtest-goblin.log',
+    # cc-P819: the game pause (see the top)
+    [string]$GameCheck = 'D:\UO\golem\Test-GameRunning.ps1',
+    [string]$NightEnd = '06:30',
+    [int]$GameIntervalSeconds = 600,
+    [switch]$NoGameWait
 )
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -33,6 +42,19 @@ function Write-Log([string]$text) {
         if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         Add-Content -LiteralPath $Log -Value $line -Encoding ASCII
     } catch { Write-Host ('(could not write the log: ' + $_.Exception.Message + ')') }
+}
+
+# cc-P819: while Chase plays another game on the game PC, wait (up to -NightEnd); skip this run if it never clears.
+if (-not $NoGameWait -and $GameCheck -and (Test-Path -LiteralPath $GameCheck)) {
+    $ErrorActionPreference = 'Continue'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $GameCheck -Wait -Until $NightEnd -IntervalSeconds $GameIntervalSeconds `
+        -Who 'goblin' -What 'the Play Test Goblin' 2>&1 | ForEach-Object {
+            $l = [string]$_
+            if ($l -match 'waiting|game|playing') { Write-Log ('game pause: ' + ($l -replace '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} ', '')) }
+        }
+    $gwExit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($gwExit -eq 1) { Write-Log ('Skipped this run: a game was running until ' + $NightEnd + '.'); exit 0 }
 }
 
 $pyArgs = @((Join-Path $here 'playtest_goblin.py'), '--playtest-dir', $PlaytestDir, '--notes', $Notes)

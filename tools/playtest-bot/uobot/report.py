@@ -31,11 +31,14 @@ def main(argv):
     before = load(os.path.join(a.out, "real-shards-before.json"), {})
     after = load(os.path.join(a.out, "real-shards-after.json"), {})
     checks = res.get("checks", [])
-    count = {k: sum(1 for c in checks if c["result"] == k) for k in ("PASS", "FAIL", "FLAKY", "ERROR")}
+    count = {k: sum(1 for c in checks if c["result"] == k) for k in ("PASS", "FAIL", "FLAKY", "ERROR", "SKIPPED")}
+    waits = res.get("gameWaits") or []   # cc-P819: the game pause's waits
     stamp = os.path.basename(os.path.normpath(a.out))
     head = "Overnight play tests: %d pass, %d fail, %d flaky" % (count["PASS"], count["FAIL"], count["FLAKY"])
     if count["ERROR"]:
         head += ", %d could not run" % count["ERROR"]
+    if count["SKIPPED"]:
+        head += ", %d skipped (a game was running)" % count["SKIPPED"]
 
     out = ["# Overnight play tests, %s" % stamp, "",
            "**%s** (%d checks, each run %s times; 3/3 PASS, 0/3 FAIL, anything else FLAKY)." % (
@@ -48,6 +51,9 @@ def main(argv):
            "- Rule 1 (live 2593 and test 2594 untouched): %s" % ("**CHANGED: %s**" % a.rule1_changed if a.rule1_changed else
                                                                  "held; both containers' state and start time identical before and after"),
            ""]
+    if waits:
+        out += ["Game pause (cc-P819): the bot waited while Chase played another game on the game PC:", ""]
+        out += ["- %s, before %s: %s; %s" % (w.get("at"), w.get("where"), w.get("line"), w.get("outcome")) for w in waits] + [""]
     out += ["| Id | Result | Runs passed | Evidence (last run) | Transcript | Left for Chase |", "|---|---|---|---|---|---|"]
     for c in checks:
         last = c["runs"][-1] if c["runs"] else {}
@@ -72,6 +78,10 @@ def main(argv):
                 "Loud log lines (Exception, Error, crash, save failures): %d." % soak.get("loudCount", 0)]
         if soak.get("errors"):
             out.append("Problems: " + "; ".join(soak["errors"]))
+        if soak.get("stoppedFor"):
+            out.append("Stopped for a game (cc-P819): " + "; ".join(soak["stoppedFor"] if isinstance(soak["stoppedFor"], list) else [soak["stoppedFor"]]))
+        if soak.get("skipped"):
+            out.append("Skipped: " + soak["skipped"])
         if soak.get("loud"):
             out += ["", "```"] + soak["loud"][:40] + ["```"]
     out += ["", "Real shards before: `%s`" % json.dumps(before), "", "Real shards after: `%s`" % json.dumps(after), ""]
@@ -88,6 +98,8 @@ def main(argv):
             ("; " + "; ".join(soak["errors"])) if soak.get("errors") else ""))
     if a.rule1_changed:
         details.append("RULE 1: these real shards changed during the run: " + a.rule1_changed)
+    for w in waits:
+        details.append("Game pause: %s before %s (%s)." % (w.get("line"), w.get("where"), w.get("outcome")))
     if a.archive_note:
         details.append(a.archive_note)
     details += ["", "Report: " + os.path.join(a.out, "report.md")]
