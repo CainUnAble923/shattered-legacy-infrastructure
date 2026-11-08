@@ -577,8 +577,10 @@ public class SchoolGateVerification : IDisposable
         Assert.Contains(thrower.Skills, s => s.Skill == SkillName.Throwing);
         Assert.DoesNotContain(thrower.Skills, s => s.Skill == SkillName.Archery);
         Assert.Equal("Mage", ClusterFStartChoices.Resolve(2, [], [], Race.Elf, true, out _).Name);
-        Assert.Equal("Maker", ClusterFStartChoices.Resolve(3, [], [], Race.Human, true, out _).Name);
-        foreach (var t in new[] { ClusterFStartChoices.Fighter, ClusterFStartChoices.Archer, ClusterFStartChoices.Thrower, ClusterFStartChoices.Mage, ClusterFStartChoices.Maker })
+        // cc-P817 (Chase: "remove the trade choice"): the Maker (3) is refused like the four schools.
+        Assert.Null(ClusterFStartChoices.Resolve(3, [], [], Race.Human, true, out why));
+        Assert.Contains("no longer offered", why);
+        foreach (var t in new[] { ClusterFStartChoices.Fighter, ClusterFStartChoices.Archer, ClusterFStartChoices.Thrower, ClusterFStartChoices.Mage })
         {
             Assert.All(t.Skills, s => Assert.Equal(30, s.Value));
             Assert.DoesNotContain(t.Skills, s => ClusterFSchoolGate.Find(s.Skill) != null);

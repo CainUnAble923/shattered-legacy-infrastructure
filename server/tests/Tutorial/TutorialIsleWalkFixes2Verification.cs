@@ -381,4 +381,169 @@ public class TutorialIsleWalkFixes2Verification : IDisposable
         board.OnDoubleClick(p.Pm);
         Assert.True(p.Pm.HasGump<LeagueRegistrarGump>());
     }
+
+    // ---------------------------------------------------------------- cc-P817 (Chase 11-07, update 11)
+
+    // Item 5: the farm, with the pet pick, is the last lesson before the moongate; Pip's healing stays after chat.
+    [Fact]
+    public void P817_TheFarmIsTheLastLessonBeforeTheMoongate()
+    {
+        Assert.Equal(
+            new[]
+            {
+                "core.movement", "core.backpack", "core.paperdoll", "core.chat", "core.healing", "core.death",
+                "core.banking", "core.league", "core.loop", "core.farm", "core.travel"
+            },
+            TutorialStations.Core.Select(s => s.Key).ToArray());
+    }
+
+    // Item 5: a trainee past the farm keeps it done, so the farm (and the pet) is never asked again; and one who has
+    // played up to it is sent there next, with the moongate after it.
+    [Fact]
+    public void P817_AFarmDoneEarlierIsNotAskedAgainAndTheFarmComesAfterTheStones()
+    {
+        using var p = new Player();
+        TutorialTestStart.Begin(p.Pm);
+        p.Record.StationsDone.Add("core.farm"); // under the old order the farm came after chat
+        p.Record.PetClaimed = true;
+        Assert.DoesNotContain(ClusterFTutorial.CoreLeft(p.Record), s => s.Key == "core.farm");
+
+        using var q = new Player();
+        TutorialTestStart.Begin(q.Pm);
+        PlayCoreUntil(q.Pm, "core.farm");
+        Assert.Equal(["core.farm", "core.travel"], ClusterFTutorial.CoreLeft(q.Record).Select(s => s.Key).ToArray());
+    }
+
+    // Item 5: the healing lesson now comes before the farm; its hint says Wren has more bandages, and she gives them.
+    [Fact]
+    public void P817_WrenHandsBandagesDuringTheHealingLessonBeforeTheFarm()
+    {
+        Seed();
+        using var p = new Player();
+        TutorialTestStart.Begin(p.Pm);
+        PlayCoreUntil(p.Pm, "core.healing");
+        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.healing")!);
+        foreach (var b in p.Pm.Backpack!.Items.OfType<Bandage>().ToList())
+        {
+            b.Delete();
+        }
+
+        var wren = TutorialFarmhand.Find(TutorialWorld.MapOf(p.Pm));
+        Assert.NotNull(wren);
+        TutorialFarm.Talk(p.Pm, wren!);
+        Assert.NotNull(p.Pm.Backpack.FindItemByType<Bandage>());
+    }
+
+    // Item 6: Merrin faces his counter's customer side (south, toward the door), and seeding turns one placed before.
+    [Fact]
+    public void P817_TheBankerFacesHisCounterAndSeedingTurnsAnOldOne()
+    {
+        Seed();
+        var banker = BankerOn(TutorialWorld.Isle);
+        Assert.NotNull(banker);
+        Assert.Equal(Direction.South, banker!.Direction & Direction.Mask);
+
+        banker.Direction = Direction.North; // as cc-P720 left him: at the vault chests on the back wall
+        Seed();
+        Assert.Equal(Direction.South, banker.Direction & Direction.Mask);
+    }
+
+    // Item 6: near Merrin on the bank lesson, he says the next step, then not again until the pause is over.
+    [Fact]
+    public void P817_MerrinSaysTheNextStepNearbyAndWaitsBeforeSayingItAgain()
+    {
+        Seed();
+        using var p = new Player();
+        TutorialTestStart.Begin(p.Pm);
+        PlayCoreUntil(p.Pm, "core.banking");
+        var isle = TutorialWorld.Isle; // the seeded isle (this harness does not seed the trainee's own copy)
+        Assert.NotNull(BankerOn(isle));
+        TutorialBankerVoice.Forget(p.Pm);
+        p.Pm.MoveToWorld(new Point3D(6762, 3978, 0), isle); // inside, on the carpet before the counter
+        Assert.Equal(TutorialBankerVoice.OpenLine, TutorialBankerVoice.Speak(p.Pm));
+        Assert.Null(TutorialBankerVoice.Speak(p.Pm)); // not again at once
+        ShardTestClock.Advance(TutorialBankerVoice.VoicePause + TimeSpan.FromSeconds(1));
+        Assert.Equal(TutorialBankerVoice.OpenLine, TutorialBankerVoice.Speak(p.Pm));
+        Assert.Contains("'bank'", TutorialBankerVoice.OpenLine);
+
+        p.Pm.BankBox.Open();
+        Assert.Equal(TutorialBankerVoice.DepositLine, TutorialBankerVoice.LineFor(p.Pm));
+        Assert.Contains("practice token", TutorialBankerVoice.DepositLine);
+
+        // The lesson's own tick says it: started and walked in, the trainee has heard him (so a direct ask is spent).
+        TutorialBankerVoice.Forget(p.Pm);
+        p.Pm.MoveToWorld(TutorialWorld.Ground(isle, TutorialWorld.BankStop), isle);
+        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.banking")!);
+        p.Pm.MoveToWorld(new Point3D(6762, 3978, 0), isle);
+        ShardTestClock.Advance(TimeSpan.FromSeconds(0.6));
+        Assert.Null(TutorialBankerVoice.Speak(p.Pm));
+
+        // Far away, nothing.
+        TutorialBankerVoice.Forget(p.Pm);
+        p.Pm.MoveToWorld(TutorialWorld.Ground(isle, TutorialWorld.LodgeStop), isle);
+        Assert.Null(TutorialBankerVoice.Speak(p.Pm));
+    }
+
+    // Item 7: the practice bank box stands on the back wall with the vault chests (not mid-floor), and an old one goes.
+    [Fact]
+    public void P817_ThePracticeBankBoxStandsOnTheBackWallAndAnOldOneIsTakenAway()
+    {
+        var old = new Static(0x0E7C) { Name = "practice bank box" };
+        old.MoveToWorld(TutorialWorld.Ground(TutorialWorld.Isle, new Point2D(6760, 3975)), TutorialWorld.Isle);
+        Seed();
+        Assert.True(old.Deleted);
+        Assert.DoesNotContain(ItemsAt<Static>(TutorialWorld.Ground(TutorialWorld.Isle, new Point2D(6760, 3975))), i => i.ItemID == 0x0E7C);
+        Assert.Single(ItemsAt<Static>(TutorialWorld.Ground(TutorialWorld.Isle, new Point2D(6761, 3973))), i => i.ItemID == 0x0E7C && i.Name == "practice bank box");
+    }
+
+    // Item 7 (guide 6): the bank lesson's sign stands off the road and off the paved apron before the door, north of the
+    // road at the bank's south-west corner; a sign seeded at the old spot moves there.
+    [Fact]
+    public void P817_TheBankSignStandsOffTheRoadAndTheApron()
+    {
+        var at = TutorialCorePlacement.SignPoint("core.banking");
+        Assert.Equal(new Point2D(6757, 3982), at);
+        Assert.False(at.X is >= 6759 and <= 6765 && at.Y is >= 3981 and <= 3982, "not on the apron before the door");
+        Seed();
+        var marker = TutorialCorePlacement.FindMarker("core.banking");
+        Assert.NotNull(marker);
+        Assert.Equal(at.X, marker!.X);
+        Assert.Equal(at.Y, marker.Y);
+    }
+
+    // Item 4: the wake is never darker than a light shade, and the isle stays day while the shard clock is at night.
+    [Fact]
+    public void P817_TheWakeIsBrightAndTheIsleIsDayAtAnyHour()
+    {
+        Assert.InRange(TutorialWake.DarkLight, 0, 8);
+        Assert.All(TutorialWake.DawnLight, l => Assert.InRange(l, 0, TutorialWake.DarkLight));
+
+        using var p = new Player();
+        p.Pm.MoveToWorld(TutorialWorld.Arrival, TutorialWorld.Isle);
+        var region = Region.Find(TutorialWorld.Arrival, TutorialWorld.Isle);
+        var global = LightCycle.NightLevel;
+        var personal = 0;
+        region.AlterLightLevel(p.Pm, ref global, ref personal);
+        Assert.Equal(LightCycle.DayLevel, global);
+
+        Assert.True(TutorialWake.Play(p.Pm));
+        Assert.InRange(TutorialWake.LightOf(p.Pm) ?? 99, 0, 8);
+        global = LightCycle.NightLevel;
+        region.AlterLightLevel(p.Pm, ref global, ref personal);
+        Assert.InRange(global, 0, 8);
+        TutorialWake.Advance(p.Pm, TutorialWake.SafetySeconds + 1);
+    }
+
+    private static Banker? BankerOn(Map map)
+    {
+        foreach (var m in map.GetMobilesInRange(TutorialWorld.Ground(map, TutorialWorld.Banker), 2))
+        {
+            if (m is Banker b && !b.Deleted)
+            {
+                return b;
+            }
+        }
+
+        return null;
+    }
 }
