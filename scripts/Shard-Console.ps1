@@ -235,6 +235,9 @@ function New-AutopilotConfig {
         # cc-P131: waking a CC session from here, the two toggles, the sign-in check, and the CLI facts the Golem keeps.
         WakeScript   = (Join-Path $Root 'Wake-Golem.ps1')
         AutoWakeScript = (Join-Path $Root 'Set-AutoWake.ps1')
+        # cc-P819: the game pause's switch (settings.json gamePause) and its check (GamePause.ps1, the status line).
+        GamePauseScript = (Join-Path $Root 'Set-GamePause.ps1')
+        GamePauseLib = (Join-Path $Root 'GamePause.ps1')
         NightShiftScript = (Join-Path $Root 'Set-NightShift.ps1')
         # cc-P200: marathon mode's setting (auto, on, off).
         MarathonScript = (Join-Path $Root 'Set-Marathon.ps1')
@@ -1246,6 +1249,8 @@ function Get-ConsoleActions {
         # cc-P131: waking a CC session from here (the Claude Code CLI), self-wake and the night shift toggles, the sign-in check.
         [pscustomobject]@{ Key = 'golem.resume';     Group = 'Golem wake';  Label = 'Poke the Golem';                     Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.autowake';   Group = 'Golem wake';  Label = 'Self-wake: on';                      Mutates = $true;  RunIn = 'here' }
+        # cc-P819: bot play testing waits while Chase plays another game on the game PC (on by default).
+        [pscustomobject]@{ Key = 'golem.gamepause';  Group = 'Golem wake';  Label = 'Game pause: on';                     Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.nightshift'; Group = 'Golem wake';  Label = 'Night shift: on';                    Mutates = $true;  RunIn = 'here' }
         # cc-P200: marathon mode (auto, on or off: the pick beside it).
         [pscustomobject]@{ Key = 'golem.marathon';   Group = 'Golem wake';  Label = 'Marathon: set';                      Mutates = $true;  RunIn = 'here' }
@@ -2158,6 +2163,7 @@ function Get-ConsoleTooltips {
         'golem.resume'     = 'Poke the Golem: opens a new Claude Code session in a terminal window on this PC, which says the start phrase, so the Golem hands it the next prompt. Wake the Golem only turns the Golem on. Asks poke the golem; when greyed out, the reason comes first.'
         'golem.model'      = 'The model Poke the Golem uses: Auto (the default) reads the next prompt''s Model line (no line: Opus), as the self-wake does. Fable or Opus overrides it for one Poke, then it is Auto again. Changes nothing by itself.'
         'golem.autowake'   = 'Self-wake on or off (settings.json autoWake). On, the Golem opens the next CC session itself after a context rest, a model wait or the run cap, within its limits; never after a STOPPED or NEEDS YOU. Runs Set-AutoWake.ps1 in its own window.'
+        'golem.gamepause'  = 'Game pause on or off (settings.json gamePause, on by default). On, the overnight play tests, the Play Test Goblin and a Golem''s proof shots, two-client tests and bot runs wait on the game PC while Chase plays another game (a game under Steam, Epic, EA, Riot or Battle.net, or a known game name; our own UO clients never count); builds, tests and code go on. Runs Set-GamePause.ps1 in its own window.'
         'golem.nightshift' = 'Night shift on or off: from the start to the end time the Golem checks the usage at the start, every nightCheckMinutes and just after each 5-hour reset, and runs a batch of prompts whenever the week has room under its pace, each ending at a stopping point once its budget is spent (never in the bot window or the last nightMinStartMinutes). Asks night shift on when turning it on; runs Set-NightShift.ps1 in its own window.'
         'golem.marathon'   = 'Marathon mode: sets settings.json marathon to the pick beside it (auto, on or off), asking marathon <mode> first; auto turns it on when the week''s projection falls short of 95% with over 6 hours left, and off at 95% or at usageLimitPct. While on, every awake Golem is woken on its lane with no rest after a Large prompt, no run cap, the night shift at full and the extra PCs also in the day, but the 5-hour window still holds.'
         'golem.marathonpick' = 'The marathon mode Marathon: set writes: auto, on or off. Starts on the current setting.'
@@ -3701,13 +3707,13 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.LaneNowScript, $ap.AnswerScript, $ap.SkipDayScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.GamePauseScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.LaneNowScript, $ap.AnswerScript, $ap.SkipDayScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
                 if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
-                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.AnswerScript, $ap.SkipDayScript) | Where-Object { $_ }
+                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.GamePauseScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.AnswerScript, $ap.SkipDayScript) | Where-Object { $_ }
                 $ok = ($head -and $sa.Count -eq 5 -and $withArgs -inotcontains $sa[4])
                 # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
                 $tmpT = [datetime]::MinValue
@@ -3717,6 +3723,8 @@ function Test-PlanSafety {
                 # with -Off, or -On -Start HH:mm -End HH:mm. The CLI itself (claude.exe) is never run from here: the script opens it.
                 if ($head -and $sa[4] -ieq $ap.WakeScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Model' -and $sa[6] -cin @('Auto', 'Fable', 'Opus', 'Sonnet')) { $ok = $true }   # cc-P153: Auto
                 if ($head -and $sa[4] -ieq $ap.AutoWakeScript -and $sa.Count -eq 6 -and $sa[5] -cin @('-On', '-Off')) { $ok = $true }
+                # cc-P819: Set-GamePause.ps1 only with -On or -Off.
+                if ($head -and $ap.GamePauseScript -and $sa[4] -ieq $ap.GamePauseScript -and $sa.Count -eq 6 -and $sa[5] -cin @('-On', '-Off')) { $ok = $true }
                 # cc-P200: Set-Marathon.ps1 only with -Mode auto|on|off.
                 if ($head -and $ap.MarathonScript -and $sa[4] -ieq $ap.MarathonScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Mode' -and $sa[6] -cin @('auto', 'on', 'off')) { $ok = $true }
                 # cc-P208: ShadowIron.ps1 only with -Pause or -Resume.
@@ -4566,6 +4574,7 @@ $script:AutopilotStaleMinutes = 15
 $script:AutopilotSettingDefaults = [ordered]@{ progressEmails = $true; maxPerRun = 6; stallMinutes = 45; autoWake = $true; nightShiftEnabled = $true; nightShiftStart = '22:30'; nightShiftEnd = '06:30'
     dayWeekAheadPct = 3; weekReservePct = 10; planUsageMaxAgeHours = 4   # cc-P160: the Golem's day pace rule
     marathon = 'auto'   # cc-P200: marathon mode (auto, on, off)
+    gamePause = $true   # cc-P819: bot play testing waits while Chase plays another game on the game PC
     mailMode = 'all' }   # cc-P479: which emails go out (all, briefs, off)
 
 function ConvertFrom-AutopilotTime {
@@ -4983,7 +4992,27 @@ function ConvertFrom-AutopilotSettings {
     $mm = ([string]$s.mailMode).Trim().ToLowerInvariant(); if ($mm -notin @('all', 'briefs', 'off')) { $mm = 'all' }
     [pscustomobject]@{ ProgressEmails = [bool]$s.progressEmails; MaxPerRun = [int]$s.maxPerRun; StallMinutes = [int]$s.stallMinutes; Source = $source; Marathon = $mar; MailMode = $mm
         AutoWake = [bool]$s.autoWake; NightShiftEnabled = [bool]$s.nightShiftEnabled; NightShiftStart = [string]$s.nightShiftStart; NightShiftEnd = [string]$s.nightShiftEnd
+        GamePause = [bool]$s.gamePause   # cc-P819
         DayWeekAheadPct = [double]$s.dayWeekAheadPct; WeekReservePct = [double]$s.weekReservePct; PlanUsageMaxAgeHours = [double]$s.planUsageMaxAgeHours }
+}
+
+# cc-P819: the web console's game pause line: the switch, the game PC, what is played now (GamePause.ps1's check, our
+# own UO clients left out) and every wait in progress (the kit's game-wait-<who>.json: the night bots, a Golem). Never
+# throws: a kit without GamePause.ps1 gives the switch alone.
+function Get-GamePauseDocument([bool]$On, [string]$Root = 'D:\UO\golem') {
+    $doc = [ordered]@{ on = $On; applies = $false; pc = ''; playing = $false; game = ''; line = ''; waits = @() }
+    try {
+        $lib = Join-Path $Root 'GamePause.ps1'
+        if (Test-Path -LiteralPath $lib) {
+            if (-not (Get-Command Get-GamePauseState -ErrorAction SilentlyContinue)) { . $lib }
+            $st = Get-GamePauseState -Root $Root
+            $doc.applies = [bool]$st.Applies; $doc.pc = [string]$st.Pc; $doc.playing = [bool]($st.Applies -and $st.Running); $doc.game = [string]$st.Game; $doc.line = [string]$st.Why
+        }
+        $doc.waits = @(Get-ChildItem -LiteralPath $Root -Filter 'game-wait-*.json' -File -ErrorAction SilentlyContinue | ForEach-Object {
+            try { $w = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json; [ordered]@{ who = [string]$w.who; what = [string]$w.what; line = [string]$w.line; since = [string]$w.since; until = [string]$w.until } } catch { }
+        } | Where-Object { $_ })
+    } catch { $doc.line = 'the game check failed: ' + $_.Exception.Message }
+    $doc
 }
 
 function Format-ShortAge {
@@ -5894,6 +5923,7 @@ function Get-WebActionPlan {
             'notWinding' { $wind -ne $val }
             'nightShift' { [bool]$gs.NightShiftEnabled -eq ($val -eq 'on') }
             'autoWake'   { [bool]$gs.AutoWake -eq ($val -eq 'on') }
+            'gamePause'  { [bool]$gs.GamePause -eq ($val -eq 'on') }   # cc-P819
             'marathonNot' { [string]$gs.Marathon -ne $val }   # cc-P200
             'runNext'    { [bool][string]$f.RunNext }
             'mergePaused' { (Test-MergePaused $Config $f.SettingsText) -eq ($val -eq 'on') }   # cc-P208
@@ -5905,6 +5935,7 @@ function Get-WebActionPlan {
                 'notWinding' { $(if ($val -eq 'after-current') { 'wrap up is already set: the button is Cancel wrap up now' } else { 'a stopping point is already asked: the button is Cancel stopping point now' }) }
                 'nightShift' { 'the night shift is ' + $(if ($gs.NightShiftEnabled) { 'already on' } else { 'already off' }) }
                 'autoWake'   { 'self-wake is ' + $(if ($gs.AutoWake) { 'already on' } else { 'already off' }) }
+                'gamePause'  { 'the game pause is ' + $(if ($gs.GamePause) { 'already on' } else { 'already off' }) }
                 'marathonNot' { 'marathon is already ' + $val }
                 'runNext'    { 'nothing is picked to go next' }
                 'mergePaused' { 'merging is ' + $(if ($val -eq 'on') { 'not paused' } else { 'already paused' }) }
@@ -6067,7 +6098,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff', 'golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume', 'golem.lanenow', 'golem.answer', 'golem.skipday') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.gamepause', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff', 'golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume', 'golem.lanenow', 'golem.answer', 'golem.skipday') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -6172,6 +6203,18 @@ function Get-AutopilotPlan {
                         $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.AutoWakeScript + @('-On')) -Text 'In a window of its own, which stays open.'))
                     }
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.autowake'))
+                }
+                'golem.gamepause' {
+                    # cc-P819: the switch says what it would do next, as self-wake does.
+                    if (-not (& $need $ap.GamePauseScript 'Set-GamePause.ps1')) { break }
+                    if ($gset.GamePause) {
+                        $steps.Add((New-PlanStep -Kind say -Text 'Game pause off: the overnight play tests, the Play Test Goblin and the Golems'' proof shots and bot runs will run on the game PC whatever is being played.'))
+                        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.GamePauseScript + @('-Off')) -Text 'In a window of its own, which stays open.'))
+                    } else {
+                        $steps.Add((New-PlanStep -Kind say -Text 'Game pause on: while Chase plays another game on the game PC, bot play testing waits (the night bots up to 06:30, then they skip the night); builds, tests and code go on.'))
+                        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.GamePauseScript + @('-On')) -Text 'In a window of its own, which stays open.'))
+                    }
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.gamepause'))
                 }
                 'golem.nightshift' {
                     if (-not (& $need $ap.NightShiftScript 'Set-NightShift.ps1')) { break }
@@ -10197,6 +10240,7 @@ function Update-GolemRunControls {
     $gs = $View.Settings
     foreach ($b in @($script:ui.GolemWakeButtons)) {
         if ($b.Tag -eq 'golem.autowake') { $b.Text = $(if ($gs -and -not $gs.AutoWake) { 'Self-wake: off (turn on)' } else { 'Self-wake: on (turn off)' }) }
+        if ($b.Tag -eq 'golem.gamepause') { $b.Text = $(if ($gs -and -not $gs.GamePause) { 'Game pause: off (turn on)' } else { 'Game pause: on (turn off)' }) }   # cc-P819
         if ($b.Tag -eq 'golem.nightshift') { $b.Text = $(if ($gs -and -not $gs.NightShiftEnabled) { 'Night shift: off (turn on)' } else { 'Night shift: on (turn off)' }) }
         # cc-P200: the mode and whether marathon is on now; Set writes the pick beside it.
         if ($b.Tag -eq 'golem.marathon') { $mon = ($View.Status -and $View.Status.Marathon -and [bool]$View.Status.Marathon.on); $b.Text = 'Marathon: ' + $(if ($gs) { $gs.Marathon } else { 'auto' }) + $(if ($mon) { ', ON' } else { '' }) + ' (set)' }
@@ -10324,6 +10368,8 @@ function ConvertTo-ConsoleStatusDocument {
             queueRows = @(Get-QueueRows -QueueInfo @($v.QueueInfo) -Current $v.CurrentPrompt -RunNext $(if ($v.PSObject.Properties.Name -contains 'RunNext') { [string]$v.RunNext } else { '' }) | ForEach-Object { [ordered]@{ number = $_.Number; label = $_.Label; mark = $_.Mark; note = $_.Note; grey = $_.Grey; title = $_.Title; model = $_.Model; size = $_.Size; name = $_.Name; cont = $_.Cont } })
             finished = @(@($v.Finished) | ForEach-Object { [ordered]@{ number = [int]$_.Number; result = [string]$_.Result; time = (& $iso $_.Time); title = [string]$_.Title; headline = [string]$_.Headline } })
             autoWake = [bool]$v.Settings.AutoWake
+            # cc-P819: the game pause's switch, what is played now and who is waiting (game-wait-<who>.json in the kit).
+            gamePause = (Get-GamePauseDocument -On ([bool]$v.Settings.GamePause))
             nightShift = [ordered]@{ enabled = [bool]$v.Settings.NightShiftEnabled; start = [string]$v.Settings.NightShiftStart; end = [string]$v.Settings.NightShiftEnd }
             # cc-P200: the week's projection and marathon mode, for the web console's Golem page.
             projection = $(if ($s -and $s.Projection) { [ordered]@{ known = [bool]$s.Projection.known; text = [string]$s.Projection.text; resetAdvice = [string]$s.Projection.resetAdvice; target = $s.Projection.target

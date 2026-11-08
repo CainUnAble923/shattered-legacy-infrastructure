@@ -5820,7 +5820,7 @@ function New-P131Facts {
         SettingsText = $SettingsText; QueueNames = $Queue; Extra = ([pscustomobject]@{ PromptTexts = @{ 'cc-P126-a.md' = $p131Prompt }; TreeClean = $null })
         CliCheck = $CliCheck; WakeModel = $WakeModel; NightStart = $NightStart; NightEnd = $NightEnd; OpenFile = '' }
     $ap = $p125Cfg.Autopilot
-    foreach ($s in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript)) { if ($s) { $f.Present[$s] = $true } }
+    foreach ($s in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.GamePauseScript, $ap.NightShiftScript, $ap.CliCheckScript)) { if ($s) { $f.Present[$s] = $true } }   # cc-P819: GamePauseScript
     $f
 }
 function Get-P131Window($plan) { $w = @($plan | Where-Object { $_.Kind -eq 'window' }); if ($w.Count) { Format-CommandLine $w[0].Exe $w[0].Arguments } else { '' } }
@@ -5988,7 +5988,7 @@ Fact 'P131_TheGolemTabHasTheWakeRowAndTheToggleLabelsFollowTheSettings' {
     $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tags = @($script:ui.GolemWakeButtons | ForEach-Object { $_.Tag })
-        Assert-Equal 'golem.resume,golem.autowake,golem.nightshift,golem.marathon,golem.clicheck' ($tags -join ',') 'the wake row, in order (cc-P200: Marathon after the night shift)'
+        Assert-Equal 'golem.resume,golem.autowake,golem.gamepause,golem.nightshift,golem.marathon,golem.clicheck' ($tags -join ',') 'the wake row, in order (cc-P200: Marathon after the night shift; cc-P819: the game pause after self-wake)'
         Assert-Equal 'golem.longrun,golem.endlongrun,golem.wrapup,golem.stoppoint' (@($script:ui.GolemRunButtons | ForEach-Object { $_.Tag }) -join ',') 'the cc-P125 run row is unchanged'
         Assert-True ($null -ne $script:ui.GolemModel -and ((@($script:ui.GolemModel.Items) | Select-Object -Skip 1) -join ',') -eq 'Fable,Opus' -and [string]$script:ui.GolemModel.Items[0] -like 'Auto*') 'the model picker: Auto (cc-P153), Fable, Opus'
         Assert-True ($null -ne $script:ui.NightStart -and $null -ne $script:ui.NightEnd) 'the night shift''s two boxes'
@@ -6012,6 +6012,50 @@ Fact 'P131_TheGolemTabHasTheWakeRowAndTheToggleLabelsFollowTheSettings' {
         $labels = @{}; foreach ($b in @($script:ui.GolemWakeButtons)) { $labels[[string]$b.Tag] = $b.Text }
         Assert-Equal 'Self-wake: on (turn off)' $labels['golem.autowake']
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
+# --- cc-P819: the game pause's switch (settings.json gamePause) and its line on the web console ------------------------
+
+Fact 'P819_TheGamePauseSwitchRunsItsScriptWithExactArgumentsAndIsOnByDefault' {
+    $onSet = '{ "autoWake": true }'      # no gamePause key: the default, on
+    $offSet = '{ "autoWake": true, "gamePause": false }'
+    Assert-True ([bool](ConvertFrom-AutopilotSettings $onSet).GamePause) 'with no key the game pause is on'
+    Assert-True (-not (ConvertFrom-AutopilotSettings $offSet).GamePause) 'gamePause false reads as off'
+    $a = @(Get-ActionPlan -Action 'golem.gamepause' -Config $p125Cfg -AutopilotFacts (New-P131Facts -SettingsText $onSet))
+    Assert-True ((Get-P131Window $a).EndsWith('Set-GamePause.ps1 -Off') -and @($a | Where-Object { $_.Kind -eq 'confirm' }).Count -eq 0) ('on -> off: ' + (Get-P131Window $a))
+    $a2 = @(Get-ActionPlan -Action 'golem.gamepause' -Config $p125Cfg -AutopilotFacts (New-P131Facts -SettingsText $offSet))
+    Assert-True ((Get-P131Window $a2).EndsWith('Set-GamePause.ps1 -On')) ('off -> on: ' + (Get-P131Window $a2))
+    foreach ($pl in @($a, $a2)) { Assert-Equal 0 @(Test-PlanSafety $pl $p125Cfg).Count (@(Test-PlanSafety $pl $p125Cfg) -join '; ') }
+    $tips = Get-ConsoleTooltips
+    Assert-True ($tips.Contains('golem.gamepause') -and $tips['golem.gamepause'] -match 'another game') 'a tooltip for the game pause'
+}
+
+Fact 'P819_TheWebButtonsAreTheSwitchEachShownInTheOtherState' {
+    $acts = @((Get-Content -LiteralPath (Join-Path $repo 'web-console\golem-actions.json') -Raw | ConvertFrom-Json).actions | Where-Object { $_.action -eq 'golem.gamepause' })
+    Assert-Equal 'gamepause-on,gamepause-off' (@($acts | ForEach-Object { $_.key }) -join ',')
+    Assert-Equal 'gamePause:off,gamePause:on' (@($acts | ForEach-Object { $_.when }) -join ',') 'Game pause on shows while it is off, and off while on'
+    Assert-Equal 'game pause on,game pause off' (@($acts | ForEach-Object { $_.word }) -join ',')
+}
+
+Fact 'P819_TheStatusShowsTheSwitchTheGameAndEveryWait' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('p819-sc-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+    New-Item -ItemType Directory -Path $root | Out-Null
+    try {
+        # a kit without GamePause.ps1 (an older kit): the switch alone, no wait
+        $d = Get-GamePauseDocument -On $true -Root $root
+        Assert-True ($d.on -and -not $d.applies -and -not $d.playing -and @($d.waits).Count -eq 0) 'an older kit: the switch alone'
+        $w = [ordered]@{ who = 'overnight'; what = 'the overnight play tests'; game = 'eldenring'; line = 'waiting: Chase is playing eldenring'; since = '2026-11-08T01:00:00'; until = '2026-11-08T06:30:00'; checkedAt = '2026-11-08T01:10:00' }
+        [IO.File]::WriteAllText((Join-Path $root 'game-wait-overnight.json'), ($w | ConvertTo-Json -Compress))
+        $d = Get-GamePauseDocument -On $false -Root $root
+        Assert-True (-not $d.on) 'the switch off'
+        Assert-Equal 1 @($d.waits).Count 'one wait'
+        Assert-Equal 'waiting: Chase is playing eldenring' ([string]@($d.waits)[0].line)
+        Assert-Equal 'overnight' ([string]@($d.waits)[0].who)
+        if (Test-Path -LiteralPath 'D:\UO\golem\GamePause.ps1') {
+            $live = Get-GamePauseDocument -On $true
+            Assert-True ($live.line -and $live.pc) ('the installed kit gives a line and the game PC: ' + $live.line)
+        }
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 # --- cc-P132: resizing, the Enhanced look, art slots, readable text, the rebuild and package lights ------------------------

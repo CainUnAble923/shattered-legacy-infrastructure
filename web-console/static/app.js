@@ -159,6 +159,14 @@
     return li;
   }
 
+  // cc-P819: the game pause's switch and what is played on the game PC now.
+  function gamePauseLine(gp) {
+    if (!gp) return 'Game pause: on.';
+    if (gp.on === false) return 'Game pause: off (bot play testing runs whatever is being played).';
+    if (!gp.applies) return 'Game pause: on' + (gp.line ? ' (' + gp.line + ')' : '') + '.';
+    return 'Game pause: on, ' + (gp.playing ? gp.line + ': bot play testing waits' : 'no game running') + '.';
+  }
+
   function golemState(g) {
     var lines = [];
     if (!g) return ['The Golem has not been read yet.'];
@@ -170,6 +178,10 @@
     if (g.stoppedPrompt) lines.push('Stopped prompt: ' + g.stoppedPrompt);
     var ns = g.nightShift || {};
     lines.push('Night shift: ' + (ns.enabled ? 'on, ' + ns.start + ' to ' + ns.end : 'off') + '. Self-wake: ' + (g.autoWake ? 'on' : 'off') + '.');
+    lines.push(gamePauseLine(g.gamePause));
+    ((g.gamePause && g.gamePause.waits) || []).forEach(function (w) {   // cc-P819: each bot or Golem waiting for a game to close
+      lines.push((w.who || 'a bot') + ': ' + (w.line || 'waiting') + (w.what ? ' (' + w.what + ' waits' + (w.until ? ' until ' + when(w.until) : '') + ')' : '') + '.');
+    });
     // cc-P200: where the week lands at its reset at this rate, the free reset advice, and marathon mode.
     // cc-P274: the text names both weeks itself ("week 71%, Fable 98%: on track for ..."), and the Fable warning.
     if (g.projection && g.projection.text) lines.push('Projection: ' + g.projection.text + '.');
@@ -637,6 +649,7 @@
     if (kind === 'notWinding') return !g || g.winding !== val;
     if (kind === 'nightShift') return !!(g && g.nightShift && g.nightShift.enabled) === (val === 'on');
     if (kind === 'autoWake') return !!(g && g.autoWake) === (val === 'on');
+    if (kind === 'gamePause') return !!(g && (!g.gamePause || g.gamePause.on !== false)) === (val === 'on');   // cc-P819: on unless set off
     if (kind === 'marathonNot') return !g || !g.marathon || g.marathon.mode !== val;   // cc-P200
     if (kind === 'runNext') return !!(g && g.runNext);
     if (kind === 'mergePaused') return !!(g && g.merge && g.merge.paused) === (val === 'on');   // cc-P208: g is Shadow Iron's card

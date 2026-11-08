@@ -30,6 +30,13 @@
   If any step throws (a build that fails, a shard that will not boot), the scratch shard is stopped if this run started
   it, the archive still runs, and an after email still goes out saying so, with the last 40 lines of run.log.
   Settings: overnight.json beside this script. -MailOutbox <dir> (tests) writes the mails there instead of sending.
+  cc-P819 (Chase 11-07: "pause bot play testing when im playing other games"): on a night with work, before anything is
+  built or started, it asks the Golem kit's game check (-GameCheck, D:\UO\golem\Test-GameRunning.ps1: a game running on
+  the game PC, our own UO clients left out, settings.json gamePause on). While a game runs it waits, looking again every
+  -GameIntervalSeconds (600), up to -NightEnd (06:30); still playing then, it skips the night with one line in
+  overnight.log and no email. The checks and the soak look again as they go (uobot.run --game-until): a game started
+  mid-run finishes the current step, closes the bot's clients and waits the same way. -NoGameWait runs whatever is
+  played. Each wait and resume goes into overnight.log and run.log.
   ASCII only.
 #>
 [CmdletBinding()]
@@ -50,7 +57,12 @@ param(
     [string]$Config,     # default: overnight.json beside this script ($PSScriptRoot is empty in a 5.1 param default)
     [string]$PlayTests,
     [string]$ArchiveDrive,
-    [string]$MailOutbox
+    [string]$MailOutbox,
+    # cc-P819: the game pause (see the top)
+    [string]$GameCheck = 'D:\UO\golem\Test-GameRunning.ps1',
+    [string]$NightEnd = '06:30',
+    [int]$GameIntervalSeconds = 600,
+    [switch]$NoGameWait
 )
 # Not 'Stop': in Windows PowerShell 5.1 a native command's stderr (docker's warnings) would become a terminating error.
 # Every native call's exit code is checked explicitly instead, and the script's own failures throw.
@@ -170,6 +182,24 @@ if (-not $work.run) {
     NightLine ('no work on ' + $work.short + ': every open item with a bot check has run on this code; nothing built, no email')
     Write-Host ('No work tonight on ' + $work.short + '. (-Force runs anyway.)')
     exit 0
+}
+
+# -- cc-P819: while Chase plays another game on the game PC, wait (up to -NightEnd); nothing is built or started before.
+$gameCheckOn = (-not $NoGameWait) -and $GameCheck -and (Test-Path -LiteralPath $GameCheck)
+if ($gameCheckOn) {
+    # Each line as it comes (the wait can last hours): overnight.log shows the wait while it is on.
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $GameCheck -Wait -Until $NightEnd -IntervalSeconds $GameIntervalSeconds `
+        -Who 'overnight' -What 'the overnight play tests' 2>&1 | ForEach-Object {
+            $l = Text $_
+            if ($l -match 'waiting|game|playing') { NightLine ('game pause: ' + ($l -replace '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} ', '')) }
+            Write-Host $l
+        }
+    $gwExit = $LASTEXITCODE
+    if ($gwExit -eq 1) {
+        NightLine ('skipped on ' + $work.short + ': a game was running until ' + $NightEnd + '; nothing built, no email')
+        Write-Host ('Skipped tonight: a game was running until ' + $NightEnd + '.')
+        exit 0
+    }
 }
 
 $stamp = (Get-Date).ToString('yyyy-MM-dd-HHmm')
@@ -313,6 +343,9 @@ try {
 
     # -- 5. the checks and the soak
     $runArgs = @('-B', '-m', 'uobot.run', '--secrets', $secrets, '--out', $runDir, '--runs', $Runs, '--container', $container)
+    # cc-P819: the checks and the soak look for a game as they go, and wait up to the night's end ('none': no look)
+    if ($gameCheckOn) { $runArgs += @('--game-check', $GameCheck, '--game-until', $NightEnd, '--game-interval', [string]$GameIntervalSeconds) }
+    else { $runArgs += @('--game-check', 'none') }
     if ($Only) { $runArgs += @('--only', ($Only -join ',')) }
     if (-not $SkipSoak) { $runArgs += @('--soak-minutes', $SoakMinutes) }
     Say ('== running the checks' + $(if ($SkipSoak) { '' } else { ' and the soak' })) 'Cyan'

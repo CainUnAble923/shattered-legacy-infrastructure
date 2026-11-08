@@ -37,9 +37,12 @@ def _mb(text):
     return v / 1024 if m.group(2) == "KiB" else v * 1024 if m.group(2) == "GiB" else v
 
 
-def run(ctx, minutes):
+def run(ctx, minutes, game=None):
+    """game (cc-P819): a callable, asked every minute; a non-empty answer (Chase is playing another game) ends the soak
+    early: each actor finishes its step, the clients close, and the result says stoppedFor."""
     a = ctx.ensure_admin()
-    stop = time.time() + minutes * 60
+    deadline = [time.time() + minutes * 60]
+    stopped_for = ""
     events = {"walker_steps": 0, "miner_digs": 0, "miner_smelts": 0, "fighter_kills": 0, "fighter_swings": 0}
     errors = []
     actors = []
@@ -48,7 +51,7 @@ def run(ctx, minutes):
         c = ctx.fresh(race="human", female=False, label="walker")
         actors.append(c)
         i = 0
-        while time.time() < stop and c.closed is None:
+        while time.time() < deadline[0] and c.closed is None:
             events["walker_steps"] += c.walk(NEW_HAVEN_LOOP[i % len(NEW_HAVEN_LOOP)], 1, pause=0.3)
             i += 1
             if i % 50 == 0:
@@ -64,7 +67,7 @@ def run(ctx, minutes):
             pick = give(a, c, "Pickaxe")
             forge = place_forge(a, c)
         x, y, z = c.pos[:3]
-        while time.time() < stop and c.closed is None:
+        while time.time() < deadline[0] and c.closed is None:
             c.dclick(pick)
             if c.wait_target(5):
                 # Dig at the character's own feet: on a spot with no ore the server says so, which is fine for a soak.
@@ -92,7 +95,7 @@ def run(ctx, minutes):
         c.send(P.lift(blade, 1))
         c.sleep(0.4)
         c.send(P.equip(blade, 0, c.serial))
-        while time.time() < stop and c.closed is None:
+        while time.time() < deadline[0] and c.closed is None:
             with ctx.admin_lock:
                 near(a, c)
                 a.command("[add Mongbat", 0.2)
@@ -126,8 +129,15 @@ def run(ctx, minutes):
     loud = []
     last = time.strftime("%Y-%m-%dT%H:%M:%S")
     t0 = time.time()
-    while time.time() < stop:
-        time.sleep(60)
+    while time.time() < deadline[0]:
+        time.sleep(min(60, max(1, deadline[0] - time.time())))
+        if game is not None:
+            line = game()
+            if line:
+                stopped_for = line
+                ctx.tr.write("soak", "minute %d: %s: the soak stops here" % (round((time.time() - t0) / 60), line))
+                deadline[0] = 0
+                break
         mem = _mem(ctx.container)
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
         logs = ctx.docker_logs_since(last)
@@ -150,6 +160,6 @@ def run(ctx, minutes):
     for c in actors:
         ctx.done(c)
     mems = [_mb(s["mem"]) for s in samples if _mb(s["mem"])]
-    return {"minutes": minutes, "samples": samples, "events": events, "errors": errors, "loud": loud[:200],
+    return {"minutes": minutes, "stoppedFor": stopped_for, "samples": samples, "events": events, "errors": errors, "loud": loud[:200],
             "loudCount": len(loud), "memStartMB": mems[0] if mems else None, "memEndMB": mems[-1] if mems else None,
             "memMaxMB": max(mems) if mems else None}
