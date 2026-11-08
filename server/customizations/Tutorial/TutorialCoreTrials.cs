@@ -278,12 +278,16 @@ public static class TutorialCoreTrials
         }
     }
 
+    /// <summary>cc-P802 item 7: the System window's few words for a lesson whose steps are in its window.</summary>
+    public static string EchoLine(TutorialStation station) => $"Lesson: {station.Title}. The steps are in the lesson window.";
+
     private static void Show(PlayerMobile pm, Trial trial)
     {
         Resupply(pm, trial);
         if (trial.Station.Key == "core.paperdoll") { TutorialCloakChest.EnsureFor(pm); } // cc-P718: a lost cloak comes back (cc-P728: in its chest)
-        ClusterFTutorial.SystemLine(pm, Hint(trial.Station.Key));
-        if (Tip(trial.Station.Key) is { } tip) { ClusterFTutorial.SystemLine(pm, tip); } // cc-P769 item 3
+        // cc-P802 item 7 (Chase 11-07: "it should all be gumps"): the hint and the tip are in the lesson window; the System
+        // window says where, in a few words.
+        ClusterFTutorial.SystemLine(pm, EchoLine(trial.Station));
         Point(pm, Destination(trial), ArrowLabel(trial));
         trial.ArrowAt = Destination(trial);
         pm.CloseGump<TutorialTrialGump>();

@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.07.9
+
+### Changed
+- Waking on the Wakening Isle is quiet now: one window tells you where you are, how to get up and that you are a young player, instead of a wall of System messages. The "Your skill in ... has increased by 30" lines for your starting skills are gone.
+- New Haven's lessons keep their teaching in the lesson window, which stays open until you close it: each step, each tour stop and the skills a lesson only explains.
+- The Runes lesson starts at New Haven's public moongate and gives you a blank rune, a Mark scroll and two Recall scrolls: mark your rune, recall to Rook's bench, then recall back. The scrolls always work in the lesson.
+- New Haven's lessons happen in fitting places: blacksmithing at the smithy, fishing off the docks pier, lumberjacking at the Woodsman's lodge, cooking in the Albatross kitchen, scribing in the library, thieving in the Thieves' Guild, and the other crafts in their shops.
+- Mysticism is taught in the Haven Magery School by Ilyra Moonwhisper, its elven adjunct instructor, and Necromancy at the necromancer's shrine at the north-east of town, where Morvain Ashgrave keeps the candles.
+
+### Fixed
+- The old tutorial farm west of New Haven is cleared from every world by itself.
+
 ## 2026.11.07.8
 
 ### Changed

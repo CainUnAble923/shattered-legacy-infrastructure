@@ -140,8 +140,8 @@ public class TutorialTradeTrialVerification : IDisposable
 
     [Theory]
     [InlineData("gathering.mining", SkillName.Mining, typeof(Pickaxe), 0)] // cc-P743: the cave's own floor, no vein
-    [InlineData("gathering.lumberjacking", SkillName.Lumberjacking, typeof(Hatchet), 2)]
-    [InlineData("gathering.fishing", SkillName.Fishing, typeof(FishingPole), 4)]
+    [InlineData("gathering.lumberjacking", SkillName.Lumberjacking, typeof(Hatchet), 0)] // cc-P802: the lodge's own oak
+    [InlineData("gathering.fishing", SkillName.Fishing, typeof(FishingPole), 0)] // cc-P802: the water off the pier
     [InlineData("gathering.camping", SkillName.Camping, typeof(Kindling), 1)] // cc-P804: the wild garlic
     public void AHarvestFinishesGatheringAndTheToolAndPropsGoBack(string key, SkillName skill, Type tool, int props)
     {
@@ -188,7 +188,7 @@ public class TutorialTradeTrialVerification : IDisposable
     [InlineData("crafting.cartography", typeof(LocalMap), null)]
     public void AProductInTheBackpackFinishesACraftAndIsKept(string key, Type product, SkillName? covered)
     {
-        using var p = new Player(TutorialWingTrials.TradesYard);
+        using var p = new Player(TutorialWingTrials.Trade(key)!.Place); // cc-P802: each craft in its own building
         var trial = Begin(p, key);
         var loaners = trial.Loaners.ToList();
         Assert.True(loaners.Count >= 2); // a tool and its materials
@@ -225,7 +225,7 @@ public class TutorialTradeTrialVerification : IDisposable
     [Fact]
     public void ProductsAlreadyInTheBackpackDoNotCount()
     {
-        using var p = new Player(TutorialWingTrials.TradesYard);
+        using var p = new Player(TutorialWingTrials.Trade("crafting.fletching")!.Place);
         p.Pm.AddToBackpack(new Kindling(4)); // the trainee's own kindling, before the lesson
         var trial = Begin(p, "crafting.fletching");
         Tick();
@@ -286,7 +286,7 @@ public class TutorialTradeTrialVerification : IDisposable
     [Fact]
     public void TheTenThiefSkillsFinishThievingAndTheHidingBaseComesBack()
     {
-        using var p = new Player(TutorialWingTrials.TradesYard);
+        using var p = new Player(TutorialWingTrials.Trade("thieving.trial")!.Place);
         p.Pm.Skills[SkillName.Hiding].Base = 12.0;
         var trial = Begin(p, "thieving.trial");
         var loaners = trial.Loaners.ToList();
@@ -330,7 +330,6 @@ public class TutorialTradeTrialVerification : IDisposable
 
     [Theory]
     [InlineData("housing.basics")]
-    [InlineData("travel.wing")]
     [InlineData("reputation.wing")]
     [InlineData("shard.systems")]
     public void ATourCountsItsStopsInOrderAndFinishesAtTheLast(string key)
@@ -362,7 +361,7 @@ public class TutorialTradeTrialVerification : IDisposable
     [Fact]
     public void GoingFarFromNewHavenStopsATourAndLeavingTheYardStopsATrade()
     {
-        using var p = new Player(TutorialWingTrials.TourCentre);
+        using var p = new Player(new Point2D(HavenSpots.PublicMoongate.X, HavenSpots.PublicMoongate.Y)); // cc-P802: the travel lesson arms at the moongate (reach 160 like a tour)
         Begin(p, "travel.wing");
         // 200 tiles south: past the tour's reach (160) and still on the island, which the island gate keeps a trainee on
         // (cc-P678: 200 east of the new centre is off the island)
@@ -416,7 +415,7 @@ public class TutorialTradeTrialVerification : IDisposable
         TutorialWingTrials.Said = (_, line) => said.Add(line);
         try
         {
-            using var p = new Player(TutorialWingTrials.TradesYard);
+            using var p = new Player(TutorialWingTrials.Trade("crafting.tinkering")!.Place);
             var trial = Begin(p, "crafting.tinkering");
             Assert.Contains("Item Identification skill", TutorialWingTrials.Hint("crafting.tinkering"));
             Assert.Contains("double-click the curio", TutorialWingTrials.Hint("crafting.tinkering"));

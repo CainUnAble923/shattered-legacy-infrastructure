@@ -294,6 +294,14 @@ public static partial class CharacterCreation
                 GiveProfessionItems(newChar, profession?.Name, args.ShirtHue, args.PantsHue);
             }
 
+            // cc-P802 item 7: the shard's skill caps now, while no client is attached, so the first login's pass changes
+            // nothing: each cap that changed there sent a single-skill update, and TazUO printed "Your skill in ... has
+            // increased by 30.0" for every starting skill.
+            if (newChar is PlayerMobile capped)
+            {
+                ClusterFSkillCaps.ApplyTo(capped);
+            }
+
             if (race.ValidateHair(newChar, args.HairID))
             {
                 newChar.HairItemID = args.HairID;

@@ -152,7 +152,7 @@ public static class TutorialWake
         pm.CheckLightLevels(true);
         HoldPose(pm, lie);
         pm.NetState.SendSoundEffect(WaveSound, pm.Location);
-        ClusterFTutorial.SystemLine(pm, LyingLine);
+        TutorialWelcome.Lying(pm); // cc-P802 item 7: the wake text and how to get up in a window, not the System window
         Timer.StartTimer(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), () => Tick(pm, lie), out lie.Timer);
         return true;
     }
@@ -213,8 +213,7 @@ public static class TutorialWake
 
         if (s == HintSeconds)
         {
-            ClusterFTutorial.SystemLine(pm, MoveHintLine);
-            Overhead(pm, lie, MoveHintLine);
+            Overhead(pm, lie, MoveHintLine); // cc-P802 item 7: the window says it; over the head only
         }
         else if (s > HintSeconds && (s - HintSeconds) % HintEverySeconds == 0)
         {
