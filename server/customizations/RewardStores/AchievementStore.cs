@@ -155,6 +155,16 @@ public static class AchievementStock
             Condition = _ => HornOfPlenty.IsHarvestMonth(HornOfPlenty.Clock()),
             ConditionText = "Sold in November only"
         };
+
+        // cc-P858: the lamps that really light (Items/Lights/ShardLamps.cs), housing decor; the jack-o-lantern is the
+        // Festival's (Halloween stock).
+        foreach (var (key, label, art, make) in ShardLampStock.All)
+        {
+            if (key != ShardLampStock.HalloweenKey)
+            {
+                yield return new RewardStoreRow($"ap.lamp.{key}", $"Lamp: {label}", 75, 200, art, 0, RewardStore.One(() => make()));
+            }
+        }
     }
 
     /// <summary>A plaque engraved with the buyer's name and AP total when bought.</summary>
