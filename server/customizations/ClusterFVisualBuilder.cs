@@ -302,6 +302,9 @@ public static class ClusterFVisualBuilder
             }
         }
 
+        // cc-P861: a statify's addon back where it stood (its statics went with step.Placed above).
+        n += AddonStatify.Restore(step);
+
         foreach (var h in step.Rehued)
         {
             if (World.FindItem(h.Serial) is { Deleted: false } item)
@@ -411,8 +414,8 @@ public static class ClusterFVisualBuilder
 
     // -- the command -----------------------------------------------------------------------------------------------
 
-    [Usage("VBuild [status | undo | nudge <dx> <dy> [dz] | world on | world off | forget | capture <name> [build|world]]")]
-    [Description("cc-P100: opens the Visual Builder palette (after Kamras): search tile data, then paint, fill a box (20 x 20 at most), erase, wipe a box (50 x 50), hue and nudge, as plain statics. Erase and wipe record what they delete, so undo puts it back; the undo history is saved with the world. World mode, which lets erase and wipe touch statics the builder did not place, is Administrator only and off by default. cc-P812: capture <name> [build|world] targets two corners and writes the pieces in the box as decoration data ([Decorate text) for a seed or [PlaceBuild; it places and deletes nothing.")]
+    [Usage("VBuild [status | undo | nudge <dx> <dy> [dz] | world on | world off | forget | capture <name> [build|world] | statify]")]
+    [Description("cc-P100: opens the Visual Builder palette (after Kamras): search tile data, then paint, fill a box (20 x 20 at most), erase, wipe a box (50 x 50), hue and nudge, as plain statics. Erase and wipe record what they delete, so undo puts it back; the undo history is saved with the world. World mode, which lets erase and wipe touch statics the builder did not place, is Administrator only and off by default. cc-P812: capture <name> [build|world] targets two corners and writes the pieces in the box as decoration data ([Decorate text) for a seed or [PlaceBuild; it places and deletes nothing. cc-P861: statify targets an addon and freezes it into plain statics where it stood (art, hue, name, light), one undo step that puts the addon back; it refuses an addon in a house or one a seeder keeps.")]
     [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "status",
         Summary = "Opens the staff art palette. Opening it places nothing; what you paint, fill or wipe with it is one undo step each.")]
     private static void OnCommand(CommandEventArgs e)
@@ -483,15 +486,27 @@ public static class ClusterFVisualBuilder
                     DecorCapture.Begin(from, e.GetString(1), !world);
                     return;
                 }
+            case "statify":
+                {
+                    // cc-P861: freeze a placed addon into plain statics (StaffBuildTools/AddonStatify.cs).
+                    AddonStatify.Begin(from);
+                    return;
+                }
             case "forget":
                 {
+                    // cc-P861: nothing is left to undo, so the addons statify parked are deleted for good.
+                    foreach (var t in s.Steps)
+                    {
+                        AddonStatify.Discard(t);
+                    }
+
                     _sessions.Remove(from.Serial);
                     from.SendMessage(0x43, "Forgot your builder session: nothing left to undo. What you placed stays in the world.");
                     return;
                 }
             default:
                 {
-                    from.SendMessage(0x22, "Usage: [VBuild [status | undo | nudge <dx> <dy> [dz] | world on | world off | forget | capture <name> [build|world]]");
+                    from.SendMessage(0x22, "Usage: [VBuild [status | undo | nudge <dx> <dy> [dz] | world on | world off | forget | capture <name> [build|world] | statify]");
                     return;
                 }
         }
@@ -552,6 +567,8 @@ public sealed class ClusterFBuilderSession
         Steps.Add(step);
         if (Steps.Count > ClusterFVisualBuilder.MaxUndo)
         {
+            // cc-P861: a statify step that falls off the history can no longer be undone: its parked addon goes.
+            AddonStatify.Discard(Steps[0]);
             Steps.RemoveAt(0);
         }
     }
@@ -606,6 +623,9 @@ public sealed class ClusterFBuilderStep
     public List<ClusterFBuilderRecord> Removed { get; } = new();
     public List<ClusterFBuilderMove> Moved { get; } = new();
     public List<ClusterFBuilderHue> Rehued { get; } = new();
+
+    // cc-P861: addons [VBuild statify parked on the internal map; undo brings them back, a dropped step deletes them.
+    public List<ClusterFBuilderStash> Stashed { get; } = new();
 }
 
 /// <summary>What erase or wipe deleted, recorded before the delete: enough to put a Static back exactly.</summary>
@@ -616,6 +636,9 @@ public sealed record ClusterFBuilderMove(Serial Serial, Point3D From);
 
 public sealed record ClusterFBuilderHue(Serial Serial, int Hue);
 
+/// <summary>cc-P861: an addon statify parked on the internal map, and where it stood.</summary>
+public sealed record ClusterFBuilderStash(Serial Serial, Point3D From, int MapIndex);
+
 /// <summary>
 /// cc-P100: the builder's sessions, saved with the world through pinned's GenericPersistence
 /// (Server/Serialization/GenericPersistence.cs), so undo survives a restart and always matches the save it was loaded
@@ -625,7 +648,8 @@ public sealed record ClusterFBuilderHue(Serial Serial, int Hue);
 /// </summary>
 public class ClusterFVisualBuilderStore : GenericPersistence
 {
-    public const int CurrentVersion = 0;
+    // 1 (cc-P861): each step also saves the addons statify parked. A version 0 save reads with none.
+    public const int CurrentVersion = 1;
 
     private static ClusterFVisualBuilderStore _instance;
 
@@ -697,6 +721,14 @@ public class ClusterFVisualBuilderStore : GenericPersistence
                     w.Write(h.Serial);
                     w.WriteEncodedInt(h.Hue);
                 }
+
+                w.WriteEncodedInt(t.Stashed.Count);
+                foreach (var a in t.Stashed)
+                {
+                    w.Write(a.Serial);
+                    w.Write(a.From);
+                    w.WriteEncodedInt(a.MapIndex);
+                }
             }
         }
     }
@@ -751,6 +783,15 @@ public class ClusterFVisualBuilderStore : GenericPersistence
                 for (var k = 0; k < c; k++)
                 {
                     t.Rehued.Add(new ClusterFBuilderHue(r.ReadSerial(), r.ReadEncodedInt()));
+                }
+
+                if (version >= 1)
+                {
+                    c = r.ReadEncodedInt();
+                    for (var k = 0; k < c; k++)
+                    {
+                        t.Stashed.Add(new ClusterFBuilderStash(r.ReadSerial(), r.ReadPoint3D(), r.ReadEncodedInt()));
+                    }
                 }
 
                 s.Steps.Add(t);

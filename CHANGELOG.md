@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.10.7
+
+### Added
+- New Haven's townsfolk no longer share a name: when two people in the same town have the same name, the newer one takes a new name. More names for gargoyles, elves, druids, paladins, gladiators, juka and meer, after the name lists by Sirenix.
+
+### Staff
+- [VBuild statify freezes a placed addon into plain statics where it stood, keeping its look; [VBuild undo puts the addon back. It refuses an addon in a house or one a seeder keeps. [ShardNames status and dedupe show the name lists and run the town rule. After the Addon Converter by The_Ice_Phoenyx_Rising.
+
 ## 2026.11.10.2
 
 ### Added
