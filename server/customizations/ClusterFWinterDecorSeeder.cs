@@ -17,6 +17,13 @@
 // skips a row whose key is already up: place twice places once, clear twice removes once, place after clear restores
 // the same set.
 //
+// cc-P856: the rows are the layout's (ClusterFWinterDecorLayout) and the winter set's (ClusterFWinterSetLayout: the
+// Christmas train, the snowman and Santa benches and the large snow globe; that file says where each stands), whose
+// layer "addon" makes a WinterSeasonAddon instead of a WinterDecor. A world whose decor is already
+// up when new rows arrive (a deploy in December) gets them at the next start: TopUp places the rows of the winter set
+// that are missing, only while the decor is up (the automatic check last put it up, it is the season, and some of it
+// stands), so a staff clear of the whole decor still stands.
+//
 // [ClusterFWinterDecor status | preview [area] | place [area] | clear [area] [dryrun]]   (up and down still work)
 //   preview lists what place would do (a dry run). An area is a row's area (bank, square, main road, inn, entrance,
 //   healer hall, field office, docks). place works before the dates, for the test shard, and says so. The same verbs
@@ -142,6 +149,15 @@ namespace Server
                     Console.WriteLine(line);
                 }
             };
+            // cc-P856: after the load (items made inside World.Load reach World.Items only after it), the winter set's
+            // missing rows while the decor is up.
+            EventSink.WorldLoad += () => Timer.DelayCall(TimeSpan.Zero, () =>
+            {
+                foreach (var line in TopUp())
+                {
+                    Console.WriteLine(line);
+                }
+            });
         }
 
         /// <summary>The command verbs, shared by the in-game command and the console command. args: [verb] [area] [dryrun].</summary>
@@ -180,20 +196,24 @@ namespace Server
             }
         }
 
-        public static IEnumerable<string> Areas() => ClusterFWinterDecorLayout.Rows.Select(r => r.Area).Distinct();
+        /// <summary>cc-P856: every row the decor places: P678's layout, then the winter set's addons.</summary>
+        public static readonly ClusterFWinterDecorLayout.Row[] AllRows =
+            ClusterFWinterDecorLayout.Rows.Concat(ClusterFWinterSetLayout.Rows).ToArray();
+
+        public static IEnumerable<string> Areas() => AllRows.Select(r => r.Area).Distinct();
 
         /// <summary>The rows of one area, or all of them.</summary>
         public static IEnumerable<ClusterFWinterDecorLayout.Row> Rows(string filter) =>
             string.IsNullOrWhiteSpace(filter)
-                ? ClusterFWinterDecorLayout.Rows
-                : ClusterFWinterDecorLayout.Rows.Where(r => r.Area.Equals(filter, StringComparison.OrdinalIgnoreCase));
+                ? AllRows
+                : AllRows.Where(r => r.Area.Equals(filter, StringComparison.OrdinalIgnoreCase));
 
         public static bool KnownFilter(string filter) => string.IsNullOrWhiteSpace(filter) || Rows(filter).Any();
 
         private static HashSet<Serial> Tracked => ClusterFSeasonalState.Placed(SeasonName);
 
         private static string AreaOf(Item item) =>
-            item is IWinterDecorItem w ? ClusterFWinterDecorLayout.Rows.FirstOrDefault(r => r.Key == w.Key)?.Area ?? "" : "";
+            item is IWinterDecorItem w ? AllRows.FirstOrDefault(r => r.Key == w.Key)?.Area ?? "" : "";
 
         /// <summary>The items placed and remembered by serial, resolved; stale serials (no such item any more) are dropped.</summary>
         public static List<Item> Placed()
@@ -225,7 +245,47 @@ namespace Server
             World.Items.Values.Where(i => i is IWinterDecorItem && !i.Deleted && !Tracked.Contains(i.Serial)).ToList();
 
         public static Item Make(ClusterFWinterDecorLayout.Row row) =>
-            row.Layer == CalendarLayer ? new WinterAdventCalendar(row) : new WinterDecor(row);
+            row.Layer switch
+            {
+                CalendarLayer => new WinterAdventCalendar(row),
+                ClusterFWinterSetLayout.AddonLayer => new WinterSeasonAddon(row),
+                _ => new WinterDecor(row)
+            };
+
+        /// <summary>
+        /// cc-P856: places the winter set's rows that are missing, only while the decor is up: the automatic check is on
+        /// and last put it up, it is the season, and at least one tracked piece stands. What it did, or nothing.
+        /// </summary>
+        public static List<string> TopUp()
+        {
+            var lines = new List<string>();
+            if (!Season.Automatic || Season.LastAutomatic != true || !Season.IsInSeason(Season.Clock()) || Placed().Count == 0)
+            {
+                return lines;
+            }
+
+            var have = new HashSet<string>(Placed().Concat(Strays()).Select(i => ((IWinterDecorItem)i).Key), StringComparer.Ordinal);
+            var placed = 0;
+            foreach (var row in ClusterFWinterSetLayout.Rows)
+            {
+                if (have.Contains(row.Key))
+                {
+                    continue;
+                }
+
+                var item = Make(row);
+                item.MoveToWorld(new Point3D(row.X, row.Y, row.Z), Facet);
+                Tracked.Add(item.Serial);
+                placed++;
+            }
+
+            if (placed > 0)
+            {
+                lines.Add($"[{Label}] the decor is up: placed {placed} new winter set piece(s) it did not have yet.");
+            }
+
+            return lines;
+        }
 
         public static List<string> Up(bool dryRun, string filter)
         {
@@ -302,10 +362,10 @@ namespace Server
             var lines = new List<string>
             {
                 $"[{Label}] local date {now:yyyy-MM-dd HH:mm} ({TimeZoneInfo.Local.Id}): {Season.SeasonText(now)}.",
-                $"[{Label}] up: {placed.Count} of {ClusterFWinterDecorLayout.Rows.Length} rows placed (by serial){(strays.Count > 0 ? $", plus {strays.Count} stray item(s) not in the saved list" : "")}.",
+                $"[{Label}] up: {placed.Count} of {AllRows.Length} rows placed (by serial){(strays.Count > 0 ? $", plus {strays.Count} stray item(s) not in the saved list" : "")}.",
                 $"[{Label}] {Season.AutomaticText()}"
             };
-            var byArea = placed.GroupBy(AreaOf).OrderBy(g => g.Key).Select(g => $"{g.Key} {g.Count()}/{ClusterFWinterDecorLayout.Rows.Count(r => r.Area == g.Key)}").ToList();
+            var byArea = placed.GroupBy(AreaOf).OrderBy(g => g.Key).Select(g => $"{g.Key} {g.Count()}/{AllRows.Count(r => r.Area == g.Key)}").ToList();
             if (byArea.Count > 0)
             {
                 lines.Add("  " + string.Join(", ", byArea));
@@ -315,7 +375,7 @@ namespace Server
         }
 
         [Usage("ClusterFWinterDecor [status|preview|place|clear] [area] [dryrun]")]
-        [Description("The New Haven winter decor (clusterf.seasonal.winter.start to .end, default December 1 to January 6). status says the date, the season and what is placed. preview lists what place would do. place puts up the rows not already placed, all areas or one (bank, square, main road, inn, entrance, healer hall, field office, docks); allowed outside the dates, for testing, and it says so. clear removes every item the seeder placed, by serial, and nothing else. dryrun lists and changes nothing. up and down still mean place and clear.")]
+        [Description("The New Haven winter decor (clusterf.seasonal.winter.start to .end, default December 1 to January 6). status says the date, the season and what is placed. preview lists what place would do. place puts up the rows not already placed, all areas or one (bank, square, main road, inn, entrance, healer hall, field office, docks, and the winter set's: park); allowed outside the dates, for testing, and it says so. clear removes every item the seeder placed, by serial, and nothing else. dryrun lists and changes nothing. up and down still mean place and clear.")]
         [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "preview", Summary = "Puts up (or clears) New Haven's winter decor: the square, the bank, the main roads, the inn, the halls and the docks. It goes up by itself on December 1 and comes down after January 6 (settings); 'place' early is for the test shard. clear removes only what it placed, by serial. Dry run: 'preview' or 'clear dryrun'.")]
         private static void OnCommand(CommandEventArgs e)
         {
