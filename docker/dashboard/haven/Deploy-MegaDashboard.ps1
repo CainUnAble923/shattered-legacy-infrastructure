@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
   cc-P110 (P89 H5, widened), finished by cc-P133: the one Homepage on Haven, the home intranet, Tailscale only.
 
@@ -138,7 +138,7 @@ function Wait-Http([string]$Url, [int]$Seconds = 120) {
     }
     $null
 }
-function Get-PcDashboardState { $s = ((& docker inspect -f '{{.State.Status}}' $PcDashboard 2>$null) | Out-String).Trim(); if ($s) { $s } else { 'none' } }
+function Get-PcDashboardState { $s = ''; try { $s = ((& docker ps -a --filter ('name=^' + $PcDashboard + '$') --format '{{.State}}' 2>$null) | Out-String).Trim() } catch { }; if ($s) { $s } else { 'none' } }
 function Confirm-Go([string]$Word) {
     if ($DryRun) { Say 'DRY RUN: stopping here; nothing was changed.' 'Yellow'; exit 0 }
     if ($Yes) { return }
