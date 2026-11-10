@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.10.8
+
+### Added
+- Battle Chess in the Haven inn's yard, just south of the inn's front doors: a board on a raised marble dais where two players move living pieces that walk to their squares and fight for every capture. Double-click the board, choose the pieces (Classic, Fantasy, Giants, Animals or Undead) and invite a player standing by it. Full chess rules: castling, en passant, promotion, check, checkmate and draws. Free to play: nothing is staked and nothing is won but your record of wins, losses and draws. After Battle Chess by Arya, kept up by dragon slayer2.
+
+### Staff
+- [BattleChess status shows the board and any game being played; [BattleChess end stops a game without a result; [BattleChess seed places the board if it is missing. Where it stands and how long players have to move are in Configuration/battle-chess.json ([BattleChess reload reads it again).
+
 ## 2026.11.10.7
 
 ### Added
