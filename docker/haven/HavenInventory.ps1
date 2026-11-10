@@ -45,7 +45,7 @@ function Read-HavenInventory {
         if ($keys.ContainsKey([string]$s.key)) { $problems.Add('duplicate key ' + $s.key) }
         $keys[[string]$s.key] = $s
         if (-not ($inv.hosts.PSObject.Properties.Name -contains [string]$s.host)) { $problems.Add($s.key + ': unknown host ' + $s.host) }
-        if (@('Shattered Legacy', 'Sunflower', 'home lab') -notcontains [string]$s.owner) { $problems.Add($s.key + ': owner must be Shattered Legacy, Sunflower or home lab') }
+        if (@('Shattered Legacy', 'Sunflower', 'home lab', 'Fleming IT') -notcontains [string]$s.owner) { $problems.Add($s.key + ': owner must be Shattered Legacy, Sunflower, home lab or Fleming IT') }
         foreach ($t in @($s.tiles)) { if ($sections -notcontains [string]$t.section) { $problems.Add($s.key + ': tile ' + $t.name + ' in unknown section ' + $t.section) } }
     }
     # dependsOn and neededBy are kept both ways so a reader of one entry sees both; they must mirror each other.

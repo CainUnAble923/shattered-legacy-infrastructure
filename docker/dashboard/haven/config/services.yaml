@@ -52,6 +52,12 @@
         widget:
           type: "spoolman"
           url: "http://192.168.1.61:7912"
+    - "Filament Watch":
+        icon: "mdi-tag-search"
+        href: "https://haven.tail81098d.ts.net:8443/"
+        description: "Filament prices and deals (Spindle) [Haven]"
+        server: "haven"
+        container: "spindle-web-1"
 - Monitoring:
     - Prometheus:
         icon: "prometheus"

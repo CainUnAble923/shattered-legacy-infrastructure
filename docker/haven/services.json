@@ -135,7 +135,8 @@
       "health": "http://192.168.1.61:8787/api/push",
       "dependsOn": [
         "sunflower-store",
-        "tailscale"
+        "tailscale",
+        "spindle-web"
       ],
       "neededBy": [],
       "backup": [
