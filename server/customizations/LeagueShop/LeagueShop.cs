@@ -159,7 +159,16 @@ public static class LeagueShop
         new("box.platinum", "System's Loot Box, Platinum", 1750, 800, LeagueShopKind.LootBox, BoxArt, 0,
             pm => [MakeBox(pm, BoxTier.Platinum)], boxable: false),
         // cc-P794: four of the ethereal looks, kind Mount like the reward mounts, so no box draws one.
-        .. EtherealLooks.ShopRows()
+        .. EtherealLooks.ShopRows(),
+        // cc-P855: the hunt row. The Hunt Master's tables (OSI hunting rewards; manwitch's buffet and formal dining
+        // tables) and Olórin's festival feasting tables, as data addon deeds (ShardDecorAddon): Renown is what the
+        // League hunts pay. Stock art; the authors are on the deeds. No box draws one.
+        new("hunt.buffet", "Hunt reward: Hunt Master's buffet table (deed)", 500, 400, LeagueShopKind.Decor, 0x14F0, 0,
+            One(_ => new ShardDecorDeed("buffet-table")), boxable: false),
+        new("hunt.formaldining", "Hunt reward: Hunt Master's formal dining table (deed)", 500, 400, LeagueShopKind.Decor,
+            0x14F0, 0, One(_ => new ShardDecorDeed("formal-dining-table")), boxable: false),
+        new("hunt.feasting", "Hunt reward: festival feasting table (deed)", 250, 300, LeagueShopKind.Decor, 0x14F0, 0,
+            One(_ => new ShardDecorDeed("feasting-table")), boxable: false)
     ];
 
     private static Func<PlayerMobile, List<Item>> One(Func<PlayerMobile, Item> make) => pm => [make(pm)];

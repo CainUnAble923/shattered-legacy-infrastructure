@@ -281,6 +281,8 @@ public static class GuildStores
                 yield return R(g, "harp", "Lap harp", 100, 0, 0xEB2, 0, RewardStore.One(() => new LapHarp()));
                 yield return R(g, "drum", "Drum", 100, 0, 0xE9C, 0, RewardStore.One(() => new Drums()));
                 yield return R(g, "stand", "Music stand (decor)", 400, 2, 0x0EB5, 0, RewardStore.One(() => new RewardDecor(0x0EB5, "a music stand")));
+                // cc-P855: Lagatha's harpsichord, a data addon deed (ShardDecorAddon), stock art.
+                yield return R(g, "harpsichord", "Harpsichord (deed)", 800, 3, 0x14F0, 0, RewardStore.One(() => new ShardDecorDeed("harpsichord")));
                 break;
             case "warriors":
                 yield return R(g, "dummy", "Training dummy (deed)", 600, 2, 0x14F0, 0, RewardStore.One(() => new TrainingDummyEastDeed()));
