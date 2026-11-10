@@ -147,7 +147,29 @@ public static class AchievementStock
             yield return new RewardStoreRow($"ap.painting.{key}", $"Painting: {name}", 50, 100, id, 0,
                 RewardStore.One(() => new RewardDecor(id, $"a painting: {name}")));
         }
+
+        // cc-P855: house furniture as data addon deeds (ShardDecorAddon, Data/ShatteredLegacy/Decoration/Addons), stock
+        // art, the authors on the deeds: Diesel's grey fireplaces and blue couch, Lagatha's kitchens and barbecue.
+        foreach (var (group, label, price, opens) in Furniture)
+        {
+            yield return new RewardStoreRow($"ap.decor.{group}", label, price, opens, 0x14F0, 0,
+                RewardStore.One(() => new ShardDecorDeed(group)));
+        }
     }
+
+    /// <summary>cc-P855: the data addon groups this store sells: group, label, AP price, AP that opens the row.</summary>
+    public static readonly (string Group, string Label, int Price, int Opens)[] Furniture =
+    [
+        ("grey-fireplace-small", "Small grey stone fireplace (deed)", 100, 250),
+        ("grey-fireplace-low", "Low grey stone fireplace (deed)", 100, 250),
+        ("grey-fireplace-medium", "Grey stone fireplace (deed)", 150, 500),
+        ("grey-fireplace-large", "Large grey stone fireplace (deed)", 200, 750),
+        ("grey-fireplace-grand", "Grand grey stone fireplace (deed)", 250, 1000),
+        ("blue-couch", "Blue couch (deed)", 100, 250),
+        ("small-kitchen", "Small kitchen (deed)", 100, 250),
+        ("barbecue", "Barbecue (deed)", 75, 100),
+        ("country-kitchen", "Country kitchen (deed)", 150, 500)
+    ];
 
     /// <summary>A plaque engraved with the buyer's name and AP total when bought.</summary>
     public static Item Plaque(PlayerMobile pm) =>

@@ -358,6 +358,8 @@ public static class FestivalStock
         yield return R(s, "gingerbread", "Gingerbread house (decor)", 10, 0x3C5F, Decor(0x3C5F, "a gingerbread house"));
         yield return R(s, "painting.a", "Holiday painting A (decor)", 10, 0x3C63, Decor(0x3C63, "a holiday painting"));
         yield return R(s, "painting.b", "Holiday painting B (decor)", 10, 0x3C65, Decor(0x3C65, "a holiday painting"));
+        // cc-P855: Lagatha's holiday fireplace (after Gwenivere), a data addon deed (ShardDecorAddon), stock art.
+        yield return R(s, "holidayfireplace", "Holiday fireplace (deed)", 40, 0x14F0, RewardStore.One(() => new ShardDecorDeed("holiday-fireplace")));
     }
 
     private static IEnumerable<RewardStoreRow> Spring()

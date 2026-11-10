@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.10
+
+### Added
+- New house furniture, placed from a deed that asks which way it should face: grey stone fireplaces in five sizes, a blue couch, small and country kitchens, a barbecue and a harpsichord. Each piece names the player who designed it.
+- The League shop has a hunt row for Renown: the Hunt Master's buffet table, the Hunt Master's formal dining table and a festival feasting table.
+- The Achievement store sells the fireplaces, couch, kitchens and barbecue; the Bards' guild store sells the harpsichord; the Festival winter stock has a holiday fireplace.
+
+### Staff
+- [DecorAddon lists the data-made house addons, rereads their files, or gives you a deed by its group name.
+
 ## 2026.11.08.4
 
 ### Changed

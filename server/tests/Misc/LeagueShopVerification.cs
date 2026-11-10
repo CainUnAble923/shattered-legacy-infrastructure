@@ -378,6 +378,8 @@ public class LeagueShopVerification
         // cc-P794: the ethereal looks routed to the shop (EtherealLooks.ShopRows).
         ("ethereal.peacock", 1750, 1500), ("ethereal.windrunner", 1750, 2000), ("ethereal.tiger", 1750, 2000),
         ("ethereal.light-tiger", 1750, 2000),
+        // cc-P855: the hunt row (ShardDecorAddon deeds: the Hunt Master's tables, the festival feasting tables).
+        ("hunt.buffet", 500, 400), ("hunt.formaldining", 500, 400), ("hunt.feasting", 250, 300),
     ];
 
     [Fact]
