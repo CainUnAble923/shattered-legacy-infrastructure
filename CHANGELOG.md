@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.10.6
+
+### Added
+- Ridable polar bears roam the snow of Dagger Isle. Tame one (Animal Taming 59.1) and ride it: the first mount of the ice line. After the ridable polar bear by Milva.
+
 ## 2026.11.10.2
 
 ### Added
