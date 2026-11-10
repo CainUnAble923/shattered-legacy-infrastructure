@@ -256,7 +256,7 @@ public class WinterDecorVerification
     public void TheAutomaticCheckPlacesInRangeRemovesAfterAndActsOnlyWhenTheSeasonChanges()
     {
         var s = ClusterFWinterDecor.Season;
-        var rows = ClusterFWinterDecorLayout.Rows.Length;
+        var rows = ClusterFWinterDecor.AllRows.Length;   // cc-P856: the winter set's rows too
         try
         {
             Clean();
@@ -316,7 +316,7 @@ public class WinterDecorVerification
     [Fact]
     public void PlaceTwicePlacesOnceAndClearRemovesExactlyTheDecorBySerialAndNothingElse()
     {
-        var rows = ClusterFWinterDecorLayout.Rows;
+        var rows = ClusterFWinterDecor.AllRows;   // cc-P856: the winter set's rows too
         var first = rows[0];
         var stranger = new Item(0x0EED) { Movable = false };   // a gold coin pile, nothing to do with the decor
         var lookalike = new Item(first.ItemId) { Movable = false, Name = first.Name };   // same art, not ours
@@ -343,7 +343,15 @@ public class WinterDecorVerification
                 var r = rows.Single(x => x.Key == ((IWinterDecorItem)p).Key);
                 Assert.Equal(new Point3D(r.X, r.Y, r.Z), p.Location);
                 Assert.Equal(Map.Trammel, p.Map);
-                Assert.Equal(r.ItemId, p.ItemID);
+                if (r.Layer == ClusterFWinterSetLayout.AddonLayer)
+                {
+                    Assert.IsType<WinterSeasonAddon>(p);   // cc-P856: an addon has no art of its own (its parts do)
+                }
+                else
+                {
+                    Assert.Equal(r.ItemId, p.ItemID);
+                }
+
                 Assert.Equal(r.Hue, p.Hue);
                 Assert.False(p.Movable);
                 Assert.False(p.Decays);
@@ -363,7 +371,9 @@ public class WinterDecorVerification
             Assert.False(stranger.Deleted);
             Assert.False(lookalike.Deleted);
             Assert.Equal(new Point3D(first.X, first.Y, first.Z), stranger.Location);
-            Assert.Equal(before - rows.Length, World.Items.Count);
+            // cc-P856: each winter set addon takes its parts with it
+            var parts = ClusterFWinterSetLayout.Rows.Sum(r => WinterSetDesigns.All[ClusterFWinterSetLayout.DesignOf(r.Key)].Parts.Count);
+            Assert.Equal(before - rows.Length - parts, World.Items.Count);
 
             ClusterFWinterDecor.Up(false, null);
             Assert.Equal(rows.Select(r => r.Key).OrderBy(k => k), Keys(Placed()));
@@ -414,7 +424,7 @@ public class WinterDecorVerification
     [Fact]
     public void TheDecorAndTheStateSurviveARestart()
     {
-        var rows = ClusterFWinterDecorLayout.Rows;
+        var rows = ClusterFWinterDecor.AllRows;   // cc-P856: the winter set's rows too
         var s = ClusterFWinterDecor.Season;
         var stray = (WinterDecor)null;
         try

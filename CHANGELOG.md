@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.10.3
+
+### Added
+- New Haven dresses up for winter from December 1: a Christmas train with turning wheels, smoke and lights, a big walk-round snow globe with falling snow, a Santa bench and a snowman bench. They go when the winter decorations come down after January 6.
+- The Festival's winter stock has a Santa bench, a snowman bench and a holiday fireplace with stockings and a bear rug, for your house. Each piece names the player who designed it.
+
 ## 2026.11.10.2
 
 ### Added
