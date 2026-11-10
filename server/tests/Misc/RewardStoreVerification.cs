@@ -386,13 +386,13 @@ public class RewardStoreVerification
             FestivalSeasons.Forced = FestivalSeasons.Winter;
             FestivalMarket.Sync();
             Assert.True(FestivalMarket.IsUp);
-            Assert.Equal(FestivalMarket.Pieces.Length + 1, FestivalMarket.Placed().Count);
+            Assert.Equal(FestivalMarket.Pieces.Length + 2, FestivalMarket.Placed().Count); // cc-P858: the pieces, the peddler and the wagon
             var peddler = FestivalMarket.Peddler;
             Assert.NotNull(peddler);
             Assert.Equal(FestivalMarket.Anchor, peddler.Location);
             Assert.Empty(FestivalMarket.Sync());           // no change, nothing done
             FestivalMarket.Up();                          // place twice places once
-            Assert.Equal(FestivalMarket.Pieces.Length + 1, FestivalMarket.Placed().Count);
+            Assert.Equal(FestivalMarket.Pieces.Length + 2, FestivalMarket.Placed().Count); // cc-P858: the pieces, the peddler and the wagon
 
             var serials = FestivalMarket.Placed().ToList();
             FestivalSeasons.Forced = "none";

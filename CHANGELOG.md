@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.10.4
+
+### Added
+- Eleven lamps that really light: a dragon lantern, bird, koi and dragon egg lamps, a stained glass lamp, tall antique and modern lamps, an ornate table lamp, an ancient dragon brazier, a gold tray of candles and a jack-o-lantern with eleven carvings. Double-click one to light it or put it out, and turn it with your house's interior decorator. Ten are in the Achievement store; the jack-o-lantern is in the Festival Peddler's Halloween stock. After Drafted and Milva.
+- A fortune teller's wagon now stands beside the Festival Peddler's stall in New Haven while a festival is on. Climb the steps to its porch and look inside. After Olorin.
+
 ## 2026.11.10.2
 
 ### Added
