@@ -1,6 +1,6 @@
 // StaffEventsSettings.cs
 //
-// cc-P810 (P797 ranks 1 and 3): every number of the two staff events, the egg hunt (StaffEggHunt.cs) and the mine maze
+// cc-P810 (P797 ranks 1 and 3): every number of the staff events (cc-P863 adds Color Wars, StaffColorWars.cs), the egg hunt (StaffEggHunt.cs) and the mine maze
 // (StaffMineMaze.cs). Configuration/staff-events.json, written with these defaults on first start and read at start; a bad
 // file is refused whole, every error is printed, and the defaults stay in force. [StaffEvents reload reads it again.
 // Notes: shard-migration notes/cc-P810-staff-events-egg-hunt-mine-maze.md.
@@ -38,6 +38,19 @@ public sealed class StaffEventsSettings
     public string MazeBoxTheme { get; set; } = "Explorer";
     public int MazeBoxTier { get; set; } = 1;
     public int MazeReviveSeconds { get; set; } = 5;   // a player killed in the maze is raised at its start after this
+
+    // ---- Color Wars (cc-P863, StaffColorWars.cs)
+    public int CwMinSide { get; set; } = 8;           // the arena's shorter side, at least
+    public int CwMaxTiles { get; set; } = 4096;       // 64 x 64
+    public int CwReviveSeconds { get; set; } = 5;     // a player killed in the arena rises at the team's base after this
+    public int CwWinTokens { get; set; } = 15;        // Festival Tokens for each player of the winning team
+    public int CwKillsToWin { get; set; } = 0;        // the first team to this many kills wins at once; 0: a GM ends it
+    public bool CwKitArmor { get; set; } = true;      // lent studded armour and a leather cap
+    public bool CwKitWeapons { get; set; } = true;    // a lent viking sword and a bow
+    public bool CwKitSpellbook { get; set; } = true;  // a lent full spellbook
+    public int CwReagents { get; set; } = 30;         // of each of the eight reagents, with the spellbook
+    public int CwBandages { get; set; } = 50;
+    public int CwArrows { get; set; } = 100;          // with the bow
 
     public bool PrizeIsBox => MazePrize.Equals("LootBox", StringComparison.OrdinalIgnoreCase);
 
@@ -92,6 +105,14 @@ public sealed class StaffEventsSettings
         Range(s.MazeTokens, 0, 10000, nameof(MazeTokens), errors);
         Range(s.MazeBoxTier, 1, 6, nameof(MazeBoxTier), errors);
         Range(s.MazeReviveSeconds, 0, 600, nameof(MazeReviveSeconds), errors);
+        Range(s.CwMinSide, 3, 100, nameof(CwMinSide), errors);
+        Range(s.CwMaxTiles, 9, 20000, nameof(CwMaxTiles), errors);
+        Range(s.CwReviveSeconds, 0, 600, nameof(CwReviveSeconds), errors);
+        Range(s.CwWinTokens, 0, 10000, nameof(CwWinTokens), errors);
+        Range(s.CwKillsToWin, 0, 1000, nameof(CwKillsToWin), errors);
+        Range(s.CwReagents, 0, 1000, nameof(CwReagents), errors);
+        Range(s.CwBandages, 0, 1000, nameof(CwBandages), errors);
+        Range(s.CwArrows, 0, 1000, nameof(CwArrows), errors);
 
         if (!s.PrizeIsBox && !(s.MazePrize ?? "").Equals("Tokens", StringComparison.OrdinalIgnoreCase))
         {
