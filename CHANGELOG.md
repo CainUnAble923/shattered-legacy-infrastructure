@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.10.3
+
+### Added
+- A carpet deed for your house: pick one of six carpets and a colour, then target two opposite corners on your floor to lay a carpet of that size, from 3 to 18 tiles a side. Double-click the carpet to roll it back up into its deed. After the variable carpet by Manu, Draco van Peeble and Milva.
+
 ## 2026.11.08.4
 
 ### Changed
