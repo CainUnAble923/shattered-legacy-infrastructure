@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.10.2
+
+### Added
+- The Horn of Plenty is back for Thanksgiving: buy it in the Achievement store during November. Each of its ten charges gives a holiday dish, a wild turkey you can tame (sometimes the famous Mister Gobbles), a short nap, or, rarely, a Roasting Pig on a Spit for your house that serves pulled pork once a day. The horn refills one charge a day in November, and Clean Up Britannia takes it for 2,500 points. Based on the Horn of Plenty by Nuggzy.
+
 ## 2026.11.08.4
 
 ### Changed
