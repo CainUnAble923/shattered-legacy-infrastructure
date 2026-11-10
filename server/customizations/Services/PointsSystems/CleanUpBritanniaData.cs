@@ -918,7 +918,7 @@ public class CleanUpBritanniaData : PointsSystem
         Add(typeof(global::Server.Items.RedSoulstone), 15000.0); // :727
         Add(typeof(global::Server.Items.BlueSoulstone), 15000.0); // :728
         Add(typeof(global::Server.Items.SoulStone), 15000.0); // :729
-        // MISSING :730 HornOfPlenty = 2500.0
+        Add(typeof(global::Server.Items.HornOfPlenty), 2500.0); // :730 (cc-P859)
         Add(typeof(global::Server.Items.KepetchWax), 500.0); // :731
         Add(typeof(global::Server.Items.SlithEye), 500.0); // :732
         Add(typeof(global::Server.Items.SoulstoneFragment), 500.0); // :733

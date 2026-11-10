@@ -147,6 +147,14 @@ public static class AchievementStock
             yield return new RewardStoreRow($"ap.painting.{key}", $"Painting: {name}", 50, 100, id, 0,
                 RewardStore.One(() => new RewardDecor(id, $"a painting: {name}")));
         }
+
+        // cc-P859: the Horn of Plenty (Nuggzy's port, Items/Thanksgiving/HornOfPlenty.cs), sold in November only.
+        yield return new RewardStoreRow("ap.hornofplenty", "Horn of Plenty (November only)", 150, 250, 0x4BD9, 0,
+            RewardStore.One(() => new HornOfPlenty()))
+        {
+            Condition = _ => HornOfPlenty.IsHarvestMonth(HornOfPlenty.Clock()),
+            ConditionText = "Sold in November only"
+        };
     }
 
     /// <summary>A plaque engraved with the buyer's name and AP total when bought.</summary>
