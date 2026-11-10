@@ -337,6 +337,7 @@ public static class FestivalStock
         yield return R(s, "carving", "Pumpkin carving kit", 10, 0x992D, RewardStore.One(() => new PumpkinCarvingKit()));
         yield return R(s, "scarecrow", "Pumpkin scarecrow", 25, 0x469B, RewardStore.One(() => new PumpkinScarecrow()));
         yield return R(s, "guillotine", "Halloween guillotine", 25, 0x3F27, RewardStore.One(() => new HalloweenGuillotine()));
+        yield return R(s, "jacklantern", "Jack-o-lantern lamp (11 carvings)", 20, 0x4691, RewardStore.One(() => new JackLantern())); // cc-P858
     }
 
     private static IEnumerable<RewardStoreRow> Winter()
@@ -488,6 +489,14 @@ public static class FestivalMarket
     public const string StateName = "festival-peddler";
     public const string AnchorSetting = "clusterf.festival.peddlerAt";
 
+    // cc-P858: the fortune teller's wagon beside the stall (FestivalWagon/), its origin a setting ("off" for none). The
+    // default is main's New Haven (the Siege of Sosaria land): on the paved square's west edge, south of the open forge,
+    // its stair down onto the street, chosen by P678's map rules (shard-migration notes/cc-P858-review/placed.md).
+    public const string WagonSetting = "clusterf.festival.wagonAt";
+    public const string DefaultWagonAt = "3647,2632,0";
+
+    public static Point3D? WagonAt { get; set; } = ParseAnchor(DefaultWagonAt);
+
     // The peddler's tile; the stall's pieces stand around it (Pieces). Chosen in cc-P760's review (placed.md).
     public const string DefaultAnchor = "3636,2627,0";
 
@@ -537,18 +546,25 @@ public static class FestivalMarket
             Console.WriteLine($"[FestivalMarket] {AnchorSetting} = '{setting}' is not x,y,z; using {DefaultAnchor}.");
         }
 
+        var wagon = ServerConfiguration.GetOrUpdateSetting(WagonSetting, DefaultWagonAt);
+        WagonAt = wagon.Trim().ToLowerInvariant() == "off" ? null : ParseAnchor(wagon);
+        if (WagonAt == null && wagon.Trim().ToLowerInvariant() != "off")
+        {
+            Console.WriteLine($"[FestivalMarket] {WagonSetting} = '{wagon}' is not x,y,z or off; no wagon.");
+        }
+
         CommandSystem.Register("FestivalMarket", AccessLevel.GameMaster, OnCommand);
 
         EventSink.WorldLoad += () => Timer.DelayCall(TimeSpan.Zero, () =>
         {
-            foreach (var line in Sync())
+            foreach (var line in Sync().Concat(TopUpWagon()))
             {
                 Console.WriteLine(line);
             }
 
             Timer.DelayCall(TimeSpan.FromHours(1), TimeSpan.FromHours(1), () =>
             {
-                foreach (var line in Sync())
+                foreach (var line in Sync().Concat(TopUpWagon()))
                 {
                     Console.WriteLine(line);
                 }
@@ -629,7 +645,7 @@ public static class FestivalMarket
 
         if (placed.Count > 0)
         {
-            return [$"[FestivalMarket] The stall is already up ({placed.Count} pieces)."];
+            return [$"[FestivalMarket] The stall is already up ({placed.Count} pieces).", .. TopUpWagon()];
         }
 
         var at = Anchor;
@@ -644,10 +660,37 @@ public static class FestivalMarket
         peddler.MoveToWorld(at, Facet);
         placed.Add(peddler.Serial);
 
+        if (WagonAt is { } w) // cc-P858
+        {
+            var wagon = new FortuneTellerWagon();
+            wagon.MoveToWorld(w, Facet);
+            placed.Add(wagon.Serial);
+        }
+
         // cc-P784: the holiday stocking hangs on the table while its season is on.
         var lines = new List<string> { $"[FestivalMarket] The Festival Peddler's stall is up at {at} ({placed.Count} pieces)." };
         lines.AddRange(HolidayStockings.Sync());
         return lines;
+    }
+
+    public static FortuneTellerWagon? Wagon =>
+        Placed().Select(s => World.FindItem(s)).OfType<FortuneTellerWagon>().FirstOrDefault(w => !w.Deleted);
+
+    /// <summary>
+    /// cc-P858: a world whose stall is already up (placed before the wagon existed) gets the wagon, once. Nothing when the
+    /// stall is down, the wagon is set off, or it already stands. Run after every world load and hourly.
+    /// </summary>
+    public static List<string> TopUpWagon()
+    {
+        if (WagonAt is not { } w || !IsUp || Wagon != null)
+        {
+            return [];
+        }
+
+        var wagon = new FortuneTellerWagon();
+        wagon.MoveToWorld(w, Facet);
+        Placed().Add(wagon.Serial);
+        return [$"[FestivalMarket] The fortune teller's wagon is up beside the stall at {w}."];
     }
 
     /// <summary>Takes away exactly what Up placed (by serial).</summary>
