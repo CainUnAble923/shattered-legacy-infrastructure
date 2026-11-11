@@ -359,6 +359,11 @@ public static class FestivalStock
         yield return R(s, "gingerbread", "Gingerbread house (decor)", 10, 0x3C5F, Decor(0x3C5F, "a gingerbread house"));
         yield return R(s, "painting.a", "Holiday painting A (decor)", 10, 0x3C63, Decor(0x3C63, "a holiday painting"));
         yield return R(s, "painting.b", "Holiday painting B (decor)", 10, 0x3C65, Decor(0x3C65, "a holiday painting"));
+        // cc-P856: the New Haven winter set's house pieces (WinterSetAddon), stock art, each deed naming its author: Candy
+        // Apple's Santa and snowman benches, Lagatha's holiday fireplace (after Gwenivere).
+        yield return R(s, "santabench", "Santa bench (deed)", 30, 0x14F0, RewardStore.One(() => new WinterSetDeed("santa-bench")));
+        yield return R(s, "snowmanbench", "Snowman bench (deed)", 30, 0x14F0, RewardStore.One(() => new WinterSetDeed("snowman-bench")));
+        yield return R(s, "holidayfireplace", "Holiday fireplace (deed)", 40, 0x14F0, RewardStore.One(() => new WinterSetDeed("holiday-fireplace")));
     }
 
     private static IEnumerable<RewardStoreRow> Spring()
