@@ -6,12 +6,14 @@
 // file (Items/Equipment/Clothing/GargishRobe.cs). AcquireOnApproach => true is dropped: pinned acquires on approach
 // for every creature (BaseCreature.AcquireOnApproachRange, no switch), so the override has nothing to turn on.
 //
-// DEVIATION, small: ServUO names the outcast from its "Gargoyle Male" and "Gargoyle Female" name lists, which pinned's
-// names.json does not carry. Pinned's gargish names are its "gargoyle vendor" list (Ansiraal, Aurlem, Betra, ...),
-// used here for both sexes; without it the outcast would have no name. Reverses when the two lists reach names.json.
+// ServUO names the outcast from its "Gargoyle Male" and "Gargoyle Female" name lists, which pinned's names.json does not
+// carry. cc-P861 added them as ours ("gargoyle male", "gargoyle female", Names/ShardNames.cs, after Sirenix's lists), so
+// the outcast is named as in ServUO again (it used pinned's "gargoyle vendor" list for both sexes until then, and still
+// does where our lists are not loaded: the test host).
 
 using System;
 using ModernUO.Serialization;
+using Server.Misc;
 using Server.Items;
 using Server.Spells;
 using Server.Spells.Mysticism;
@@ -40,13 +42,13 @@ public partial class GargishOutcast : BaseCreature
 
         if (Utility.RandomBool())
         {
-            Name = NameList.RandomName("gargoyle vendor"); // ServUO: "Gargoyle Male" (see the header)
+            Name = ShardNames.RandomName("gargoyle male", "gargoyle vendor"); // ServUO's list; ours since cc-P861
             Female = false;
             Body = 666;
         }
         else
         {
-            Name = NameList.RandomName("gargoyle vendor"); // ServUO: "Gargoyle Female"
+            Name = ShardNames.RandomName("gargoyle female", "gargoyle vendor"); // ServUO's list; ours since cc-P861
             Female = true;
             Body = 667;
         }

@@ -303,6 +303,20 @@ namespace Server
             return set;
         }
 
+        /// <summary>cc-P861: whether any decor has placed <paramref name="serial"/> and not removed it ([VBuild statify refuses those).</summary>
+        public static bool IsTracked(Serial serial)
+        {
+            foreach (var set in _placed.Values)
+            {
+                if (set.Contains(serial))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public static void Clear()
         {
             _last.Clear();

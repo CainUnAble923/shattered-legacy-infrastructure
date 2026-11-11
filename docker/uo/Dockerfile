@@ -84,6 +84,9 @@ COPY server/data/Decoration/ /build/modernuo/Distribution/Data/ShatteredLegacy/D
 COPY server/data/treasure.cfg /build/modernuo/Distribution/Data/treasure.cfg
 # cc-P793: the shard's rows on top of pinned's shrink.json (a body's figurine), read by ShrinkTable-shard-rows.patch.
 COPY server/data/shrink.json /build/modernuo/Distribution/Data/ShatteredLegacy/shrink.json
+# cc-P861: our extra NPC name lists (after Sirenix), beside pinned's Data/names.json, read by ShardNames at Initialize
+# (made by shard-migration notes/cc-P861-tools/names861.py).
+COPY server/data/names-shard.json /build/modernuo/Distribution/Data/ShatteredLegacy/names-shard.json
 # cc-P682 (SoS swap S10): the people of the author's new towns and keeps and the wild on his new land, in pinned's
 # spawn format beside pinned's own (Data/Spawns/sos/{towns,keeps,wild}), built by the stock [GenerateSpawners (made by
 # shard-migration notes/cc-P682-tools/build_spawns.py).
