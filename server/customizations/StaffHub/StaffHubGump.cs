@@ -90,6 +90,7 @@ public class StaffHubGump : Gump
     public const int BtnSurgeNew = 5008;
     public const int BtnTemplateNew = 5009;
     public const int BtnStaffEvents = 5010;   // cc-P810: the egg hunt and mine maze gump
+    public const int BtnColorWars = 5011;     // cc-P863: the Color Wars gump
     public const int BtnTemplateDeleteBase = 5100;
 
     // ---- text entry IDs ----
@@ -645,6 +646,7 @@ public class StaffHubGump : Gump
         TextButton(26, 366, BtnSurgeStart, "Start");
         TextButton(142, 366, BtnSurgeDryRun, "Dry run");
         TextButton(374, 366, BtnStaffEvents, "Egg hunt, maze"); // cc-P810
+        TextButton(374, 392, BtnColorWars, "Color Wars"); // cc-P863
     }
 
     // A running surge, or the summary of the one that just ended.
@@ -709,6 +711,7 @@ public class StaffHubGump : Gump
         }
 
         TextButton(374, 366, BtnStaffEvents, "Egg hunt, maze"); // cc-P810
+        TextButton(374, 392, BtnColorWars, "Color Wars"); // cc-P863
     }
 
     /// <summary>What the Events setup sends back: its text entries and its switches.</summary>
@@ -822,6 +825,11 @@ public class StaffHubGump : Gump
         else if (id == BtnStaffEvents)
         {
             from.SendGump(new StaffEventsGump(from)); // cc-P810
+            reopen = false;
+        }
+        else if (id == BtnColorWars)
+        {
+            from.SendGump(new StaffColorWarsGump(from)); // cc-P863
             reopen = false;
         }
         else if (id == BtnTemplateNew)

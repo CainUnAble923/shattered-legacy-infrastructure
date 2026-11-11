@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.11.10.9
+
+### Added
+- Color Wars, a team battle staff can run: step through its gate to join the red or blue team (or white and black), fight in your team's colour with a lent kit, and win Festival Tokens for your team. Everything you carried waits in your bank and comes back when you leave, and a death costs nothing. After Color Wars by Omni.
+
+### Staff
+- Color Wars is on the Staff Hub's Events tab ("Color Wars") and [ColorWars: mark the arena, open it for 2 or 4 teams, place the gate, start the battle, then end it (most kills win) or call it off.
+
 ## 2026.11.10.8
 
 ### Added
